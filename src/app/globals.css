@@ -1,0 +1,48 @@
+@import "tailwindcss";
+
+:root {
+  --background: #FAF6F3;
+  --foreground: #2D2A26;
+  --brand-taupe: #9A8073;
+  --brand-taupe-hover: #91756A;
+  --brand-border: #EBE6E0;
+  --card-bg: #FFFFFF;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-taupe: var(--brand-taupe);
+  --color-taupe-hover: var(--brand-taupe-hover);
+  --color-border-soft: var(--brand-border);
+  --font-sans: var(--font-outfit);
+  --font-serif: var(--font-playfair);
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans), Arial, Helvetica, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Elegant Soft UI Classes */
+.glass-panel {
+  background: var(--card-bg);
+  border: 1px solid var(--brand-border);
+  border-radius: 1rem;
+  box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.03), 0 4px 10px -4px rgba(0, 0, 0, 0.02);
+}
+
+.luxury-gradient {
+  background: linear-gradient(135deg, #FDFCFB 0%, #E2D1C3 100%);
+}
+
+.taupe-accent {
+  color: var(--brand-taupe);
+}
+
+/* Typography Helpers */
+.font-heading {
+  font-family: var(--font-serif), Georgia, serif;
+}
