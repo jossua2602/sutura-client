@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Users, Search, Package, Phone, Mail } from 'lucide-react';
+import { Search, Package, Phone, Mail } from 'lucide-react';
 
 interface CustomerData {
   id: number;
@@ -19,6 +21,7 @@ interface CustomerData {
 
 export default function CustomersPage() {
   const { shop , user } = useAuthStore();
+  const router = useRouter();
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -34,19 +37,17 @@ export default function CustomersPage() {
           console.error(err);
           setLoading(false);
         });
+    } else if (user) {
+      setTimeout(() => setLoading(false), 0);
     } else {
-      if (user) {
-        setTimeout(() => setLoading(false), 0);
-      } else {
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
-      }
+      const timer = setTimeout(() => setLoading(false), 1000);
+      return () => clearTimeout(timer);
     }
   }, [shop, user]);
 
   const filtered = customers.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
-    (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
+    c.email?.toLowerCase().includes(search.toLowerCase())
   );
 
   return (
@@ -58,7 +59,7 @@ export default function CustomersPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 bg-white shadow-sm border border-[#EBE6E0] p-4 rounded-2xl shadow-sm">
+      <div className="flex items-center gap-4 bg-white border border-[#EBE6E0] p-4 rounded-2xl shadow-sm">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={18} />
           <input 
@@ -77,7 +78,7 @@ export default function CustomersPage() {
       {loading ? (
         <div className="py-12 text-center text-[#A8A19A] animate-pulse">Loading CRM directory...</div>
       ) : (
-        <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm">
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -92,14 +93,21 @@ export default function CustomersPage() {
                 {filtered.map(customer => (
                   <tr 
                     key={customer.id} 
-                    onClick={() => window.location.href = `/staff-dashboard/customers/${customer.id}`}
+                    onClick={() => router.push(`/staff-dashboard/customers/${customer.id}`)}
                     className="hover:bg-[#F0EAE3]/20 transition-colors group cursor-pointer"
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#F0EAE3] overflow-hidden shrink-0 flex items-center justify-center border border-[#D1C7BD]">
                           {customer.profile_picture ? (
-                            <img src={customer.profile_picture} alt={customer.name} className="w-full h-full object-cover" />
+                            <Image 
+                              src={customer.profile_picture} 
+                              alt={customer.name} 
+                              className="w-full h-full object-cover" 
+                              width={40} 
+                              height={40} 
+                              unoptimized 
+                            />
                           ) : (
                             <span className="text-[#827A73] font-bold">{customer.name.charAt(0)}</span>
                           )}

@@ -2,16 +2,15 @@
 
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { usePathname } from 'next/navigation';
 import { Scissors, Users, LogOut, User, Grip, ChevronDown } from 'lucide-react';
 import api from '@/lib/axios';
 import NotificationBell from '@/components/NotificationBell';
 import BrandLogo from '@/components/BrandLogo';
 
-export default function StaffDashboardLayout({ children }: { children: React.ReactNode }) {
-  const { user, isAuthenticated, logout, setAuth, token, staffProfile, shop } = useAuthStore();
+export default function StaffDashboardLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const { user, isAuthenticated, logout, setAuth, token, staffProfile } = useAuthStore();
   const router = useRouter();
   const [mounted, setMounted] = useState(false);
   const [restoring, setRestoring] = useState(false);
@@ -22,11 +21,11 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
   const profileRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    setMounted(true);
+    setTimeout(() => setMounted(true), 0);
     if (!isAuthenticated) {
       router.push('/login');
     } else if (!user && token) {
-      setRestoring(true);
+      setTimeout(() => setRestoring(true), 0);
       api.get('/auth/me')
         .then(res => {
           if (res.data.success) {
@@ -42,7 +41,9 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
           logout();
           router.push('/login');
         })
-        .finally(() => setRestoring(false));
+        .finally(() => {
+          setTimeout(() => setRestoring(false), 0);
+        });
     } else if (user && user.roles[0]?.name !== 'staff' && user.roles[0]?.name !== 'branch_manager') {
       router.push('/dashboard');
     }
@@ -61,7 +62,7 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
 
   // Close sidebar on route change on mobile
   useEffect(() => {
-    setIsSidebarOpen(false);
+    setTimeout(() => setIsSidebarOpen(false), 0);
   }, [pathname]);
 
   const handleLogout = async () => {
@@ -151,8 +152,10 @@ export default function StaffDashboardLayout({ children }: { children: React.Rea
       <div className="flex-1 flex overflow-hidden relative">
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
-          <div 
-            className="absolute inset-0 bg-black/20 z-30 lg:hidden"
+          <button 
+            type="button"
+            aria-label="Close sidebar"
+            className="absolute inset-0 bg-black/20 z-30 lg:hidden w-full h-full cursor-default"
             onClick={() => setIsSidebarOpen(false)}
           />
         )}

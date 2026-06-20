@@ -4,9 +4,70 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 import { Ruler, Info, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
-export default function PublicProductDetailPage({ params }: { params: { shop_id: string, item_id: string } }) {
-  const [item, setItem] = useState<any>(null);
+interface CatalogItemImage {
+  id: number;
+  image_url: string;
+  view_angle: string;
+  is_primary: boolean;
+}
+
+interface RecommendedItem {
+  id: number;
+  name: string;
+  price: string | number;
+  images?: CatalogItemImage[];
+}
+
+interface Recommendation {
+  recommendedItem?: RecommendedItem;
+}
+
+interface CatalogItem {
+  id: number;
+  name: string;
+  price: string | number;
+  description?: string;
+  listing_type: string;
+  material?: string;
+  features?: string[];
+  fit_guide?: string[];
+  care_instructions?: string;
+  images: CatalogItemImage[];
+  recommendations?: Recommendation[];
+}
+
+function ListingTypeBadge({ type }: Readonly<{ type: string }>) {
+  const styles: Record<string, string> = {
+    made_to_order: 'bg-[#FAF6F3] text-[#827A73] border-[#EBE6E0]',
+    bulk_order: 'bg-orange-50 text-orange-700 border-orange-200',
+    ready_to_wear: 'bg-blue-50 text-blue-700 border-blue-200',
+    portfolio: 'bg-purple-50 text-purple-700 border-purple-200',
+    for_rent: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+    for_sale: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+    rent_or_sale: 'bg-pink-50 text-pink-700 border-pink-200',
+  };
+
+  const labels: Record<string, string> = {
+    made_to_order: 'Made to Order',
+    bulk_order: 'Bulk Order',
+    ready_to_wear: 'Ready to Wear',
+    portfolio: 'Portfolio Showcase',
+    for_rent: 'For Rent',
+    for_sale: 'For Sale',
+    rent_or_sale: 'For Rent or Sale',
+  };
+
+  return (
+    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[type] || 'bg-zinc-100 text-zinc-800 border-zinc-200'}`}>
+      {labels[type] || type}
+    </span>
+  );
+}
+
+export default function PublicProductDetailPage({ params }: Readonly<{ params: Readonly<{ shop_id: string; item_id: string; }> }>) {
+  const [item, setItem] = useState<CatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
   
   const [selectedImage, setSelectedImage] = useState<string>('');
@@ -16,7 +77,7 @@ export default function PublicProductDetailPage({ params }: { params: { shop_id:
     api.get(`/shops/${params.shop_id}/catalog/${params.item_id}`)
       .then(res => {
         setItem(res.data.data);
-        const primary = res.data.data.images.find((i:any) => i.is_primary) || res.data.data.images[0];
+        const primary = res.data.data.images.find((i: CatalogItemImage) => i.is_primary) || res.data.data.images[0];
         if (primary) setSelectedImage(primary.image_url);
         setLoading(false);
       })
@@ -34,26 +95,39 @@ export default function PublicProductDetailPage({ params }: { params: { shop_id:
     return <div className="py-32 text-center text-[#A8A19A]">Item not found.</div>;
   }
 
+  const getButtonText = () => {
+    switch (item.listing_type) {
+      case 'for_rent':
+        return 'Inquire Rental';
+      case 'for_sale':
+        return 'Inquire Purchase';
+      case 'rent_or_sale':
+        return 'Rent or Purchase';
+      default:
+        return 'Book a Fitting';
+    }
+  };
+
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
         
         {/* Images Column */}
         <div className="flex gap-4 h-[800px] sticky top-24">
-          <div className="w-24 flex flex-col gap-4 overflow-y-auto hidden md:flex">
-            {item.images.map((img: any) => (
+          <div className="w-24 flex-col gap-4 overflow-y-auto hidden md:flex">
+            {item.images.map((img) => (
               <button 
                 key={img.id}
                 onClick={() => setSelectedImage(img.image_url)}
-                className={`aspect-[3/4] w-full bg-zinc-100 overflow-hidden border-2 transition-all ${selectedImage === img.image_url ? 'border-zinc-900 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
+                className={`aspect-3/4 w-full bg-zinc-100 overflow-hidden border-2 transition-all ${selectedImage === img.image_url ? 'border-zinc-900 opacity-100' : 'border-transparent opacity-60 hover:opacity-100'}`}
               >
-                <img src={img.image_url} alt={img.view_angle} className="w-full h-full object-cover object-top" />
+                <Image src={img.image_url} alt={img.view_angle || 'Garment thumbnail'} className="w-full h-full object-cover object-top" width={96} height={128} unoptimized />
               </button>
             ))}
           </div>
           <div className="flex-1 bg-zinc-100 overflow-hidden relative">
             {selectedImage ? (
-              <img src={selectedImage} alt={item.name} className="w-full h-full object-cover object-top" />
+              <Image src={selectedImage} alt={item.name} className="w-full h-full object-cover object-top" fill unoptimized />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-[#827A73]">No Image</div>
             )}
@@ -62,6 +136,11 @@ export default function PublicProductDetailPage({ params }: { params: { shop_id:
 
         {/* Product Details Column */}
         <div className="py-8">
+          {item.listing_type && (
+            <div className="mb-3">
+              <ListingTypeBadge type={item.listing_type} />
+            </div>
+          )}
           <h1 className="text-3xl font-serif font-semibold text-zinc-900">{item.name}</h1>
           <p className="text-xl text-[#827A73] mt-3">₱{Number(item.price).toLocaleString()} <span className="text-sm text-[#827A73] font-normal">PHP</span></p>
           
@@ -78,8 +157,8 @@ export default function PublicProductDetailPage({ params }: { params: { shop_id:
               </h3>
               <ul className="space-y-2 text-sm text-[#827A73]">
                 {item.material && <li>• {item.material}</li>}
-                {item.features?.map((feat: string, idx: number) => (
-                  <li key={idx}>• {feat}</li>
+                {item.features?.map((feat: string) => (
+                  <li key={feat}>• {feat}</li>
                 ))}
               </ul>
             </div>
@@ -89,8 +168,8 @@ export default function PublicProductDetailPage({ params }: { params: { shop_id:
                 <Ruler size={18} /> Size & Fit Guide
               </h3>
               <div className="grid grid-cols-4 gap-2">
-                {item.fit_guide?.map((size: string, idx: number) => (
-                  <div key={idx} className="border border-zinc-300 py-2 text-center text-sm font-medium text-zinc-700 bg-white">
+                {item.fit_guide?.map((size: string) => (
+                  <div key={size} className="border border-zinc-300 py-2 text-center text-sm font-medium text-zinc-700 bg-white">
                     {size}
                   </div>
                 ))}
@@ -119,9 +198,12 @@ export default function PublicProductDetailPage({ params }: { params: { shop_id:
             </div>
           </div>
 
-          <button className="w-full bg-white shadow-sm hover:bg-black text-[#2D2A26] font-medium tracking-wide py-4 mt-8 transition-colors">
-            BOOK A FITTING
-          </button>
+          <Link 
+            href={`/shop/${params.shop_id}/book?item_id=${item.id}&intent=${item.listing_type}`}
+            className="w-full bg-[#2D2A26] hover:bg-black text-white font-medium tracking-wide py-4 mt-8 transition-colors flex items-center justify-center rounded-xl shadow-lg uppercase"
+          >
+            {getButtonText()}
+          </Link>
         </div>
       </div>
 
@@ -130,16 +212,16 @@ export default function PublicProductDetailPage({ params }: { params: { shop_id:
         <div className="mt-32 pt-16 border-t border-zinc-200">
           <h2 className="text-2xl font-serif font-semibold text-center text-zinc-900 mb-12">Also Suggested</h2>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
-            {item.recommendations.map((rec: any) => {
+            {item.recommendations.map((rec) => {
               const recItem = rec.recommendedItem;
               if (!recItem) return null;
-              const recImage = recItem.images?.find((i:any) => i.is_primary)?.image_url || recItem.images?.[0]?.image_url;
+              const recImage = recItem.images?.find((i: CatalogItemImage) => i.is_primary)?.image_url || recItem.images?.[0]?.image_url;
               
               return (
                 <Link href={`/shop/${params.shop_id}/catalog/${recItem.id}`} key={recItem.id} className="group block text-center">
                   <div className="aspect-square bg-zinc-100 overflow-hidden mb-4 relative">
                     {recImage ? (
-                      <img src={recImage} alt={recItem.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" />
+                      <Image src={recImage} alt={recItem.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" fill unoptimized />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-[#524A44]">No Image</div>
                     )}

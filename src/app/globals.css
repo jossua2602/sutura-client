@@ -46,3 +46,12 @@ body {
 .font-heading {
   font-family: var(--font-serif), Georgia, serif;
 }
+
+/* ── Notification Bell Animations ── */
+@keyframes wiggle {
+  0%, 100% { transform: rotate(0deg); }
+  20%       { transform: rotate(-15deg); }
+  40%       { transform: rotate(15deg); }
+  60%       { transform: rotate(-10deg); }
+  80%       { transform: rotate(8deg); }
+}

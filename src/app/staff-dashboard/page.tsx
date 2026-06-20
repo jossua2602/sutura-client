@@ -1,29 +1,56 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Search, ArrowRight } from 'lucide-react';
 
+interface Customer {
+  name: string;
+}
+
+interface Service {
+  name: string;
+}
+
+interface Job {
+  id: number;
+  order_number: string;
+  customer?: Customer;
+  service?: Service;
+  status: string;
+}
+
 export default function StaffDashboard() {
-  const { shop, staffProfile , user } = useAuthStore();
-  const [jobs, setJobs] = useState<any[]>([]);
+  const { shop, staffProfile } = useAuthStore();
+  const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (shop && staffProfile) {
-      api.get(`/shops/${shop.id}/jobs?assigned_staff_id=${staffProfile.id}`)
-        .then(res => {
+    if (!shop || !staffProfile) {
+      const timer = setTimeout(() => setLoading(false), 0);
+      return () => clearTimeout(timer);
+    }
+
+    let active = true;
+    api.get(`/shops/${shop.id}/jobs?assigned_staff_id=${staffProfile.id}`)
+      .then(res => {
+        if (active) {
           setJobs(res.data.data.data);
           setLoading(false);
-        })
-        .catch(err => {
-          console.error(err);
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        if (active) {
           setLoading(false);
-        });
-    } else {
-      setLoading(false);
-    }
+        }
+      });
+
+    return () => {
+      active = false;
+    };
   }, [shop, staffProfile]);
 
   const getStatusColor = (status: string) => {
@@ -39,6 +66,50 @@ export default function StaffDashboard() {
     return colors[status] || colors.pending;
   };
 
+  const renderTableBody = () => {
+    if (loading) {
+      return (
+        <tr>
+          <td colSpan={5} className="px-6 py-8 text-center text-[#A8A19A]">
+            Loading your tasks...
+          </td>
+        </tr>
+      );
+    }
+
+    if (jobs.length === 0) {
+      return (
+        <tr>
+          <td colSpan={5} className="px-6 py-8 text-center text-[#A8A19A]">
+            You have no tasks assigned.
+          </td>
+        </tr>
+      );
+    }
+
+    return jobs.map((job) => (
+      <tr key={job.id} className="hover:bg-[#F0EAE3]/20 transition-colors">
+        <td className="px-6 py-4 font-medium text-[#2D2A26]">{job.order_number}</td>
+        <td className="px-6 py-4">{job.customer?.name}</td>
+        <td className="px-6 py-4 text-[#827A73]">{job.service?.name}</td>
+        <td className="px-6 py-4">
+          <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(job.status)}`}>
+            {job.status.replaceAll('_', ' ').toUpperCase()}
+          </span>
+        </td>
+        <td className="px-6 py-4 text-right">
+          <Link 
+            href={`/staff-dashboard/jobs/${job.id}`} 
+            className="inline-flex items-center gap-1 text-taupe hover:text-taupe-hover text-xs font-medium transition-colors"
+          >
+            Update
+            <ArrowRight size={14} />
+          </Link>
+        </td>
+      </tr>
+    ));
+  };
+
   return (
     <div className="space-y-6 max-w-5xl mx-auto">
       <div>
@@ -46,7 +117,7 @@ export default function StaffDashboard() {
         <p className="text-[#827A73] text-sm mt-1">Manage the production lifecycle of garments assigned to you.</p>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm">
+      <div className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm">
         <div className="p-4 border-b border-[#EBE6E0] flex items-center justify-between">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={18} />
@@ -70,41 +141,7 @@ export default function StaffDashboard() {
               </tr>
             </thead>
             <tbody className="divide-y divide-zinc-800/50">
-              {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-[#A8A19A]">
-                    Loading your tasks...
-                  </td>
-                </tr>
-              ) : jobs.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-6 py-8 text-center text-[#A8A19A]">
-                    You have no tasks assigned.
-                  </td>
-                </tr>
-              ) : (
-                jobs.map((job) => (
-                  <tr key={job.id} className="hover:bg-[#F0EAE3]/20 transition-colors">
-                    <td className="px-6 py-4 font-medium text-[#2D2A26]">{job.order_number}</td>
-                    <td className="px-6 py-4">{job.customer?.name}</td>
-                    <td className="px-6 py-4 text-[#827A73]">{job.service?.name}</td>
-                    <td className="px-6 py-4">
-                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border ${getStatusColor(job.status)}`}>
-                        {job.status.replace(/_/g, ' ').toUpperCase()}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 text-right">
-                      <a 
-                        href={`/staff-dashboard/jobs/${job.id}`} 
-                        className="inline-flex items-center gap-1 text-taupe hover:text-taupe-hover text-xs font-medium transition-colors"
-                      >
-                        Update
-                        <ArrowRight size={14} />
-                      </a>
-                    </td>
-                  </tr>
-                ))
-              )}
+              {renderTableBody()}
             </tbody>
           </table>
         </div>

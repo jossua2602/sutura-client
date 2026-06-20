@@ -5,13 +5,44 @@ import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
+import Link from 'next/link';
 
-export default function StaffJobUpdatePage({ params }: { params: { id: string } }) {
-  const { shop , user } = useAuthStore();
+interface Customer {
+  id: number | string;
+  name: string;
+}
+
+interface Service {
+  id: number;
+  name: string;
+}
+
+interface Job {
+  id: number;
+  order_number: string;
+  status: string;
+  notes?: string;
+  payment_status: string;
+  balance: number | string;
+  customer_id?: number | string;
+  customer?: Customer;
+  service?: Service;
+  custom_order_data?: Record<string, string>;
+}
+
+interface MeasurementData {
+  id: number;
+  profile_name: string;
+  profile?: Record<string, string>;
+  notes?: string;
+}
+
+export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readonly<{ id: string }> }>) {
+  const { shop } = useAuthStore();
   const router = useRouter();
   
-  const [job, setJob] = useState<any>(null);
-  const [measurements, setMeasurements] = useState<any>(null);
+  const [job, setJob] = useState<Job | null>(null);
+  const [measurements, setMeasurements] = useState<MeasurementData | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -48,7 +79,7 @@ export default function StaffJobUpdatePage({ params }: { params: { id: string } 
   }, [shop, params.id]);
 
   const handleUpdate = async () => {
-    if (!shop) return;
+    if (!shop || !job) return;
     setSaving(true);
     try {
       await api.put(`/shops/${shop.id}/jobs/${params.id}`, {
@@ -67,7 +98,7 @@ export default function StaffJobUpdatePage({ params }: { params: { id: string } 
     }
   };
 
-  if (loading) {
+  if (loading || !job) {
     return (
       <div className="flex items-center justify-center py-12 text-[#A8A19A]">
         <Loader2 className="w-6 h-6 animate-spin mr-2" />
@@ -101,12 +132,22 @@ export default function StaffJobUpdatePage({ params }: { params: { id: string } 
         </button>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm mb-6">
+      <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 mb-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Task Details</h2>
         <div className="grid grid-cols-2 gap-4 text-sm">
           <div>
             <span className="text-[#A8A19A] block mb-1">Customer</span>
-            <span className="text-[#524A44] font-medium">{job.customer?.name}</span>
+            {job.customer ? (
+              <Link 
+                href={`/staff-dashboard/customers/${job.customer.id}`} 
+                className="text-[#9A8073] hover:text-[#9A8073]/80 hover:underline font-semibold flex items-center gap-1.5"
+              >
+                {job.customer.name}
+                <span className="text-[10px] text-[#A8A19A] font-normal">(View Profile)</span>
+              </Link>
+            ) : (
+              <span className="text-[#524A44] font-medium">Unspecified</span>
+            )}
           </div>
           <div>
             <span className="text-[#A8A19A] block mb-1">Service</span>
@@ -115,12 +156,28 @@ export default function StaffJobUpdatePage({ params }: { params: { id: string } 
         </div>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+      {/* Custom Specifications Card */}
+      {job.custom_order_data && Object.keys(job.custom_order_data).length > 0 ? (
+        <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 mb-6">
+          <h2 className="text-lg font-medium text-[#2D2A26] mb-4">📋 Custom Specifications</h2>
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            {Object.entries(job.custom_order_data).map(([label, value]) => (
+              <div key={label}>
+                <span className="text-[#A8A19A] block mb-1">{label}</span>
+                <span className="text-[#524A44] font-medium">{value || '—'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Update Status</h2>
         <div className="space-y-4">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">Phase</label>
+            <label htmlFor="job-status" className="text-sm font-medium text-[#524A44]">Phase</label>
             <select
+              id="job-status"
               value={status}
               onChange={(e) => setStatus(e.target.value)}
               className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
@@ -135,8 +192,9 @@ export default function StaffJobUpdatePage({ params }: { params: { id: string } 
           </div>
 
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">Production Notes</label>
+            <label htmlFor="production-notes" className="text-sm font-medium text-[#524A44]">Production Notes</label>
             <textarea
+              id="production-notes"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={4}
@@ -148,13 +206,13 @@ export default function StaffJobUpdatePage({ params }: { params: { id: string } 
       </div>
 
       {/* Measurements Profile */}
-      {measurements && (
-        <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+      {measurements && measurements.profile && (
+        <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6">
           <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Customer Measurements</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {Object.entries(measurements.profile).map(([key, val]: any) => (
+            {Object.entries(measurements.profile).map(([key, val]) => (
               <div key={key} className="bg-[#FAF6F3] border border-[#EBE6E0] p-3 rounded-lg">
-                <span className="text-xs text-[#A8A19A] block uppercase tracking-wider">{key.replace(/_/g, ' ')}</span>
+                <span className="text-xs text-[#A8A19A] block uppercase tracking-wider">{key.replaceAll('_', ' ')}</span>
                 <span className="text-[#2D2A26] font-medium text-sm">{val} in</span>
               </div>
             ))}

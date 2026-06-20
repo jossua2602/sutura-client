@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Loader2, Save, Plus, X, Image as ImageIcon, Clock } from 'lucide-react';
+import SubscriptionGate from '@/components/SubscriptionGate';
 
 const DEFAULT_HOURS = {
   monday: { is_open: true, open: '09:00', close: '18:00' },
@@ -41,6 +42,15 @@ export default function SettingsPage() {
     gallery_images: [] as string[],
     business_type: 'tailoring_shop',
     operating_hours: DEFAULT_HOURS as Record<string, { is_open: boolean; open: string; close: string }>,
+    security_deposit: 0,
+    rental_duration_days: 3,
+    overdue_penalty_per_day: 0,
+    fitting_fee: 0,
+    fitting_limit: 3,
+    reschedule_fee_percent: 0,
+    change_reserved_hours: 24,
+    change_reserved_fee_percent: 0,
+    supported_couriers: [] as string[],
   });
 
   useEffect(() => {
@@ -64,6 +74,15 @@ export default function SettingsPage() {
             gallery_images: Array.isArray(s.gallery_images) ? s.gallery_images : [],
             business_type: s.business_type || 'tailoring_shop',
             operating_hours: s.operating_hours || DEFAULT_HOURS,
+            security_deposit: s.security_deposit !== undefined && s.security_deposit !== null ? s.security_deposit : 0,
+            rental_duration_days: s.rental_duration_days !== undefined && s.rental_duration_days !== null ? s.rental_duration_days : 3,
+            overdue_penalty_per_day: s.overdue_penalty_per_day !== undefined && s.overdue_penalty_per_day !== null ? s.overdue_penalty_per_day : 0,
+            fitting_fee: s.fitting_fee !== undefined && s.fitting_fee !== null ? s.fitting_fee : 0,
+            fitting_limit: s.fitting_limit !== undefined && s.fitting_limit !== null ? s.fitting_limit : 3,
+            reschedule_fee_percent: s.reschedule_fee_percent !== undefined && s.reschedule_fee_percent !== null ? s.reschedule_fee_percent : 0,
+            change_reserved_hours: s.change_reserved_hours !== undefined && s.change_reserved_hours !== null ? s.change_reserved_hours : 24,
+            change_reserved_fee_percent: s.change_reserved_fee_percent !== undefined && s.change_reserved_fee_percent !== null ? s.change_reserved_fee_percent : 0,
+            supported_couriers: Array.isArray(s.supported_couriers) ? s.supported_couriers : [],
           });
           setLoading(false);
         })
@@ -101,6 +120,21 @@ export default function SettingsPage() {
         }
       }
     });
+  };
+
+  const handleCourierToggle = (courier: string) => {
+    const list = formData.supported_couriers || [];
+    if (list.includes(courier)) {
+      setFormData({
+        ...formData,
+        supported_couriers: list.filter(c => c !== courier)
+      });
+    } else {
+      setFormData({
+        ...formData,
+        supported_couriers: [...list, courier]
+      });
+    }
   };
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -190,7 +224,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Basic Info & Contact</h2>
         <div className="space-y-6">
           <div className="grid grid-cols-2 gap-6">
@@ -230,7 +264,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
         <div className="mb-6">
           <h2 className="text-lg font-medium text-[#2D2A26]">Map Coordinates</h2>
           <p className="text-sm text-[#827A73] mt-1">
@@ -250,7 +284,161 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+      {/* Rental & Store Policies Card (Visible for Fashion Designers and Hybrids) */}
+      {(formData.business_type === 'fashion_designer' || formData.business_type === 'hybrid') && (
+        <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 transition-all duration-300">
+          <div className="mb-6">
+            <h2 className="text-lg font-medium text-[#2D2A26] flex items-center gap-2">
+              <span className="text-xl">👗</span>
+              Rental & Store Policies
+            </h2>
+            <p className="text-sm text-[#827A73] mt-1">
+              Configure rental rules, fees, limits, and shipping options for customers renting gowns, barongs, or other items.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Security Deposit (₱)</label>
+              <input 
+                type="number" 
+                name="security_deposit" 
+                value={formData.security_deposit} 
+                onChange={(e) => setFormData({ ...formData, security_deposit: parseFloat(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Refunded to renter once the item is returned on time in good condition.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Max Rental Duration (Days)</label>
+              <input 
+                type="number" 
+                name="rental_duration_days" 
+                value={formData.rental_duration_days} 
+                onChange={(e) => setFormData({ ...formData, rental_duration_days: parseInt(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Standard rental window (e.g. 3 days).</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Overdue Return Penalty (₱ / Day)</label>
+              <input 
+                type="number" 
+                name="overdue_penalty_per_day" 
+                value={formData.overdue_penalty_per_day} 
+                onChange={(e) => setFormData({ ...formData, overdue_penalty_per_day: parseFloat(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Deducted from security deposit for late returns.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Fitting Session Fee (₱)</label>
+              <input 
+                type="number" 
+                name="fitting_fee" 
+                value={formData.fitting_fee} 
+                onChange={(e) => setFormData({ ...formData, fitting_fee: parseFloat(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Charged if no rental is booked after fitting session. Put 0 if free.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Max Items to Fit per Session</label>
+              <input 
+                type="number" 
+                name="fitting_limit" 
+                value={formData.fitting_limit} 
+                onChange={(e) => setFormData({ ...formData, fitting_limit: parseInt(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Maximum number of garments a client can try on per booking.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Rescheduling Fee (%)</label>
+              <input 
+                type="number" 
+                name="reschedule_fee_percent" 
+                value={formData.reschedule_fee_percent} 
+                onChange={(e) => setFormData({ ...formData, reschedule_fee_percent: parseInt(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Percentage penalty fee of total rental price for rescheduling.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Change Reserved Item Window (Hours)</label>
+              <input 
+                type="number" 
+                name="change_reserved_hours" 
+                value={formData.change_reserved_hours} 
+                onChange={(e) => setFormData({ ...formData, change_reserved_hours: parseInt(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Hours allowed to change the selected gown/barong free of charge.</p>
+            </div>
+
+            <div className="space-y-1">
+              <label className="text-sm font-medium text-[#524A44]">Late Change Charge (%)</label>
+              <input 
+                type="number" 
+                name="change_reserved_fee_percent" 
+                value={formData.change_reserved_fee_percent} 
+                onChange={(e) => setFormData({ ...formData, change_reserved_fee_percent: parseInt(e.target.value) || 0 })} 
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073]" 
+              />
+              <p className="text-[11px] text-[#827A73]">Percentage penalty fee of total rental price for changes made after the window.</p>
+            </div>
+          </div>
+
+          <div className="h-px bg-[#EBE6E0] my-6" />
+
+          {/* Courier Preferences */}
+          <div>
+            <h3 className="text-sm font-semibold text-[#2D2A26] mb-3">Supported Delivery / Courier Services</h3>
+            <p className="text-xs text-[#827A73] mb-4">Select the couriers and shipping options your shop supports. Customers will see these during checkout/order confirmation.</p>
+            
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {[
+                { id: 'lalamove', label: '⚡ Lalamove' },
+                { id: 'toktok', label: '🛵 Toktok' },
+                { id: 'grab', label: '🚗 Grab Express' },
+                { id: 'jnt', label: '📦 J&T Express' },
+                { id: 'lbc', label: '✈️ LBC Express' },
+                { id: 'jrs', label: '📯 JRS Express' },
+                { id: 'pickup', label: '🏪 Store Pickup' },
+              ].map(courier => {
+                const isChecked = (formData.supported_couriers || []).includes(courier.id);
+                return (
+                  <button
+                    key={courier.id}
+                    type="button"
+                    onClick={() => handleCourierToggle(courier.id)}
+                    className={`flex items-center justify-between p-3 rounded-xl border text-xs font-medium transition-all ${
+                      isChecked
+                        ? 'border-[#9A8073] bg-[#FAF6F3] text-[#2D2A26]'
+                        : 'border-[#EBE6E0] bg-white text-[#524A44] hover:bg-[#FAF6F3]'
+                    }`}
+                  >
+                    <span>{courier.label}</span>
+                    <span className={`w-4 h-4 rounded-full border flex items-center justify-center text-[10px] ${
+                      isChecked ? 'border-[#9A8073] bg-[#9A8073] text-white' : 'border-[#EBE6E0]'
+                    }`}>
+                      {isChecked ? '✓' : ''}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Social Media Links</h2>
         <p className="text-sm text-[#827A73] mb-6">These links will be displayed on your public shop profile.</p>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -269,7 +457,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
         <div className="mb-6">
           <h2 className="text-lg font-medium text-[#2D2A26] flex items-center gap-2">
             <Clock size={20} className="text-[#827A73]" />
@@ -317,44 +505,46 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h2 className="text-lg font-medium text-[#2D2A26]">Gallery Images</h2>
-            <p className="text-sm text-[#827A73]">Post photos of your shop, team, or best work to display on your public profile.</p>
+      <SubscriptionGate feature="portfolio">
+        <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
+          <div className="flex items-center justify-between mb-6">
+            <div>
+              <h2 className="text-lg font-medium text-[#2D2A26]">Gallery Images</h2>
+              <p className="text-sm text-[#827A73]">Post photos of your shop, team, or best work to display on your public profile.</p>
+            </div>
+            <div>
+              <label className="cursor-pointer bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
+                <Plus size={16} />
+                Upload Image
+                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
+              </label>
+            </div>
           </div>
-          <div>
-            <label className="cursor-pointer bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
-              <Plus size={16} />
-              Upload Image
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-            </label>
-          </div>
+
+          {formData.gallery_images.length === 0 ? (
+            <div className="p-8 border-2 border-dashed border-[#EBE6E0] rounded-xl text-center text-[#A8A19A]">
+              <ImageIcon size={32} className="mx-auto mb-3 opacity-50" />
+              <p>No gallery images uploaded yet.</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {formData.gallery_images.map((img, idx) => (
+                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border border-[#EBE6E0]">
+                  <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+                  <button 
+                    onClick={() => handleRemoveImage(idx)}
+                    className="absolute top-2 right-2 bg-[#B26959]/80 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#9A5C4F]"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
+      </SubscriptionGate>
 
-        {formData.gallery_images.length === 0 ? (
-          <div className="p-8 border-2 border-dashed border-[#EBE6E0] rounded-xl text-center text-[#A8A19A]">
-            <ImageIcon size={32} className="mx-auto mb-3 opacity-50" />
-            <p>No gallery images uploaded yet.</p>
-          </div>
-        ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            {formData.gallery_images.map((img, idx) => (
-              <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border border-[#EBE6E0]">
-                <img src={img} alt={`Gallery ${idx}`} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
-                <button 
-                  onClick={() => handleRemoveImage(idx)}
-                  className="absolute top-2 right-2 bg-[#B26959]/80 text-white p-1.5 rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-[#9A5C4F]"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Booking Flow Setup</h2>
         <div className="space-y-6">
           <div className="space-y-1">

@@ -206,6 +206,13 @@ export default function EditCatalogItemPage({ params }: Readonly<{ params: { id:
                         <option value="portfolio">Portfolio / Past Work</option>
                       </>
                     )}
+                    {(shop?.business_type === 'fashion_designer' || shop?.business_type === 'hybrid' || !shop?.business_type) && (
+                      <optgroup label="Rental & Sales">
+                        <option value="for_rent">For Rent (Gowns/Barongs)</option>
+                        <option value="for_sale">For Sale (Ready-made)</option>
+                        <option value="rent_or_sale">For Rent or Sale</option>
+                      </optgroup>
+                    )}
                   </select>
                 </div>
               </div>

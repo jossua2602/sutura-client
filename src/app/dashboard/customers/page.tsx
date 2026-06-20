@@ -1,9 +1,11 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, FormEvent } from 'react';
+import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Users, Search, Package, Phone, Mail, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Search, Package, Phone, Mail, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 interface CustomerData {
@@ -19,6 +21,7 @@ interface CustomerData {
 }
 
 export default function CustomersPage() {
+  const router = useRouter();
   const { shop , user } = useAuthStore();
   const [customers, setCustomers] = useState<CustomerData[]>([]);
   const [loading, setLoading] = useState(true);
@@ -33,36 +36,33 @@ export default function CustomersPage() {
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [error, setError] = useState('');
 
-  const fetchCustomers = () => {
+  useEffect(() => {
     if (!shop) {
-      setLoading(false);
-      return;
+      const timer = setTimeout(() => setLoading(false), user ? 0 : 1000);
+      return () => clearTimeout(timer);
     }
+
+    let active = true;
     api.get(`/shops/${shop.id}/customers`)
       .then(res => {
-        setCustomers(res.data.data);
-        setLoading(false);
+        if (active) {
+          setCustomers(res.data.data);
+          setLoading(false);
+        }
       })
       .catch(err => {
         console.error(err);
-        setLoading(false);
+        if (active) {
+          setLoading(false);
+        }
       });
-  };
 
-  useEffect(() => {
-    if (shop) {
-      fetchCustomers();
-    } else {
-      if (user) {
-        setTimeout(() => setLoading(false), 0);
-      } else {
-        const timer = setTimeout(() => setLoading(false), 1000);
-        return () => clearTimeout(timer);
-      }
-    }
+    return () => {
+      active = false;
+    };
   }, [shop, user]);
 
-  const handleAddCustomer = async (e: React.FormEvent) => {
+  const handleAddCustomer = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!shop) return;
     
@@ -133,7 +133,7 @@ export default function CustomersPage() {
 
   const filtered = customers.filter(c => 
     c.name.toLowerCase().includes(search.toLowerCase()) || 
-    (c.email && c.email.toLowerCase().includes(search.toLowerCase()))
+    (c.email?.toLowerCase().includes(search.toLowerCase()))
   );
 
   return (
@@ -157,26 +157,25 @@ export default function CustomersPage() {
         </button>
       </div>
 
-      <div className="flex items-center gap-4 bg-white shadow-sm border border-[#EBE6E0] p-4 rounded-2xl shadow-sm">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search clients by name or email..." 
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-          />
-        </div>
-        <div className="text-sm text-[#827A73] font-medium px-4">
-          Total Clients: {customers.length}
-        </div>
-      </div>
-
       {loading ? (
         <div className="py-12 text-center text-[#A8A19A] animate-pulse">Loading CRM directory...</div>
       ) : (
-        <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm">
+        <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden">
+          <div className="p-4 border-b border-[#EBE6E0] flex items-center justify-between bg-white">
+            <div className="relative w-80">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={18} />
+              <input 
+                type="text" 
+                placeholder="Search clients by name or email..." 
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+              />
+            </div>
+            <div className="text-sm text-[#827A73] font-medium">
+              Total Clients: {customers.length}
+            </div>
+          </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse">
               <thead>
@@ -191,21 +190,28 @@ export default function CustomersPage() {
               <tbody className="divide-y divide-zinc-800/50">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="p-8 text-center text-[#A8A19A]">
-                      No customers found. Click "Add Customer" to start building your Client Book.
+                    <td colSpan={5} className="p-8 text-center text-[#A8A19A] text-sm">
+                      No customers found. Click &quot;Add Customer&quot; to start building your Client Book.
                     </td>
                   </tr>
                 ) : filtered.map(customer => (
                   <tr 
                     key={customer.id} 
-                    onClick={() => window.location.href = `/dashboard/customers/${customer.id}`}
+                    onClick={() => router.push(`/dashboard/customers/${customer.id}`)}
                     className="hover:bg-[#F0EAE3]/20 transition-colors group cursor-pointer"
                   >
                     <td className="p-4">
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-full bg-[#F0EAE3] overflow-hidden shrink-0 flex items-center justify-center border border-[#D1C7BD]">
                           {customer.profile_picture ? (
-                            <img src={customer.profile_picture} alt={customer.name} className="w-full h-full object-cover" />
+                            <Image 
+                              src={customer.profile_picture} 
+                              alt={customer.name} 
+                              className="w-full h-full object-cover" 
+                              width={40} 
+                              height={40} 
+                              unoptimized 
+                            />
                           ) : (
                             <span className="text-[#827A73] font-bold">{customer.name.charAt(0)}</span>
                           )}
@@ -274,8 +280,9 @@ export default function CustomersPage() {
           )}
           
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Full Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-[#524A44] mb-1">Full Name</label>
             <input 
+              id="name"
               type="text" 
               required
               value={formData.name}
@@ -286,8 +293,9 @@ export default function CustomersPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Email Address</label>
+            <label htmlFor="email" className="block text-sm font-medium text-[#524A44] mb-1">Email Address</label>
             <input 
+              id="email"
               type="email" 
               required
               value={formData.email}
@@ -298,8 +306,9 @@ export default function CustomersPage() {
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Phone Number (Optional)</label>
+            <label htmlFor="phone" className="block text-sm font-medium text-[#524A44] mb-1">Phone Number (Optional)</label>
             <input 
+              id="phone"
               type="tel" 
               value={formData.phone}
               onChange={e => setFormData({...formData, phone: e.target.value})}

@@ -13,33 +13,42 @@ const TEMPLATES: Record<string, string[]> = {
   'Custom': []
 };
 
-export default function CustomerProfilePage({ params }: { params: { id: string } }) {
-  const { shop , user } = useAuthStore();
+interface Customer {
+  id: number | string;
+  name: string;
+  email?: string;
+}
+
+interface Measurement {
+  id: number;
+  profile_name: string;
+  created_at: string;
+  metrics: Record<string, string>;
+  customer: Customer;
+}
+
+export default function CustomerProfilePage({ params }: Readonly<{ params: Readonly<{ id: string }> }>) {
+  const { shop } = useAuthStore();
   const router = useRouter();
   
-  const [customer, setCustomer] = useState<any>(null);
-  const [measurements, setMeasurements] = useState<any[]>([]);
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [measurements, setMeasurements] = useState<Measurement[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
   // Form Builder State
   const [profileName, setProfileName] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('Suit (2-Piece)');
-  const [metrics, setMetrics] = useState<{key: string, value: string}[]>([]);
-
-  useEffect(() => {
-    // Initialize default template metrics
-    if (TEMPLATES[selectedTemplate]) {
-      setMetrics(TEMPLATES[selectedTemplate].map(k => ({ key: k, value: '' })));
-    }
-  }, [selectedTemplate]);
+  const [metrics, setMetrics] = useState<{key: string, value: string}[]>(
+    TEMPLATES['Suit (2-Piece)'].map(k => ({ key: k, value: '' }))
+  );
 
   useEffect(() => {
     if (shop && params.id) {
       api.get(`/shops/${shop.id}/measurements`)
         .then(res => {
           const allMeasurements = res.data.data;
-          const custMeasurements = allMeasurements.filter((m: any) => m.customer.id.toString() === params.id);
+          const custMeasurements = allMeasurements.filter((m: Measurement) => m.customer.id.toString() === params.id);
           setMeasurements(custMeasurements);
           if (custMeasurements.length > 0) {
             setCustomer(custMeasurements[0].customer);
@@ -77,7 +86,7 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
       // Refresh list
       const res = await api.get(`/shops/${shop.id}/measurements`);
       const allMeasurements = res.data.data;
-      const custMeasurements = allMeasurements.filter((m: any) => m.customer.id.toString() === params.id);
+      const custMeasurements = allMeasurements.filter((m: Measurement) => m.customer.id.toString() === params.id);
       setMeasurements(custMeasurements);
       
       // Reset form
@@ -127,9 +136,9 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
         <div className="space-y-6">
           <h2 className="text-lg font-medium text-[#2D2A26]">Measurement History</h2>
           {measurements.map(m => (
-            <div key={m.id} className="bg-white shadow-sm border border-[#EBE6E0] rounded-xl p-5 shadow-sm">
+            <div key={m.id} className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm">
               <div className="flex justify-between items-center mb-4">
-                <h3 className="text-md font-bold text-zinc-200">{m.profile_name}</h3>
+                <h3 className="text-md font-bold text-[#2D2A26]">{m.profile_name}</h3>
                 <span className="text-xs text-[#A8A19A]">{new Date(m.created_at).toLocaleDateString()}</span>
               </div>
               <div className="grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
@@ -149,14 +158,21 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
           )}
         </div>
 
-        <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 sticky top-6 shadow-sm">
+        <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 sticky top-6 shadow-sm">
           <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Record New Measurements</h2>
           <div className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-[#524A44] mb-1">Select Garment Template</label>
+              <label htmlFor="garment-template" className="block text-sm font-medium text-[#524A44] mb-1">Select Garment Template</label>
               <select 
+                id="garment-template"
                 value={selectedTemplate}
-                onChange={e => setSelectedTemplate(e.target.value)}
+                onChange={e => {
+                  const template = e.target.value;
+                  setSelectedTemplate(template);
+                  if (TEMPLATES[template]) {
+                    setMetrics(TEMPLATES[template].map(k => ({ key: k, value: '' })));
+                  }
+                }}
                 className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe"
               >
                 {Object.keys(TEMPLATES).map(t => (
@@ -166,8 +182,9 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-[#524A44] mb-1">Profile Name (Optional)</label>
+              <label htmlFor="profile-name" className="block text-sm font-medium text-[#524A44] mb-1">Profile Name (Optional)</label>
               <input
+                id="profile-name"
                 type="text"
                 value={profileName}
                 placeholder={`e.g. Wedding ${selectedTemplate}`}
@@ -178,7 +195,7 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
 
             <div className="space-y-3 pt-4 border-t border-[#EBE6E0]">
               <div className="flex justify-between items-center">
-                <label className="block text-sm font-medium text-[#524A44]">Anatomy Measurements</label>
+                <span className="block text-sm font-medium text-[#524A44]">Anatomy Measurements</span>
                 <button onClick={addMetric} className="text-xs text-taupe flex items-center gap-1 hover:text-taupe-hover">
                   <Plus size={14} /> Add Field
                 </button>
@@ -186,12 +203,13 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
               
               <div className="space-y-2 max-h-80 overflow-y-auto pr-2">
                 {metrics.map((m, idx) => (
-                  <div key={idx} className="flex items-center gap-2">
+                  <div key={`${m.key}-${idx}`} className="flex items-center gap-2">
                     <input
                       type="text"
                       value={m.key}
                       onChange={e => updateMetric(idx, 'key', e.target.value)}
                       placeholder="Part (e.g. Chest)"
+                      aria-label={`Measurement Part ${idx + 1}`}
                       className="w-1/2 px-3 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#524A44] focus:outline-none focus:border-taupe"
                     />
                     <input
@@ -199,6 +217,7 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
                       value={m.value}
                       onChange={e => updateMetric(idx, 'value', e.target.value)}
                       placeholder="Value (e.g. 40in)"
+                      aria-label={`Measurement Value ${idx + 1}`}
                       className="w-1/2 px-3 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
                     />
                     <button 
@@ -210,7 +229,7 @@ export default function CustomerProfilePage({ params }: { params: { id: string }
                   </div>
                 ))}
                 {metrics.length === 0 && (
-                  <div className="text-xs text-[#A8A19A] text-center py-4 italic">No fields. Click "Add Field" to start.</div>
+                  <div className="text-xs text-[#A8A19A] text-center py-4 italic">No fields. Click &quot;Add Field&quot; to start.</div>
                 )}
               </div>
             </div>

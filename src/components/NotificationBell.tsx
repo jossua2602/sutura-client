@@ -1,99 +1,306 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { Bell, Check, Trash2 } from 'lucide-react';
+import { useState, useEffect, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import {
+  Bell,
+  Check,
+  CheckCheck,
+  Scissors,
+  Calendar,
+  CreditCard,
+  Package,
+  Info,
+  X,
+} from 'lucide-react';
 import api from '@/lib/axios';
 
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+interface NotifData {
+  type?: string;
+  title?: string;
+  message?: string;
+  action_url?: string;
+  [key: string]: unknown;
+}
+
+interface AppNotification {
+  id: string;
+  created_at: string;
+  data: NotifData;
+}
+
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
+function relativeTime(dateStr: string): string {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const mins = Math.floor(diff / 60000);
+  if (mins < 1) return 'Just now';
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  return new Date(dateStr).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+const TYPE_CONFIG: Record<
+  string,
+  { icon: React.ElementType; bg: string; color: string; label: string }
+> = {
+  order_ready: {
+    icon: Package,
+    bg: 'bg-amber-50',
+    color: 'text-amber-600',
+    label: 'Order Ready',
+  },
+  new_job_order: {
+    icon: Scissors,
+    bg: 'bg-[#F0EAE3]',
+    color: 'text-[#9A8073]',
+    label: 'New Job',
+  },
+  appointment_booked: {
+    icon: Calendar,
+    bg: 'bg-blue-50',
+    color: 'text-blue-600',
+    label: 'Appointment',
+  },
+  payment_received: {
+    icon: CreditCard,
+    bg: 'bg-emerald-50',
+    color: 'text-emerald-600',
+    label: 'Payment',
+  },
+  default: {
+    icon: Info,
+    bg: 'bg-[#F0EAE3]',
+    color: 'text-[#827A73]',
+    label: 'Update',
+  },
+};
+
+function getTypeConfig(type?: string) {
+  return TYPE_CONFIG[type ?? ''] ?? TYPE_CONFIG.default;
+}
+
+// ─── Component ───────────────────────────────────────────────────────────────
+
 export default function NotificationBell() {
-  const [notifications, setNotifications] = useState<any[]>([]);
+  const router = useRouter();
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const [open, setOpen] = useState(false);
+  const [dismissing, setDismissing] = useState<string | null>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
 
-  const fetchNotifications = async () => {
-    try {
-      const res = await api.get('/notifications');
-      setNotifications(res.data.data);
-    } catch (e) {
-      console.error('Failed to fetch notifications', e);
-    }
-  };
-
+  // ── Fetch ────────────────────────────────────────────────────────────────
+  // Defined inside the effect so setState is called inside an async callback,
+  // not synchronously in the effect body — this is the correct React pattern.
   useEffect(() => {
-    fetchNotifications();
-    // Poll every 30 seconds for new notifications
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    let cancelled = false;
 
+    const load = async () => {
+      try {
+        const res = await api.get('/notifications');
+        const raw = res.data.data;
+        const list: AppNotification[] = Array.isArray(raw) ? raw : raw?.data ?? [];
+        if (!cancelled) setNotifications(list);
+      } catch {
+        // Silently fail — bell shows 0 unread
+      }
+    };
+
+    void load();
+    const interval = setInterval(() => { void load(); }, 30_000);
+
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []); // empty — load is defined inside, no external deps
+
+  // ── Click-outside close ──────────────────────────────────────────────────
+  useEffect(() => {
+    function onOutside(e: MouseEvent) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    }
+    if (open) document.addEventListener('mousedown', onOutside);
+    return () => document.removeEventListener('mousedown', onOutside);
+  }, [open]);
+
+  // ── Dismiss one ─────────────────────────────────────────────────────────
   const markAsRead = async (id: string) => {
+    setDismissing(id);
     try {
       await api.post(`/notifications/${id}/read`);
-      setNotifications(notifications.filter(n => n.id !== id));
-    } catch (e) {
-      console.error(e);
+      setNotifications(prev => prev.filter(n => n.id !== id));
+    } catch {
+      /* ignore */
+    } finally {
+      setDismissing(null);
     }
   };
 
+  // ── Dismiss all ──────────────────────────────────────────────────────────
   const markAllAsRead = async () => {
     try {
       await api.post('/notifications/read-all');
       setNotifications([]);
-    } catch (e) {
-      console.error(e);
+    } catch {
+      /* ignore */
     }
   };
 
+  // ── Navigate on click ────────────────────────────────────────────────────
+  const handleNotifClick = async (notif: AppNotification) => {
+    await markAsRead(notif.id);
+    const url = notif.data?.action_url;
+    if (url) router.push(url);
+    setOpen(false);
+  };
+
+  const count = notifications.length;
+  const bellLabel = count > 0 ? `${count} unread notifications` : 'Notifications';
+
   return (
-    <div className="relative">
-      <button 
-        onClick={() => setOpen(!open)}
+    <div className="relative" ref={wrapperRef}>
+      {/* ── Bell Button ── */}
+      <button
+        id="notification-bell-btn"
+        aria-label={bellLabel}
+        onClick={() => setOpen(o => !o)}
         className="relative flex items-center justify-center w-10 h-10 rounded-full bg-[#EBE6E0] text-[#524A44] hover:bg-[#D1C7BD] transition-colors"
       >
-        <Bell size={20} fill="currentColor" />
-        {notifications.length > 0 && (
-          <span className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 bg-[#E41E3F] text-white text-[11px] font-bold rounded-full border-2 border-white">
-            {notifications.length > 99 ? '99+' : notifications.length}
+        <Bell
+          size={20}
+          className={count > 0 ? 'animate-[wiggle_0.4s_ease-in-out]' : ''}
+          fill="currentColor"
+        />
+        {count > 0 && (
+          <span
+            className="absolute -top-1 -right-1 flex items-center justify-center min-w-[20px] h-[20px] px-1 bg-[#E41E3F] text-white text-[11px] font-bold rounded-full border-2 border-white"
+            aria-hidden="true"
+          >
+            {count > 99 ? '99+' : count}
           </span>
         )}
       </button>
 
+      {/* ── Dropdown Panel ── */}
       {open && (
-        <div className="absolute right-0 mt-2 w-80 bg-white shadow-sm border border-[#EBE6E0] rounded-xl shadow-xl overflow-hidden z-50">
-          <div className="p-3 border-b border-[#EBE6E0] flex items-center justify-between">
-            <span className="font-medium text-[#2D2A26] text-sm">Notifications</span>
-            {notifications.length > 0 && (
-              <button 
-                onClick={markAllAsRead}
-                className="text-xs text-[var(--brand-taupe)] hover:text-[var(--brand-taupe-hover)]"
+        <div
+          aria-label="Notifications panel"
+          aria-modal="true"
+          className="absolute right-0 mt-2 w-[340px] bg-white border border-[#EBE6E0] rounded-2xl shadow-[0_8px_40px_-8px_rgba(0,0,0,0.14)] overflow-hidden z-50
+            animate-in fade-in slide-in-from-top-2 duration-150"
+        >
+          {/* Header */}
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[#EBE6E0]">
+            <div className="flex items-center gap-2">
+              <Bell size={16} className="text-[#9A8073]" />
+              <span className="font-semibold text-[#2D2A26] text-sm">Notifications</span>
+              {count > 0 && (
+                <span className="px-1.5 py-0.5 text-[10px] font-bold bg-[#E41E3F] text-white rounded-full">
+                  {count}
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              {count > 0 && (
+                <button
+                  onClick={markAllAsRead}
+                  title="Mark all as read"
+                  className="flex items-center gap-1 text-xs text-[#9A8073] hover:text-[#2D2A26] px-2 py-1 rounded-lg hover:bg-[#F0EAE3] transition-colors"
+                >
+                  <CheckCheck size={13} />
+                  All read
+                </button>
+              )}
+              <button
+                onClick={() => setOpen(false)}
+                className="p-1 rounded-lg hover:bg-[#F0EAE3] text-[#A8A19A] hover:text-[#524A44] transition-colors"
+                aria-label="Close notifications"
               >
-                Mark all read
+                <X size={14} />
               </button>
-            )}
+            </div>
           </div>
-          <div className="max-h-80 overflow-y-auto">
-            {notifications.length === 0 ? (
-              <div className="p-6 text-center text-[#A8A19A] text-sm">
-                No new notifications
+
+          {/* List */}
+          <div className="max-h-[380px] overflow-y-auto overscroll-contain">
+            {count === 0 ? (
+              <div className="flex flex-col items-center justify-center py-10 px-4 text-center">
+                <div className="w-12 h-12 rounded-full bg-[#F0EAE3] flex items-center justify-center mb-3">
+                  <Bell size={20} className="text-[#C4B8AE]" />
+                </div>
+                <p className="text-sm font-medium text-[#524A44]">All caught up!</p>
+                <p className="text-xs text-[#A8A19A] mt-0.5">No new notifications</p>
               </div>
             ) : (
-              <div className="divide-y divide-zinc-800/50">
-                {notifications.map(n => (
-                  <div key={n.id} className="p-3 hover:bg-[#F0EAE3]/50 transition-colors group flex gap-3">
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm text-zinc-200">{n.data?.message || 'New notification'}</p>
-                      <p className="text-xs text-[#A8A19A] mt-1">{new Date(n.created_at).toLocaleDateString()}</p>
-                    </div>
-                    <button 
-                      onClick={() => markAsRead(n.id)}
-                      className="text-[#A8A19A] hover:text-[#7A8B76] opacity-0 group-hover:opacity-100 transition-opacity p-1"
-                      title="Mark as read"
+              <div className="divide-y divide-[#F0EAE3]">
+                {notifications.map(notif => {
+                  const cfg = getTypeConfig(notif.data?.type);
+                  const Icon = cfg.icon;
+                  const isDismissing = dismissing === notif.id;
+                  return (
+                    <div
+                      key={notif.id}
+                      className={`w-full group flex items-start gap-3 px-4 py-3.5 hover:bg-[#FAF6F3] transition-colors ${isDismissing ? 'opacity-40' : ''}`}
                     >
-                      <Check size={16} />
-                    </button>
-                  </div>
-                ))}
+                      {/* Main Clickable Area */}
+                      <button
+                        type="button"
+                        className="flex-1 text-left flex items-start gap-3 min-w-0 focus:outline-none"
+                        onClick={() => handleNotifClick(notif)}
+                        aria-label={notif.data?.title ?? 'Notification'}
+                      >
+                        {/* Icon bubble */}
+                        <div className={`w-9 h-9 shrink-0 rounded-full ${cfg.bg} ${cfg.color} flex items-center justify-center mt-0.5`}>
+                          <Icon size={16} />
+                        </div>
+
+                        {/* Content */}
+                        <div className="flex-1 min-w-0">
+                          <p className="text-[13px] font-semibold text-[#2D2A26] truncate">
+                            {notif.data?.title ?? cfg.label}
+                          </p>
+                          <p className="text-[12px] text-[#827A73] leading-snug mt-0.5 line-clamp-2">
+                            {notif.data?.message ?? 'New notification'}
+                          </p>
+                          <p className="text-[11px] text-[#A8A19A] mt-1">
+                            {relativeTime(notif.created_at)}
+                          </p>
+                        </div>
+                      </button>
+
+                      {/* Dismiss (Mark read) button */}
+                      <button
+                        type="button"
+                        onClick={() => void markAsRead(notif.id)}
+                        className="shrink-0 p-1.5 rounded-lg opacity-0 group-hover:opacity-100 hover:bg-[#EBE6E0] text-[#A8A19A] hover:text-[#524A44] transition-all mt-0.5 focus:outline-none"
+                        title="Dismiss"
+                        aria-label="Dismiss notification"
+                      >
+                        <Check size={13} />
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>
+
+          {/* Footer */}
+          {count > 0 && (
+            <div className="border-t border-[#EBE6E0] px-4 py-2.5 text-center">
+              <p className="text-[11px] text-[#A8A19A]">
+                {count === 1 ? '1 unread notification' : `${count} unread notifications`}
+              </p>
+            </div>
+          )}
         </div>
       )}
     </div>

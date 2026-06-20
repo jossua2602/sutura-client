@@ -1,12 +1,23 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, FormEvent } from 'react';
+import Image from 'next/image';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Loader2, Save, ShieldCheck, Scissors, Award, ToggleRight, ToggleLeft } from 'lucide-react';
 
+interface StaffProfile {
+  id: number;
+  is_available: boolean;
+  role?: string;
+}
+
 export default function StaffProfilePage() {
-  const { user, shop, staffProfile } = useAuthStore();
+  const { user, shop, staffProfile } = useAuthStore() as { 
+    user: { name: string; phone?: string; email: string; cover_photo?: string; profile_picture?: string } | null;
+    shop: { name: string } | null;
+    staffProfile: StaffProfile | null;
+  };
   
   const [personalForm, setPersonalForm] = useState({
     name: user?.name || '',
@@ -26,14 +37,15 @@ export default function StaffProfilePage() {
 
   // Initialize availability from user data
   useEffect(() => {
-    // @ts-ignore
     if (staffProfile?.is_available !== undefined) {
-      // @ts-ignore
-      setIsAvailable(staffProfile.is_available);
+      const timer = setTimeout(() => {
+        setIsAvailable(staffProfile.is_available);
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [staffProfile]);
 
-  const handlePersonalSubmit = async (e: React.FormEvent) => {
+  const handlePersonalSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoadingPersonal(true);
     try {
@@ -47,7 +59,7 @@ export default function StaffProfilePage() {
     }
   };
 
-  const handlePasswordSubmit = async (e: React.FormEvent) => {
+  const handlePasswordSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoadingPassword(true);
     try {
@@ -85,7 +97,7 @@ export default function StaffProfilePage() {
       await api.post('/profile/upload', fd, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      window.location.reload(); 
+      globalThis.location.reload(); 
     } catch (err) {
       console.error(err);
       alert('Failed to upload image. Please try again.');
@@ -116,11 +128,11 @@ export default function StaffProfilePage() {
       </div>
 
       {/* Cover & Avatar Section */}
-      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden relative">
+      <div className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden relative">
         {/* Cover Photo */}
         <div className="h-48 bg-[#F0EAE3] relative group">
           {user?.cover_photo ? (
-            <img src={user.cover_photo} alt="Cover" className="w-full h-full object-cover" />
+            <Image src={user.cover_photo} alt="Cover" className="w-full h-full object-cover" fill unoptimized />
           ) : (
             <div className="w-full h-full bg-linear-to-r from-zinc-800 to-zinc-900" />
           )}
@@ -137,7 +149,7 @@ export default function StaffProfilePage() {
           <div className="absolute -top-12 left-6">
             <div className="w-24 h-24 rounded-full border-4 border-zinc-900 bg-[#F0EAE3] relative group overflow-hidden">
               {user?.profile_picture ? (
-                <img src={user.profile_picture} alt="Avatar" className="w-full h-full object-cover" />
+                <Image src={user.profile_picture} alt="Avatar" className="w-full h-full object-cover" width={96} height={96} unoptimized />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[#827A73] text-2xl font-bold">
                   {user?.name?.charAt(0) || 'U'}
@@ -162,7 +174,7 @@ export default function StaffProfilePage() {
         
         {/* Left Column: Metrics & Tags */}
         <div className="space-y-6">
-          <div className="bg-linear-to-br from-zinc-900 to-zinc-950 border border-[#EBE6E0] rounded-2xl p-6 relative overflow-hidden">
+          <div className="bg-zinc-900 border border-[#EBE6E0] rounded-2xl p-6 relative overflow-hidden">
             <div className="absolute top-0 right-0 p-4 opacity-10">
               <Award size={64} className="text-[#2D2A26]" />
             </div>
@@ -189,12 +201,13 @@ export default function StaffProfilePage() {
 
         {/* Right Column: Forms */}
         <div className="md:col-span-2 space-y-6">
-          <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
+          <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6">
             <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Personal Details</h2>
             <form onSubmit={handlePersonalSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#524A44] mb-1">Full Name</label>
+                <label htmlFor="full-name" className="block text-sm font-medium text-[#524A44] mb-1">Full Name</label>
                 <input 
+                  id="full-name"
                   required 
                   type="text" 
                   value={personalForm.name} 
@@ -204,8 +217,9 @@ export default function StaffProfilePage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#524A44] mb-1">Email Address</label>
+                  <label htmlFor="email-address" className="block text-sm font-medium text-[#524A44] mb-1">Email Address</label>
                   <input 
+                    id="email-address"
                     type="email" 
                     value={user?.email || ''} 
                     disabled
@@ -214,8 +228,9 @@ export default function StaffProfilePage() {
                   <p className="text-xs text-[#A8A19A] mt-1">Contact your shop owner to change email.</p>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#524A44] mb-1">Phone Number</label>
+                  <label htmlFor="phone-number" className="block text-sm font-medium text-[#524A44] mb-1">Phone Number</label>
                   <input 
+                    id="phone-number"
                     type="text" 
                     value={personalForm.phone} 
                     onChange={e => setPersonalForm({...personalForm, phone: e.target.value})}
@@ -232,15 +247,16 @@ export default function StaffProfilePage() {
             </form>
           </div>
 
-          <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
+          <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6">
             <h2 className="text-lg font-medium text-[#2D2A26] mb-4 flex items-center gap-2">
               <ShieldCheck size={20} className="text-taupe" />
               Security
             </h2>
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#524A44] mb-1">Current Password</label>
+                <label htmlFor="current-password" className="block text-sm font-medium text-[#524A44] mb-1">Current Password</label>
                 <input 
+                  id="current-password"
                   required 
                   type="password" 
                   value={passwordForm.current_password} 
@@ -250,8 +266,9 @@ export default function StaffProfilePage() {
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-[#524A44] mb-1">New Password</label>
+                  <label htmlFor="new-password" className="block text-sm font-medium text-[#524A44] mb-1">New Password</label>
                   <input 
+                    id="new-password"
                     required 
                     type="password" 
                     value={passwordForm.password} 
@@ -260,8 +277,9 @@ export default function StaffProfilePage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[#524A44] mb-1">Confirm New Password</label>
+                  <label htmlFor="confirm-password" className="block text-sm font-medium text-[#524A44] mb-1">Confirm New Password</label>
                   <input 
+                    id="confirm-password"
                     required 
                     type="password" 
                     value={passwordForm.password_confirmation} 

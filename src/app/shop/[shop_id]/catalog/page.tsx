@@ -3,18 +3,25 @@
 import { useEffect, useState } from 'react';
 import api from '@/lib/axios';
 import Link from 'next/link';
+import Image from 'next/image';
+
+interface CatalogItemImage {
+  id: number;
+  image_url: string;
+  is_primary: boolean;
+}
 
 interface CatalogItem {
   id: number;
   name: string;
   price: string;
   material: string;
-  images: any[];
+  images: CatalogItemImage[];
 }
 
-export default function PublicCatalogPage({ params }: { params: { shop_id: string } }) {
+export default function PublicCatalogPage({ params }: Readonly<{ params: Readonly<{ shop_id: string }> }>) {
   const [items, setItems] = useState<CatalogItem[]>([]);
-  const [shopName, setShopName] = useState('Bespoke Tailors');
+  const shopName = 'Bespoke Tailors';
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -44,7 +51,7 @@ export default function PublicCatalogPage({ params }: { params: { shop_id: strin
           <div className="flex gap-4">
             <Link 
               href={`/shop/${params.shop_id}/book`}
-              className="bg-black text-[#2D2A26] hover:bg-[#F0EAE3] px-6 py-2 rounded-full font-medium transition-colors text-sm"
+              className="bg-black text-white hover:bg-[#F0EAE3] px-6 py-2 rounded-full font-medium transition-colors text-sm"
             >
               Book Appointment
             </Link>
@@ -67,12 +74,14 @@ export default function PublicCatalogPage({ params }: { params: { shop_id: strin
             const primaryImage = item.images.find(img => img.is_primary)?.image_url || item.images[0]?.image_url;
             return (
               <Link href={`/shop/${params.shop_id}/catalog/${item.id}`} key={item.id} className="group block">
-                <div className="aspect-[3/4] bg-zinc-100 overflow-hidden relative">
+                <div className="aspect-3/4 bg-zinc-100 overflow-hidden relative">
                   {primaryImage ? (
-                    <img 
+                    <Image 
                       src={primaryImage} 
                       alt={item.name} 
                       className="w-full h-full object-cover object-top transition-transform duration-1000 group-hover:scale-105" 
+                      fill
+                      unoptimized
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-[#524A44] bg-zinc-100">No Image</div>
@@ -97,7 +106,7 @@ export default function PublicCatalogPage({ params }: { params: { shop_id: strin
 
         {items.length === 0 && (
           <div className="text-center py-20 text-[#A8A19A]">
-            This shop hasn't published any showcase items yet.
+            This shop hasn&apos;t published any showcase items yet.
           </div>
         )}
       </div>

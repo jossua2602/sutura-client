@@ -5,13 +5,15 @@ import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
   TrendingUp, Users, PackageCheck, Wallet,
-  Calendar as CalendarIcon, Target, Filter
+  Calendar as CalendarIcon, Target, Filter,
+  Download, Printer
 } from 'lucide-react';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, PieChart, Pie, Cell, AreaChart, Area,
   Legend
 } from 'recharts';
+import SubscriptionGate from '@/components/SubscriptionGate';
 
 // ─── Types ──────────────────────────────────────────────────────────────────
 
@@ -21,7 +23,13 @@ interface AnalyticsData {
   total_revenue: number;
   total_outstanding_balance: number;
   upcoming_appointments: number;
+  total_appointments: number;
   total_staff: number;
+  total_customers: number;
+  total_collections: number;
+  total_branches: number;
+  total_services: number;
+  low_stock_items: number;
   revenue_data?: { month: string; revenue: number }[];
   jobs_by_status?: { status: string; count: number }[];
 }
@@ -86,6 +94,56 @@ export default function ReportsPage() {
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('all_time');
 
+  const handleExportCSV = () => {
+    if (!data) return;
+    const rows = [
+      ['SUTURA Sales and Analytics Report'],
+      ['Period', period.toUpperCase().replace('_', ' ')],
+      ['Generated At', new Date().toLocaleString()],
+      [],
+      ['Metric', 'Value'],
+      ['Total Revenue', data.total_revenue],
+      ['Outstanding Balance', data.total_outstanding_balance],
+      ['Completed Jobs', data.completed_jobs],
+      ['Total Jobs', data.total_jobs],
+      ['Upcoming Appointments', data.upcoming_appointments],
+      ['Total Staff', data.total_staff],
+      [],
+      ['Monthly Revenue Breakdown'],
+      ['Month', 'Revenue (PHP)']
+    ];
+
+    if (data.revenue_data) {
+      data.revenue_data.forEach(row => {
+        rows.push([row.month, row.revenue]);
+      });
+    }
+
+    if (data.jobs_by_status) {
+      rows.push([]);
+      rows.push(['Jobs by Status Breakdown']);
+      rows.push(['Status', 'Count']);
+      data.jobs_by_status.forEach(row => {
+        rows.push([STATUS_LABELS[row.status] || row.status, row.count]);
+      });
+    }
+
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(",")).join("\n");
+      
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `sutura_reports_${period}_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   useEffect(() => {
     if (!shop) return;
     
@@ -107,7 +165,7 @@ export default function ReportsPage() {
         endDate   = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
       }
 
-      let url = `/shops/${shop.id}/analytics`;
+      let url = `/shops/${shop?.id}/analytics`;
       if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
 
       try {
@@ -220,31 +278,68 @@ export default function ReportsPage() {
 
   // ─── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-8 pb-12 print-container">
+      {/* Print CSS Stylesheet */}
+      <style>{`
+        @media print {
+          /* Hide sidebar/navigation, headers, filters, buttons */
+          aside, nav, header, button, select, .no-print, .filter-bar {
+            display: none !important;
+          }
+          main, .print-container {
+            margin: 0 !important;
+            padding: 0 !important;
+            width: 100% !important;
+            max-width: 100% !important;
+          }
+          .bg-white {
+            border: 1px solid #EBE6E0 !important;
+            box-shadow: none !important;
+          }
+        }
+      `}</style>
 
       {/* ── Header ── */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between no-print">
         <div>
           <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Sales & Analytics</h1>
           <p className="text-[#827A73] text-sm mt-1">Real-time performance metrics and business overview.</p>
         </div>
-        <div className="flex items-center gap-2 bg-white shadow-sm border border-[#EBE6E0] rounded-lg px-3 py-1.5">
-          <Filter size={16} className="text-[#A8A19A]" />
-          <select
-            value={period}
-            onChange={e => setPeriod(e.target.value)}
-            className="bg-transparent text-sm text-[#524A44] font-medium focus:outline-none cursor-pointer"
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 bg-white shadow-sm border border-[#EBE6E0] rounded-lg px-3 py-1.5 filter-bar">
+            <Filter size={16} className="text-[#A8A19A]" />
+            <select
+              value={period}
+              onChange={e => setPeriod(e.target.value)}
+              className="bg-transparent text-sm text-[#524A44] font-medium focus:outline-none cursor-pointer"
+            >
+              <option value="all_time">All Time</option>
+              <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
+              <option value="ytd">Year to Date</option>
+            </select>
+          </div>
+
+          <button
+            onClick={handleExportCSV}
+            className="flex items-center gap-1.5 bg-white hover:bg-[#FAF6F3] border border-[#EBE6E0] text-[#524A44] font-medium px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer shadow-xs"
           >
-            <option value="all_time">All Time</option>
-            <option value="this_month">This Month</option>
-            <option value="last_month">Last Month</option>
-            <option value="ytd">Year to Date</option>
-          </select>
+            <Download size={14} /> Export CSV
+          </button>
+
+          <button
+            onClick={handlePrint}
+            className="flex items-center gap-1.5 bg-[#9A8073] hover:bg-[#91756A] text-white font-medium px-4 py-2 rounded-lg text-sm transition-colors cursor-pointer shadow-xs"
+          >
+            <Printer size={14} /> Print Report
+          </button>
         </div>
       </div>
 
       {/* ── KPI Grid ── */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+      <SubscriptionGate feature="reports">
+        <>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
         {kpis.map((kpi, idx) => (
           <div key={idx} className="bg-white border border-[#EBE6E0] rounded-2xl p-5 flex items-start justify-between shadow-sm">
             <div>
@@ -443,7 +538,9 @@ export default function ReportsPage() {
             </div>
           </div>
         </div>
-      </div>
+        </div>
+        </>
+      </SubscriptionGate>
     </div>
   );
 }

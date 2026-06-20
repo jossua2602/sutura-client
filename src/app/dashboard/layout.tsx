@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Tag } from 'lucide-react';
+import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Tag, Home, Ruler } from 'lucide-react';
 import api from '@/lib/axios';
 import NotificationBell from '@/components/NotificationBell';
 import BrandLogo from '@/components/BrandLogo';
@@ -83,7 +83,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   if (!mounted || !isAuthenticated) return null;
 
   const NAV_ITEMS = [
-    { name: 'Dashboard',     path: '/dashboard',             icon: LayoutDashboard },
+    { name: 'Home',          path: '/dashboard',             icon: Home },
     { name: 'Jobs',          path: '/dashboard/jobs',        icon: Scissors },
     { name: 'Premade Orders',path: '/dashboard/orders',      icon: Package },
     { name: 'Appointments',  path: '/dashboard/appointments',icon: Calendar },
