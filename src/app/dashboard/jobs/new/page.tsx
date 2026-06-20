@@ -52,7 +52,8 @@ export default function NewJobOrderPage() {
 
 interface CustomerMeasurement {
   id: number;
-  title: string;
+  profile_name: string;
+  updated_at: string;
 }
 
   const [customerMeasurements, setCustomerMeasurements] = useState<CustomerMeasurement[]>([]);

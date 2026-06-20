@@ -1,12 +1,13 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
+import { useEffect, useState, FormEvent, use, ComponentType } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
-  ArrowLeft, Loader2, Save, Trash2, Edit2, X, Plus, Calendar, 
-  Package, DollarSign, Mail, Phone, Clock, FileText, ChevronRight, Scissors
+  ArrowLeft, Loader2, Trash2, Edit2, X, Plus, Calendar, 
+  Package, DollarSign, Mail, Phone, Clock, ChevronRight, Scissors,
+  Copy, User, Ruler, RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 
@@ -27,6 +28,8 @@ interface MeasurementProfile {
   profile_name: string;
   metrics: Record<string, number | string>;
   customer: { id: number; name: string };
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface JobOrder {
@@ -40,6 +43,8 @@ interface JobOrder {
   due_date: string | null;
   service?: { name: string };
   customer?: { id: number; name: string };
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface Appointment {
@@ -49,6 +54,8 @@ interface Appointment {
   notes?: string;
   service?: { name: string };
   customer?: { id: number; name: string };
+  created_at?: string;
+  updated_at?: string;
 }
 
 interface MetricRow {
@@ -58,7 +65,9 @@ interface MetricRow {
 
 const COMMON_METRICS = ['Chest', 'Waist', 'Hips', 'Inseam', 'Sleeve Length', 'Shoulders', 'Neck', 'Bust'];
 
-export default function CustomerProfilePage({ params }: Readonly<{ params: { id: string } }>) {
+export default function CustomerProfilePage({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
+  const resolvedParams = use(params);
+  const id = resolvedParams.id;
   const { shop } = useAuthStore();
   const router = useRouter();
   
@@ -69,7 +78,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
   const [loading, setLoading] = useState(true);
   
   // Tabs
-  const [activeTab, setActiveTab] = useState<'overview' | 'measurements' | 'orders' | 'appointments'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'measurements' | 'orders' | 'appointments' | 'history'>('overview');
   
   // Profile edit state
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -77,6 +86,8 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
   const [editEmail, setEditEmail] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
+
+  const isWalkInEmail = (email?: string) => email ? (email.startsWith('walkin_') && email.endsWith('@sutura.com')) : false;
 
   // Measurement Profile state
   const [isAddingProfile, setIsAddingProfile] = useState(false);
@@ -89,6 +100,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
   ]);
   const [savingMeasurement, setSavingMeasurement] = useState(false);
   const [isDeletingMeasurementId, setIsDeletingMeasurementId] = useState<number | null>(null);
+  const [selectedVersionIds, setSelectedVersionIds] = useState<Record<string, number>>({});
 
   const loadData = async () => {
     if (!shop) return;
@@ -101,17 +113,17 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
       ]);
 
       const allCust: CustomerData[] = resCustomers.data.data || [];
-      const found = allCust.find((c: CustomerData) => c.id.toString() === params.id);
+      const found = allCust.find((c: CustomerData) => c.id.toString() === id);
       
       if (found) {
         setCustomer(found);
         setEditName(found.name || '');
-        setEditEmail(found.email || '');
+        setEditEmail(isWalkInEmail(found.email) ? '' : (found.email || ''));
         setEditPhone(found.phone || '');
       } else {
         setCustomer({
-          id: parseInt(params.id),
-          name: `Client #${params.id}`,
+          id: Number.parseInt(id, 10),
+          name: `Client #${id}`,
           email: '',
           phone: '',
           created_at: new Date().toISOString()
@@ -120,15 +132,15 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
 
       // Filter measurements
       const allMeas: MeasurementProfile[] = resMeasurements.data.data || [];
-      setMeasurements(allMeas.filter((m: MeasurementProfile) => m.customer.id.toString() === params.id));
+      setMeasurements(allMeas.filter((m: MeasurementProfile) => m.customer.id.toString() === id));
 
       // Filter job orders
       const allJobs: JobOrder[] = resJobs.data.data.data || resJobs.data.data || [];
-      setJobs(allJobs.filter((j: JobOrder) => j.customer?.id.toString() === params.id));
+      setJobs(allJobs.filter((j: JobOrder) => j.customer?.id.toString() === id));
 
       // Filter appointments
       const allAppt: Appointment[] = resAppointments.data.data || [];
-      setAppointments(allAppt.filter((a: Appointment) => a.customer?.id.toString() === params.id));
+      setAppointments(allAppt.filter((a: Appointment) => a.customer?.id.toString() === id));
 
       setLoading(false);
     } catch (err) {
@@ -138,12 +150,12 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
   };
 
   useEffect(() => {
-    if (shop && params.id) {
+    if (shop && id) {
       setTimeout(() => {
         void loadData();
       }, 0);
     }
-  }, [shop, params.id]);
+  }, [shop, id]);
 
   const handleUpdateProfile = async (e: FormEvent) => {
     e.preventDefault();
@@ -153,10 +165,14 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
     try {
       const res = await api.put(`/shops/${shop.id}/customers/${customer.id}`, {
         name: editName,
-        email: editEmail,
-        phone: editPhone
+        email: editEmail.trim() || null,
+        phone: editPhone.trim() || null
       });
-      setCustomer(prev => prev ? { ...prev, ...res.data.data } : null);
+      const updatedCust = res.data.data;
+      setCustomer(prev => prev ? { ...prev, ...updatedCust } : null);
+      setEditName(updatedCust.name || '');
+      setEditEmail(isWalkInEmail(updatedCust.email) ? '' : (updatedCust.email || ''));
+      setEditPhone(updatedCust.phone || '');
       setIsEditingProfile(false);
     } catch (err) {
       console.error('Failed to update customer details', err);
@@ -185,6 +201,17 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
     }));
     setMetricRows(rows.length > 0 ? rows : [{ key: '', value: '' }]);
     setEditingProfileId(m.id);
+    setIsAddingProfile(true);
+  };
+
+  const handleCloneMeasurement = (m: MeasurementProfile) => {
+    setProfileName(m.profile_name);
+    const rows = Object.entries(m.metrics || {}).map(([key, val]) => ({
+      key,
+      value: String(val)
+    }));
+    setMetricRows(rows.length > 0 ? rows : [{ key: '', value: '' }]);
+    setEditingProfileId(null);
     setIsAddingProfile(true);
   };
 
@@ -221,7 +248,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
         // Update
         await api.put(`/shops/${shop.id}/measurements/${editingProfileId}`, {
           profile_name: profileName,
-          measurements: metricsObj
+          metrics: metricsObj
         });
       } else {
         // Create
@@ -235,7 +262,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
       // Reload measurements
       const res = await api.get(`/shops/${shop.id}/measurements`);
       const allMeas: MeasurementProfile[] = res.data.data || [];
-      setMeasurements(allMeas.filter((m: MeasurementProfile) => m.customer.id.toString() === params.id));
+      setMeasurements(allMeas.filter((m: MeasurementProfile) => m.customer.id.toString() === id));
       
       setIsAddingProfile(false);
     } catch (err) {
@@ -282,6 +309,90 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
     );
   }
 
+  const getTimelineEvents = () => {
+    const events: {
+      id: string;
+      type: 'customer' | 'measurement' | 'job' | 'appointment';
+      title: string;
+      description: string;
+      date: Date;
+      icon: ComponentType<{ size?: number; className?: string }>;
+      color: string;
+    }[] = [];
+
+    // 1. Customer Created
+    if (customer) {
+      events.push({
+        id: `cust-${customer.id}`,
+        type: 'customer',
+        title: 'Client Profile Created',
+        description: `Customer profile for ${customer.name} was added to the shop database.`,
+        date: new Date(customer.created_at),
+        icon: User,
+        color: 'bg-[#9A8073] text-white border-[#9A8073]',
+      });
+    }
+
+    // 2. Measurements
+    measurements.forEach(m => {
+      if (m.created_at) {
+        events.push({
+          id: `meas-create-${m.id}`,
+          type: 'measurement',
+          title: `Specs Profile Added: ${m.profile_name}`,
+          description: `Added a new measurement specifications profile (Version Profile #${m.id}).`,
+          date: new Date(m.created_at),
+          icon: Ruler,
+          color: 'bg-emerald-600 text-white border-emerald-600',
+        });
+      }
+      if (m.updated_at && m.updated_at !== m.created_at) {
+        events.push({
+          id: `meas-update-${m.id}`,
+          type: 'measurement',
+          title: `Specs Profile Updated: ${m.profile_name}`,
+          description: `Modified the body measurements metrics for ${m.profile_name}.`,
+          date: new Date(m.updated_at),
+          icon: RefreshCw,
+          color: 'bg-blue-600 text-white border-blue-600',
+        });
+      }
+    });
+
+    // 3. Job Orders
+    jobs.forEach(j => {
+      if (j.created_at) {
+        events.push({
+          id: `job-create-${j.id}`,
+          type: 'job',
+          title: `Job Order Placed: ${j.order_number}`,
+          description: `Placed production run for ${j.service?.name || 'Garment'} with status "${j.status.toUpperCase()}".`,
+          date: new Date(j.created_at),
+          icon: Scissors,
+          color: 'bg-amber-600 text-white border-amber-600',
+        });
+      }
+    });
+
+    // 4. Appointments
+    appointments.forEach(a => {
+      if (a.created_at) {
+        events.push({
+          id: `appt-create-${a.id}`,
+          type: 'appointment',
+          title: 'Appointment Booked',
+          description: `Scheduled fitting/consultation for ${new Date(a.scheduled_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`,
+          date: new Date(a.created_at),
+          icon: Calendar,
+          color: 'bg-indigo-600 text-white border-indigo-600',
+        });
+      }
+    });
+
+    // Sort by date descending
+    return events.sort((a, b) => b.date.getTime() - a.date.getTime());
+  };
+
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
       {/* Header Panel */}
@@ -305,7 +416,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
               </button>
             </div>
             <div className="flex items-center gap-4 text-xs text-[#827A73] mt-1.5 flex-wrap">
-              {customer?.email && (
+              {customer?.email && !isWalkInEmail(customer.email) && (
                 <span className="flex items-center gap-1">
                   <Mail size={12} /> {customer.email}
                 </span>
@@ -358,7 +469,9 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
             </div>
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#524A44] mb-1">Full Name</label>
+                <label className="block text-xs font-semibold text-[#524A44] mb-1">
+                  Full Name <span className="text-rose-500">*</span>
+                </label>
                 <input 
                   type="text" 
                   required
@@ -368,19 +481,23 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#524A44] mb-1">Email Address</label>
+                <label className="block text-xs font-semibold text-[#524A44] mb-1">
+                  Email Address <span className="text-[10px] text-[#827A73] font-normal">(Optional)</span>
+                </label>
                 <input 
                   type="email" 
-                  required
                   value={editEmail}
                   onChange={e => setEditEmail(e.target.value)}
                   className="w-full px-3 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe" 
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#524A44] mb-1">Phone Number</label>
+                <label className="block text-xs font-semibold text-[#524A44] mb-1">
+                  Phone Number <span className="text-rose-500">*</span>
+                </label>
                 <input 
                   type="text" 
+                  required
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
                   placeholder="e.g. +639..."
@@ -416,11 +533,12 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
           { id: 'measurements', label: 'Measurements & Specs' },
           { id: 'orders', label: `Job Orders (${jobs.length})` },
           { id: 'appointments', label: `Appointments (${appointments.length})` },
+          { id: 'history', label: 'Activity History' },
         ].map(tab => (
           <button
             key={tab.id}
             onClick={() => {
-              setActiveTab(tab.id as 'overview' | 'measurements' | 'orders' | 'appointments');
+              setActiveTab(tab.id as 'overview' | 'measurements' | 'orders' | 'appointments' | 'history');
               setIsAddingProfile(false);
             }}
             className={`pb-3 font-semibold text-sm transition-all border-b-2 px-1 ${
@@ -449,7 +567,9 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
                   </div>
                   <div>
                     <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Email Address</span>
-                    <span className="text-[#2D2A26] font-medium">{customer?.email || 'N/A'}</span>
+                    <span className="text-[#2D2A26] font-medium">
+                      {customer?.email && !isWalkInEmail(customer.email) ? customer.email : 'Walk-in (No Email)'}
+                    </span>
                   </div>
                   <div>
                     <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Phone Number</span>
@@ -549,46 +669,91 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {measurements.map(m => (
-                    <div key={m.id} className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm space-y-4 hover:border-taupe/40 transition-colors relative">
-                      <div className="flex justify-between items-start border-b border-[#EBE6E0]/60 pb-2.5">
-                        <div>
-                          <h3 className="font-bold text-[#2D2A26]">{m.profile_name}</h3>
-                          <span className="text-[10px] text-[#A8A19A]">Version Profile #{m.id}</span>
-                        </div>
-                        <div className="flex items-center gap-1">
-                          <button 
-                            onClick={() => handleStartEditMeasurement(m)}
-                            className="p-1 rounded text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] border border-transparent hover:border-[#EBE6E0] transition-all"
-                            title="Edit measurements"
-                          >
-                            <Edit2 size={13} />
-                          </button>
-                          <button 
-                            onClick={() => handleDeleteMeasurement(m.id)}
-                            disabled={isDeletingMeasurementId === m.id}
-                            className="p-1 rounded text-[#A8A19A] hover:bg-red-50 hover:text-[#B26959] border border-transparent hover:border-red-200 transition-all"
-                            title="Delete profile"
-                          >
-                            {isDeletingMeasurementId === m.id ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : (
-                              <Trash2 size={13} />
-                            )}
-                          </button>
-                        </div>
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                        {Object.entries(m.metrics || {}).map(([key, val]) => (
-                          <div key={key} className="flex justify-between border-b border-[#EBE6E0]/30 pb-1">
-                            <span className="text-[#827A73] capitalize font-medium">{key}</span>
-                            <span className="text-[#2D2A26] font-semibold">{String(val)}</span>
+                  {Object.entries(
+                    measurements.reduce((acc, m) => {
+                      const key = m.profile_name.trim();
+                      if (!acc[key]) acc[key] = [];
+                      acc[key].push(m);
+                      return acc;
+                    }, {} as Record<string, MeasurementProfile[]>)
+                  ).map(([profileName, versions]) => {
+                    // Sort versions by ID ascending
+                    versions.sort((a, b) => a.id - b.id);
+                    
+                    const rKey = `c_${id}_p_${profileName}`;
+                    const selectedId = selectedVersionIds[rKey];
+                    const activeMeas = versions.find(v => v.id === selectedId) || versions[versions.length - 1];
+                    const activeIndex = versions.indexOf(activeMeas);
+                    
+                    return (
+                      <div key={profileName} className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm space-y-4 hover:border-taupe/40 transition-colors relative">
+                        <div className="flex justify-between items-start border-b border-[#EBE6E0]/60 pb-2.5 flex-wrap gap-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <h3 className="font-bold text-[#2D2A26] truncate">{profileName}</h3>
+                              <span className="text-[10px] text-[#A8A19A] whitespace-nowrap">
+                                Version {activeIndex + 1} of {versions.length}
+                              </span>
+                              {versions.length > 1 && (
+                                <select
+                                  value={activeMeas.id}
+                                  onChange={(e) => {
+                                    const newVerId = Number(e.target.value);
+                                    setSelectedVersionIds(prev => ({ ...prev, [rKey]: newVerId }));
+                                  }}
+                                  className="text-[10px] bg-[#FAF6F3] border border-[#EBE6E0] rounded px-1.5 py-0.5 text-[#524A44] font-semibold focus:outline-none cursor-pointer"
+                                >
+                                  {versions.map((v, idx) => (
+                                    <option key={v.id} value={v.id}>
+                                      Ver {idx + 1}
+                                    </option>
+                                  ))}
+                                </select>
+                              )}
+                            </div>
+                            <span className="text-[10px] text-[#A8A19A] mt-0.5 block">Version Profile #{activeMeas.id}</span>
                           </div>
-                        ))}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <button 
+                              onClick={() => handleCloneMeasurement(activeMeas)}
+                              className="p-1 rounded text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] border border-transparent hover:border-[#EBE6E0] transition-all"
+                              title="Create new version from this profile"
+                            >
+                              <Copy size={13} />
+                            </button>
+                            <button 
+                              onClick={() => handleStartEditMeasurement(activeMeas)}
+                              className="p-1 rounded text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] border border-transparent hover:border-[#EBE6E0] transition-all"
+                              title="Edit measurements"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button 
+                              onClick={() => handleDeleteMeasurement(activeMeas.id)}
+                              disabled={isDeletingMeasurementId === activeMeas.id}
+                              className="p-1 rounded text-[#A8A19A] hover:bg-red-50 hover:text-[#B26959] border border-transparent hover:border-red-200 transition-all"
+                              title="Delete profile"
+                            >
+                              {isDeletingMeasurementId === activeMeas.id ? (
+                                <Loader2 size={13} className="animate-spin" />
+                              ) : (
+                                <Trash2 size={13} />
+                              )}
+                            </button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
+                          {Object.entries(activeMeas.metrics || {}).map(([key, val]) => (
+                            <div key={key} className="flex justify-between border-b border-[#EBE6E0]/30 pb-1">
+                              <span className="text-[#827A73] capitalize font-medium">{key}</span>
+                              <span className="text-[#2D2A26] font-semibold">{String(val)}</span>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   {measurements.length === 0 && (
                     <div className="bg-[#FAF6F3]/50 border border-[#EBE6E0] border-dashed rounded-xl p-12 text-center text-sm text-[#A8A19A] md:col-span-2">
                       No measurements specified for {customer?.name}. Create a specs profile to track sleeve, waist, and chest sizing.
@@ -622,7 +787,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
                     <input 
                       id="profile_name"
                       type="text" 
-                      placeholder="e.g. Slim Suit, Standard Blazer, Gown V2"
+                      placeholder="e.g. Slim Suit, Standard Blazer, Gown"
                       value={profileName}
                       onChange={e => setProfileName(e.target.value)}
                       className="w-full px-3 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe" 
@@ -825,6 +990,39 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: { id:
                   )}
                 </tbody>
               </table>
+            </div>
+          </div>
+        )}
+
+        {activeTab === 'history' && (
+          <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+            <h2 className="text-base font-bold text-[#2D2A26] mb-6">Client Activity History</h2>
+            <div className="relative pl-6 border-l-2 border-[#EBE6E0] space-y-8 ml-3">
+              {getTimelineEvents().map(event => {
+                const Icon = event.icon;
+                return (
+                  <div key={event.id} className="relative">
+                    {/* Circle marker with icon */}
+                    <span className={`absolute -left-[37px] top-0.5 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white ${event.color} shadow-sm shrink-0`}>
+                      <Icon size={12} />
+                    </span>
+                    <div>
+                      <div className="flex items-center justify-between gap-4">
+                        <h4 className="font-bold text-sm text-[#2D2A26]">{event.title}</h4>
+                        <span className="text-[10px] font-semibold text-[#827A73]">
+                          {event.date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-xs text-[#827A73] mt-1">{event.description}</p>
+                    </div>
+                  </div>
+                );
+              })}
+              {getTimelineEvents().length === 0 && (
+                <div className="text-center py-8 text-sm text-[#A8A19A] italic">
+                  No activities recorded yet.
+                </div>
+              )}
             </div>
           </div>
         )}

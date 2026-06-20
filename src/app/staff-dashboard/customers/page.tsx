@@ -40,7 +40,7 @@ export default function CustomersPage() {
     } else if (user) {
       setTimeout(() => setLoading(false), 0);
     } else {
-      const timer = setTimeout(() => setLoading(false), 1000);
+      const timer = setTimeout(() => setLoading(false), 0);
       return () => clearTimeout(timer);
     }
   }, [shop, user]);

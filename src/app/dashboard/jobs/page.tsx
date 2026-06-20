@@ -144,7 +144,7 @@ function ColumnIcon({ id }: { readonly id: string }) {
 }
 
 export default function JobOrdersPage() {
-  const { shop } = useAuthStore();
+  const { shop, user } = useAuthStore();
   const [jobs, setJobs] = useState<Job[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -167,8 +167,10 @@ export default function JobOrdersPage() {
           console.error(err);
           setLoading(false);
         });
+    } else if (user) {
+      setTimeout(() => setLoading(false), 0);
     }
-  }, [shop]);
+  }, [shop, user]);
 
   const updateJobStatus = async (jobId: number, newStatus: string) => {
     if (!shop) return;

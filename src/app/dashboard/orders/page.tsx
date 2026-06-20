@@ -27,7 +27,7 @@ interface CatalogOrder {
 }
 
 export default function OrdersPage() {
-  const { shop } = useAuthStore();
+  const { shop, user } = useAuthStore();
   const [orders, setOrders] = useState<CatalogOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'walkin' | 'online'>('online');
@@ -36,8 +36,10 @@ export default function OrdersPage() {
   useEffect(() => {
     if (shop) {
       fetchOrders();
+    } else if (user) {
+      setTimeout(() => setLoading(false), 0);
     }
-  }, [shop]);
+  }, [shop, user]);
 
   function fetchOrders() {
     if (!shop) return;

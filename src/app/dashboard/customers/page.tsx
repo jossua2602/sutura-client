@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Search, Package, Phone, Mail, Plus, Loader2, Pencil, Trash2 } from 'lucide-react';
+import { Search, Package, Phone, Mail, Plus, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 interface CustomerData {
@@ -35,10 +35,13 @@ export default function CustomersPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [error, setError] = useState('');
+  const [filterType, setFilterType] = useState<'all' | 'online' | 'walkin'>('all');
+
+  const isWalkInEmail = (email?: string) => email ? (email.startsWith('walkin_') && email.endsWith('@sutura.com')) : false;
 
   useEffect(() => {
     if (!shop) {
-      const timer = setTimeout(() => setLoading(false), user ? 0 : 1000);
+      const timer = setTimeout(() => setLoading(false), 0);
       return () => clearTimeout(timer);
     }
 
@@ -69,12 +72,18 @@ export default function CustomersPage() {
     setIsSubmitting(true);
     setError('');
     
+    const payload = {
+      name: formData.name,
+      email: formData.email.trim() || null,
+      phone: formData.phone.trim() || null,
+    };
+    
     try {
       if (editingId) {
-        const res = await api.put(`/shops/${shop.id}/customers/${editingId}`, formData);
+        const res = await api.put(`/shops/${shop.id}/customers/${editingId}`, payload);
         setCustomers(prev => prev.map(c => c.id === editingId ? { ...c, ...res.data.data } : c));
       } else {
-        const res = await api.post(`/shops/${shop.id}/customers`, formData);
+        const res = await api.post(`/shops/${shop.id}/customers`, payload);
         setCustomers(prev => [
           { ...res.data.data, active_jobs: 0, completed_jobs: 0, total_spend: 0 }, 
           ...prev
@@ -96,7 +105,7 @@ export default function CustomersPage() {
     setEditingId(customer.id);
     setFormData({
       name: customer.name,
-      email: customer.email,
+      email: isWalkInEmail(customer.email) ? '' : customer.email,
       phone: customer.phone || ''
     });
     setIsModalOpen(true);
@@ -131,10 +140,17 @@ export default function CustomersPage() {
     setError('');
   };
 
-  const filtered = customers.filter(c => 
-    c.name.toLowerCase().includes(search.toLowerCase()) || 
-    (c.email?.toLowerCase().includes(search.toLowerCase()))
-  );
+  const filtered = customers.filter(c => {
+    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
+      (c.email && !isWalkInEmail(c.email) && c.email.toLowerCase().includes(search.toLowerCase()));
+      
+    if (!matchesSearch) return false;
+    
+    const isWalkIn = isWalkInEmail(c.email);
+    if (filterType === 'online') return !isWalkIn;
+    if (filterType === 'walkin') return isWalkIn;
+    return true;
+  });
 
   return (
     <div className="space-y-6 pb-12">
@@ -155,6 +171,32 @@ export default function CustomersPage() {
           <Plus size={18} />
           Add Customer
         </button>
+      </div>
+
+      {/* Tabs for separating Online and Walk-in clients */}
+      <div className="flex border-b border-[#EBE6E0] gap-6">
+        {[
+          { id: 'all', label: 'All Clients', count: customers.length },
+          { id: 'online', label: 'Online Clients', count: customers.filter(c => !isWalkInEmail(c.email)).length },
+          { id: 'walkin', label: 'Walk-in Clients', count: customers.filter(c => isWalkInEmail(c.email)).length },
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setFilterType(tab.id as 'all' | 'online' | 'walkin')}
+            className={`pb-3 font-semibold text-sm transition-all border-b-2 px-1 flex items-center gap-2 ${
+              filterType === tab.id
+                ? 'border-taupe text-[#2D2A26]'
+                : 'border-transparent text-[#A8A19A] hover:text-[#524A44]'
+            }`}
+          >
+            {tab.label}
+            <span className={`text-[10px] px-1.5 py-0.5 rounded-full ${
+              filterType === tab.id ? 'bg-[#9A8073]/10 text-taupe' : 'bg-[#F0EAE3] text-[#827A73]'
+            }`}>
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       {loading ? (
@@ -224,11 +266,16 @@ export default function CustomersPage() {
                     </td>
                     <td className="p-4">
                       <div className="space-y-1">
-                        {customer.email && (
-                          <div className="flex items-center gap-2 text-sm text-[#524A44]">
-                            <Mail size={14} className="text-[#A8A19A]" />
-                            {customer.email}
-                          </div>
+                        {customer.email && !isWalkInEmail(customer.email) ? (
+                          <>
+                            <div className="flex items-center gap-2 text-sm text-[#524A44]">
+                              <Mail size={14} className="text-[#A8A19A]" />
+                              {customer.email}
+                            </div>
+                            <span className="inline-flex items-center text-[9px] font-bold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 uppercase tracking-wider">Online</span>
+                          </>
+                        ) : (
+                          <span className="inline-flex items-center text-[9px] font-bold bg-[#FAF6F3] text-[#827A73] px-1.5 py-0.5 rounded border border-[#EBE6E0] uppercase tracking-wider">Walk-in</span>
                         )}
                         {customer.phone && (
                           <div className="flex items-center gap-2 text-sm text-[#524A44]">
@@ -252,16 +299,26 @@ export default function CustomersPage() {
                       <div className="font-semibold text-[#2D2A26]">₱{Number(customer.total_spend).toLocaleString()}</div>
                       <div className="text-xs text-[#A8A19A]">{customer.completed_jobs} completed orders</div>
                     </td>
-                    <td className="p-4 text-right">
-                      <div className="flex items-center justify-end gap-2">
-                        <button onClick={(e) => handleEditClick(e, customer)} className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1">
-                          <Pencil size={16} />
-                        </button>
-                        <button onClick={(e) => handleDeleteClick(e, customer.id)} className="text-[#A8A19A] hover:text-[#B26959] transition-colors p-1">
-                          <Trash2 size={16} />
-                        </button>
-                      </div>
-                    </td>
+                      <td className="p-4 text-right">
+                        <div className="flex items-center justify-end gap-2">
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/dashboard/customers/${customer.id}`);
+                            }} 
+                            className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1"
+                            title="View Profile"
+                          >
+                            <Eye size={16} />
+                          </button>
+                          <button onClick={(e) => handleEditClick(e, customer)} className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1">
+                            <Pencil size={16} />
+                          </button>
+                          <button onClick={(e) => handleDeleteClick(e, customer.id)} className="text-[#A8A19A] hover:text-[#B26959] transition-colors p-1">
+                            <Trash2 size={16} />
+                          </button>
+                        </div>
+                      </td>
                   </tr>
                 ))}
               </tbody>
@@ -280,7 +337,9 @@ export default function CustomersPage() {
           )}
           
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-[#524A44] mb-1">Full Name</label>
+            <label htmlFor="name" className="block text-sm font-medium text-[#524A44] mb-1">
+              Full Name <span className="text-rose-500">*</span>
+            </label>
             <input 
               id="name"
               type="text" 
@@ -293,11 +352,12 @@ export default function CustomersPage() {
           </div>
           
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-[#524A44] mb-1">Email Address</label>
+            <label htmlFor="email" className="block text-sm font-medium text-[#524A44] mb-1">
+              Email Address <span className="text-xs text-[#827A73] font-normal">(Optional)</span>
+            </label>
             <input 
               id="email"
               type="email" 
-              required
               value={formData.email}
               onChange={e => setFormData({...formData, email: e.target.value})}
               className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-taupe"
@@ -306,10 +366,13 @@ export default function CustomersPage() {
           </div>
           
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-[#524A44] mb-1">Phone Number (Optional)</label>
+            <label htmlFor="phone" className="block text-sm font-medium text-[#524A44] mb-1">
+              Phone Number <span className="text-rose-500">*</span>
+            </label>
             <input 
               id="phone"
               type="tel" 
+              required
               value={formData.phone}
               onChange={e => setFormData({...formData, phone: e.target.value})}
               className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-taupe"

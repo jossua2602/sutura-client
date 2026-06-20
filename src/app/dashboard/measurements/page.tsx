@@ -7,7 +7,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import Modal from '@/components/Modal';
 import {
   Ruler, Plus, Search, Pencil, Trash2, Loader2,
-  ChevronDown, ChevronUp, User, StickyNote, RefreshCw
+  ChevronDown, ChevronUp, User, StickyNote, RefreshCw, Copy
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -98,6 +98,7 @@ function MeasurementsContent() {
   const [search, setSearch] = useState('');
   const [expandedIds, setExpandedIds] = useState<Set<number>>(new Set());
   const [filterCustomer, setFilterCustomer] = useState('');
+  const [selectedVersionIds, setSelectedVersionIds] = useState<Record<string, number>>({});
 
   // Modal
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -126,7 +127,7 @@ function MeasurementsContent() {
   useEffect(() => {
     if (!shop) {
       if (!user) return;
-      setTimeout(() => setLoading(false), 800);
+      setTimeout(() => setLoading(false), 0);
       return;
     }
     Promise.all([
@@ -202,6 +203,18 @@ function MeasurementsContent() {
 
   const openEdit = (rec: MeasurementRecord) => {
     setEditingId(rec.id);
+    setForm({
+      customer_id: rec.customer_id.toString(),
+      profile_name: rec.profile_name,
+      metrics: { ...emptyMetrics(), ...rec.metrics },
+      notes: rec.notes || '',
+    });
+    setError('');
+    setIsModalOpen(true);
+  };
+
+  const openClone = (rec: MeasurementRecord) => {
+    setEditingId(null);
     setForm({
       customer_id: rec.customer_id.toString(),
       profile_name: rec.profile_name,
@@ -330,51 +343,84 @@ function MeasurementsContent() {
             return (
               <div key={customerName} className="bg-white border border-[#EBE6E0] rounded-2xl shadow-sm overflow-hidden">
                 {/* Customer Header */}
-                <div className="flex items-center gap-3 px-5 py-4 border-b border-[#EBE6E0] bg-[#FAF6F3]/60">
-                  {firstRec.customer && <CustomerInitial name={firstRec.customer.name} />}
+                <div className="bg-[#FAF6F3]/50 px-5 py-4 border-b border-[#EBE6E0] flex items-center gap-3">
+                  <CustomerInitial name={customerName} />
                   <div>
-                    <p className="font-semibold text-[#2D2A26] text-sm">{customerName}</p>
-                    <p className="text-xs text-[#A8A19A]">
-                      {firstRec.customer?.email || ''} · {recs.length} profile{recs.length !== 1 ? 's' : ''}
-                    </p>
+                    <h3 className="font-bold text-[#2D2A26] text-sm">{customerName}</h3>
+                    {firstRec.customer?.email && (
+                      <p className="text-xs text-[#827A73]">{firstRec.customer.email}</p>
+                    )}
                   </div>
-                  <button
-                    onClick={() => {
-                      setForm({ ...emptyForm(), customer_id: firstRec.customer_id.toString() });
-                      setEditingId(null);
-                      setError('');
-                      setIsModalOpen(true);
-                    }}
-                    className="ml-auto flex items-center gap-1.5 text-xs text-[#9A8073] hover:text-[#2D2A26] font-medium transition-colors bg-[#F0EAE3] hover:bg-[#EBE6E0] px-3 py-1.5 rounded-lg"
-                  >
-                    <Plus size={13} /> Add Profile
-                  </button>
                 </div>
 
                 {/* Profiles */}
                 <div className="divide-y divide-[#EBE6E0]">
-                  {recs.map(rec => {
-                    const isExpanded = expandedIds.has(rec.id);
-                    const filledCount = Object.values(rec.metrics || {}).filter(Boolean).length;
+                  {Object.entries(
+                    recs.reduce((acc, r) => {
+                      const key = r.profile_name.trim();
+                      if (!acc[key]) acc[key] = [];
+                      acc[key].push(r);
+                      return acc;
+                    }, {} as Record<string, MeasurementRecord[]>)
+                  ).map(([profileName, versions]) => {
+                    // Sort versions by ID ascending
+                    versions.sort((a, b) => a.id - b.id);
+                    
+                    const rKey = `c_${firstRec.customer_id}_p_${profileName}`;
+                    const selectedId = selectedVersionIds[rKey];
+                    const activeRec = versions.find(v => v.id === selectedId) || versions[versions.length - 1];
+                    const activeIndex = versions.indexOf(activeRec);
+                    
+                    const isExpanded = expandedIds.has(activeRec.id);
+                    const filledCount = Object.values(activeRec.metrics || {}).filter(Boolean).length;
+                    
                     return (
-                      <div key={rec.id}>
+                      <div key={profileName}>
                         {/* Profile Row */}
                         <div className="flex items-center gap-4 px-5 py-3.5 hover:bg-[#FAF6F3]/70 transition-colors">
                           <button
-                            onClick={() => toggleExpand(rec.id)}
+                            onClick={() => toggleExpand(activeRec.id)}
                             className="flex items-center gap-2 flex-1 text-left"
                           >
                             <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="font-semibold text-[#2D2A26] text-sm">{rec.profile_name}</p>
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <p className="font-semibold text-[#2D2A26] text-sm">{profileName}</p>
                                 <span className="text-[10px] bg-[#9A8073]/10 text-[#9A8073] border border-[#9A8073]/20 px-2 py-0.5 rounded-full font-medium">
                                   {filledCount} field{filledCount !== 1 ? 's' : ''}
                                 </span>
+                                <span className="text-[10px] text-[#A8A19A]">
+                                  Version {activeIndex + 1} of {versions.length}
+                                </span>
+                                {versions.length > 1 && (
+                                  <select
+                                    value={activeRec.id}
+                                    onChange={(e) => {
+                                      const newVerId = Number(e.target.value);
+                                      setSelectedVersionIds(prev => ({ ...prev, [rKey]: newVerId }));
+                                      if (expandedIds.has(activeRec.id)) {
+                                        setExpandedIds(prev => {
+                                          const next = new Set(prev);
+                                          next.delete(activeRec.id);
+                                          next.add(newVerId);
+                                          return next;
+                                        });
+                                      }
+                                    }}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[10px] bg-[#FAF6F3] border border-[#EBE6E0] rounded px-1.5 py-0.5 text-[#524A44] font-semibold focus:outline-none cursor-pointer"
+                                  >
+                                    {versions.map((v, idx) => (
+                                      <option key={v.id} value={v.id}>
+                                        Ver {idx + 1}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
                               </div>
                               <p className="text-xs text-[#A8A19A] mt-0.5 flex items-center gap-1">
                                 <RefreshCw size={10} />
-                                Updated {new Date(rec.updated_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                {rec.notes && (
+                                Updated {new Date(activeRec.updated_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                {activeRec.notes && (
                                   <span className="flex items-center gap-1 ml-2">
                                     <StickyNote size={10} /> Notes
                                   </span>
@@ -385,14 +431,21 @@ function MeasurementsContent() {
                           </button>
                           <div className="flex items-center gap-1 shrink-0">
                             <button
-                              onClick={() => openEdit(rec)}
+                              onClick={() => openClone(activeRec)}
+                              className="p-1.5 text-[#A8A19A] hover:text-[#2D2A26] hover:bg-[#F0EAE3] rounded-lg transition-colors"
+                              title="Create new version"
+                            >
+                              <Copy size={15} />
+                            </button>
+                            <button
+                              onClick={() => openEdit(activeRec)}
                               className="p-1.5 text-[#A8A19A] hover:text-[#2D2A26] hover:bg-[#F0EAE3] rounded-lg transition-colors"
                               title="Edit"
                             >
                               <Pencil size={15} />
                             </button>
                             <button
-                              onClick={() => { setDeletingId(rec.id); setIsDeleteOpen(true); }}
+                              onClick={() => { setDeletingId(activeRec.id); setIsDeleteOpen(true); }}
                               className="p-1.5 text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 rounded-lg transition-colors"
                               title="Delete"
                             >
@@ -410,9 +463,9 @@ function MeasurementsContent() {
                                 <p className="text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider mb-2">Upper Body</p>
                                 <div className="flex flex-wrap gap-1.5">
                                   {UPPER.map(f => (
-                                    <MetricPill key={f.key} label={f.label} value={rec.metrics?.[f.key]} />
+                                    <MetricPill key={f.key} label={f.label} value={activeRec.metrics?.[f.key]} />
                                   ))}
-                                  {!UPPER.some(f => rec.metrics?.[f.key]) && (
+                                  {!UPPER.some(f => activeRec.metrics?.[f.key]) && (
                                     <p className="text-xs text-[#A8A19A] italic">No upper body measurements recorded.</p>
                                   )}
                                 </div>
@@ -422,19 +475,19 @@ function MeasurementsContent() {
                                 <p className="text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider mb-2">Lower Body</p>
                                 <div className="flex flex-wrap gap-1.5">
                                   {LOWER.map(f => (
-                                    <MetricPill key={f.key} label={f.label} value={rec.metrics?.[f.key]} />
+                                    <MetricPill key={f.key} label={f.label} value={activeRec.metrics?.[f.key]} />
                                   ))}
-                                  {!LOWER.some(f => rec.metrics?.[f.key]) && (
+                                  {!LOWER.some(f => activeRec.metrics?.[f.key]) && (
                                     <p className="text-xs text-[#A8A19A] italic">No lower body measurements recorded.</p>
                                   )}
                                 </div>
                               </div>
                             </div>
-                            {rec.notes && (
+                            {activeRec.notes && (
                               <div className="mt-3 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
                                 <p className="text-xs text-amber-700 flex items-start gap-2">
                                   <StickyNote size={12} className="shrink-0 mt-0.5" />
-                                  {rec.notes}
+                                  {activeRec.notes}
                                 </p>
                               </div>
                             )}

@@ -89,7 +89,7 @@ const PieTooltip = ({ active, payload }: {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export default function ReportsPage() {
-  const { shop } = useAuthStore();
+  const { shop, user } = useAuthStore();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('all_time');
@@ -145,7 +145,12 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    if (!shop) return;
+    if (!shop) {
+      if (user) {
+        setTimeout(() => setLoading(false), 0);
+      }
+      return;
+    }
     
     async function fetchAnalytics() {
       setLoading(true);
@@ -179,7 +184,7 @@ export default function ReportsPage() {
     }
 
     fetchAnalytics();
-  }, [shop, period]);
+  }, [shop, period, user]);
 
   // ─── Derived chart data ──────────────────────────────────────────────────
 
