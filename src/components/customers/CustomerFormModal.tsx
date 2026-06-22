@@ -1,0 +1,122 @@
+import React, { useState, useEffect } from 'react';
+import Modal from '@/components/Modal';
+import { Loader2 } from 'lucide-react';
+import { CustomerData, isWalkInEmail } from './customerHelpers';
+
+interface CustomerFormModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  editingCustomer: CustomerData | null;
+  onSubmit: (payload: Record<string, string | null>) => Promise<void>;
+  isSubmitting: boolean;
+  error: string;
+}
+
+export default function CustomerFormModal({
+  isOpen,
+  onClose,
+  editingCustomer,
+  onSubmit,
+  isSubmitting,
+  error,
+}: CustomerFormModalProps) {
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+
+  useEffect(() => {
+    if (editingCustomer && isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFormData({
+        name: editingCustomer.name,
+        email: isWalkInEmail(editingCustomer.email) ? '' : editingCustomer.email,
+        phone: editingCustomer.phone || '',
+      });
+    } else {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFormData({ name: '', email: '', phone: '' });
+    }
+  }, [editingCustomer, isOpen]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      name: formData.name,
+      email: formData.email.trim() || null,
+      phone: formData.phone.trim() || null,
+    };
+    onSubmit(payload);
+  };
+
+  return (
+    <Modal isOpen={isOpen} onClose={onClose} title={editingCustomer ? "Edit Customer" : "Add New Customer"}>
+      <form onSubmit={handleSubmit} className="space-y-4 text-[#2D2A26]">
+        {error && (
+          <div className="bg-[#B26959]/10 border border-[#B26959]/50 text-[#B26959] px-4 py-3 rounded-lg text-sm">
+            {error}
+          </div>
+        )}
+        
+        <div>
+          <label htmlFor="name" className="block text-sm font-medium text-[#524A44] mb-1">
+            Full Name <span className="text-rose-500">*</span>
+          </label>
+          <input 
+            id="name"
+            type="text" 
+            required
+            value={formData.name}
+            onChange={e => setFormData({...formData, name: e.target.value})}
+            className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-taupe"
+            placeholder="Juan Dela Cruz"
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="email" className="block text-sm font-medium text-[#524A44] mb-1">
+            Email Address <span className="text-xs text-[#827A73] font-normal">(Optional)</span>
+          </label>
+          <input 
+            id="email"
+            type="email" 
+            value={formData.email}
+            onChange={e => setFormData({...formData, email: e.target.value})}
+            className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-taupe"
+            placeholder="juan@example.com"
+          />
+        </div>
+        
+        <div>
+          <label htmlFor="phone" className="block text-sm font-medium text-[#524A44] mb-1">
+            Phone Number <span className="text-rose-500">*</span>
+          </label>
+          <input 
+            id="phone"
+            type="tel" 
+            required
+            value={formData.phone}
+            onChange={e => setFormData({...formData, phone: e.target.value})}
+            className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-taupe"
+            placeholder="+63 900 000 0000"
+          />
+        </div>
+
+        <div className="pt-4 flex justify-end gap-3">
+          <button 
+            type="button"
+            onClick={onClose}
+            className="px-4 py-2 rounded-lg text-sm font-medium text-[#524A44] hover:text-[#2D2A26] transition-colors"
+          >
+            Cancel
+          </button>
+          <button 
+            type="submit"
+            disabled={isSubmitting}
+            className="bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors flex items-center gap-2 disabled:opacity-50 cursor-pointer"
+          >
+            {isSubmitting && <Loader2 size={16} className="animate-spin" />}
+            {editingCustomer ? "Save Changes" : "Save Customer"}
+          </button>
+        </div>
+      </form>
+    </Modal>
+  );
+}

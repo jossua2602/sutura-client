@@ -14,8 +14,8 @@ interface ShopProfile {
   address: string;
   city: string;
   province: string;
-  contact_phone: string;
-  contact_email: string;
+  phone: string;
+  email: string;
   logo_path: string;
   social_links: {
     facebook?: string;
@@ -60,9 +60,13 @@ export default function PublicShopProfilePage({ params }: { params: { shop_id: s
       alert("Please log in to leave a review.");
       return;
     }
+    if (!shop) {
+      alert("Shop profile is still loading. Please try again.");
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await api.post(`/shops/${params.shop_id}/reviews`, {
+      await api.post(`/shops/${shop.id}/reviews`, {
         rating: ratingValue,
         comment: ratingComment
       });
@@ -124,16 +128,16 @@ export default function PublicShopProfilePage({ params }: { params: { shop_id: s
                 <span>{shop.address}, {shop.city}, {shop.province}</span>
               </div>
             )}
-            {shop.contact_phone && (
+            {shop.phone && (
               <div className="flex items-center gap-3 text-[#827A73] text-sm">
                 <Phone className="w-5 h-5 text-zinc-900 shrink-0" />
-                <span>{shop.contact_phone}</span>
+                <span>{shop.phone}</span>
               </div>
             )}
-            {shop.contact_email && (
+            {shop.email && (
               <div className="flex items-center gap-3 text-[#827A73] text-sm">
                 <Mail className="w-5 h-5 text-zinc-900 shrink-0" />
-                <span>{shop.contact_email}</span>
+                <span>{shop.email}</span>
               </div>
             )}
           </div>

@@ -28,6 +28,8 @@ interface Job {
   customer?: Customer;
   service?: Service;
   custom_order_data?: Record<string, string>;
+  is_rush?: boolean;
+  rush_fee?: number | string;
 }
 
 interface MeasurementData {
@@ -118,7 +120,14 @@ export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readon
             <ArrowLeft size={20} />
           </button>
           <div>
-            <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">{job.order_number}</h1>
+            <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight flex items-center gap-2">
+              {job.order_number}
+              {job.is_rush && (
+                <span className="inline-flex items-center gap-1 text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full animate-pulse border border-amber-200">
+                  ⚡ Rush
+                </span>
+              )}
+            </h1>
             <p className="text-[#827A73] text-sm mt-1">Update production status</p>
           </div>
         </div>
@@ -153,23 +162,63 @@ export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readon
             <span className="text-[#A8A19A] block mb-1">Service</span>
             <span className="text-[#524A44] font-medium">{job.service?.name}</span>
           </div>
+          {job.is_rush && (
+            <div>
+              <span className="text-[#A8A19A] block mb-1">⚡ Rush Fee</span>
+              <span className="text-[#B26959] font-semibold">₱{Number.parseFloat(job.rush_fee as string || '0').toFixed(2)}</span>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Custom Specifications Card */}
-      {job.custom_order_data && Object.keys(job.custom_order_data).length > 0 ? (
+      {job.custom_order_data && Object.keys(job.custom_order_data).filter(k => k !== 'roster').length > 0 ? (
         <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 mb-6">
           <h2 className="text-lg font-medium text-[#2D2A26] mb-4">📋 Custom Specifications</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
-            {Object.entries(job.custom_order_data).map(([label, value]) => (
-              <div key={label}>
-                <span className="text-[#A8A19A] block mb-1">{label}</span>
-                <span className="text-[#524A44] font-medium">{value || '—'}</span>
-              </div>
-            ))}
+            {Object.entries(job.custom_order_data)
+              .filter(([label]) => label !== 'roster')
+              .map(([label, value]) => (
+                <div key={label}>
+                  <span className="text-[#A8A19A] block mb-1">{label}</span>
+                  <span className="text-[#524A44] font-medium">{String(value || '—')}</span>
+                </div>
+              ))}
           </div>
         </div>
       ) : null}
+
+      {/* Team Roster / Size Sheet Table Card */}
+      {job.custom_order_data && (job.custom_order_data as any).roster && Array.isArray((job.custom_order_data as any).roster) && (job.custom_order_data as any).roster.length > 0 && (
+        <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 mb-6">
+          <h2 className="text-lg font-medium text-[#2D2A26] mb-4">👕 Team Roster & Size Sheet</h2>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs divide-y divide-zinc-200">
+              <thead>
+                <tr>
+                  <th className="pb-2 font-semibold text-zinc-600">Player/Employee Name</th>
+                  <th className="pb-2 font-semibold text-zinc-600 w-24">Number</th>
+                  <th className="pb-2 font-semibold text-zinc-600 w-24">Size</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-zinc-150">
+                {(job.custom_order_data as any).roster.map((row: any, idx: number) => (
+                  <tr key={idx}>
+                    <td className="py-2.5 font-medium text-zinc-800">{row.name}</td>
+                    <td className="py-2.5 font-mono text-zinc-600 font-bold">{row.number || '—'}</td>
+                    <td className="py-2.5 text-zinc-700">
+                      <span className="px-2 py-0.5 bg-zinc-100 rounded text-[10px] font-bold">{row.size}</span>
+                      {row.size === 'Custom' && row.custom_details && (
+                        <span className="ml-2 text-zinc-500 font-normal italic">({row.custom_details})</span>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Update Status</h2>

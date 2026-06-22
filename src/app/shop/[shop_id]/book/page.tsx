@@ -64,7 +64,36 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
   const [selectedServiceId, setSelectedServiceId] = useState('');
   const [customer, setCustomer] = useState({ name: '', email: '', phone: '' });
   const [remarks, setRemarks] = useState('');
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+
+  // Payment State
+  const [paymentMethod, setPaymentMethod] = useState('cash');
+  const [paymentReference, setPaymentReference] = useState('');
+  const [paymentReceiptUrl, setPaymentReceiptUrl] = useState('');
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
+
+  const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadingReceipt(true);
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const res = await api.post(`/public/shops/${params.shop_id}/upload-receipt`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      if (res.data.success) {
+        setPaymentReceiptUrl(res.data.data.url);
+      }
+    } catch (err) {
+      console.error('Failed to upload receipt image:', err);
+      alert('Failed to upload receipt. Please make sure it is a valid image (PNG/JPG/JPEG).');
+    } finally {
+      setUploadingReceipt(false);
+    }
+  };
 
   const TYPES_REQUIRING_SERVICE = ['measurement', 'fitting', 'alteration'];
   const BOOKING_TYPES = [
@@ -89,7 +118,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
 
     // Fetch catalog item details if provided in query params
     if (itemId) {
-      api.get(`/shops/${params.shop_id}/catalog/${itemId}`)
+      api.get(`/catalog/${params.shop_id}/${itemId}`)
         .then(res => {
           setCatalogItem(res.data.data);
         })
@@ -128,6 +157,9 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
         shop_branch_id: selectedBranchId ? Number(selectedBranchId) : null,
         service_id: selectedServiceId ? Number(selectedServiceId) : null,
         duration_minutes: Number(durationMinutes),
+        payment_method: paymentMethod,
+        payment_reference: paymentMethod !== 'cash' ? paymentReference : null,
+        payment_receipt_path: paymentMethod !== 'cash' ? paymentReceiptUrl : null,
       });
       setSuccess(true);
     } catch (err) {
@@ -474,6 +506,69 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
                   ))}
                 </div>
               )}
+
+              {/* Manual Payment Section */}
+              <div className="pt-4 border-t border-[#EBE6E0] space-y-4">
+                <h3 className="text-lg font-medium">Payment / Booking Deposit</h3>
+                <p className="text-xs text-[#827A73]">Select how you would like to handle your reservation/fitting deposit (if applicable).</p>
+                
+                <div className="grid grid-cols-3 gap-2">
+                  {[
+                    { value: 'cash', label: 'Cash on Shop' },
+                    { value: 'gcash', label: 'GCash' },
+                    { value: 'bank_transfer', label: 'Bank Transfer' }
+                  ].map(m => (
+                    <button
+                      type="button" key={m.value}
+                      onClick={() => setPaymentMethod(m.value)}
+                      className={`py-2.5 px-3 rounded-lg border text-center text-xs font-semibold transition-all cursor-pointer ${
+                        paymentMethod === m.value
+                          ? 'border-[#9A8073] bg-[#9A8073]/5 text-[#2D2A26]'
+                          : 'border-[#EBE6E0] bg-white text-[#524A44] hover:border-[#9A8073]/40'
+                      }`}
+                    >
+                      {m.label}
+                    </button>
+                  ))}
+                </div>
+
+                {paymentMethod !== 'cash' && (
+                  <div className="bg-zinc-50 border border-zinc-100 p-4 rounded-xl space-y-3">
+                    <p className="text-xs text-zinc-700">
+                      Please send payment to the shop&apos;s verified GCash / Bank details:
+                      <br />
+                      <strong className="text-zinc-950 font-bold">GCash: 0950 5585 800 (Printify Shop)</strong>
+                      <br />
+                      <strong className="text-zinc-950 font-bold">Bank: BPI - 1234-5678-90 (Sutura Account)</strong>
+                    </p>
+                    
+                    <div className="space-y-2">
+                      <label htmlFor="ref-code" className="text-xs font-medium text-[#524A44] block">Transaction Reference Code *</label>
+                      <input 
+                        id="ref-code"
+                        type="text" required
+                        value={paymentReference}
+                        onChange={(e) => setPaymentReference(e.target.value)}
+                        placeholder="Enter the 13-digit GCash/Bank Ref Code"
+                        className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-[#2D2A26] text-xs focus:outline-none focus:border-[#9A8073]"
+                      />
+                    </div>
+
+                    <div className="space-y-2">
+                      <label htmlFor="receipt-file" className="text-xs font-medium text-[#524A44] block">Upload Receipt Image *</label>
+                      <input 
+                        id="receipt-file"
+                        type="file" required={!paymentReceiptUrl}
+                        accept="image/*"
+                        onChange={handleReceiptUpload}
+                        className="w-full text-xs text-[#827A73]"
+                      />
+                      {uploadingReceipt && <p className="text-[10px] text-[#9A8073] animate-pulse">Uploading proof of payment...</p>}
+                      {paymentReceiptUrl && <p className="text-[10px] text-green-600 font-medium">✓ Proof of payment uploaded successfully!</p>}
+                    </div>
+                  </div>
+                )}
+              </div>
 
               <div className="pt-6">
                 <button 

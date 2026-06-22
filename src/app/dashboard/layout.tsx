@@ -5,7 +5,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Tag, Home, Ruler } from 'lucide-react';
+import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Tag, Home, Ruler, Star, CreditCard } from 'lucide-react';
 import api from '@/lib/axios';
 import NotificationBell from '@/components/NotificationBell';
 import BrandLogo from '@/components/BrandLogo';
@@ -82,25 +82,52 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!mounted || !isAuthenticated) return null;
 
-  const NAV_ITEMS = [
-    { name: 'Home',          path: '/dashboard',             icon: Home },
-    { name: 'Jobs',          path: '/dashboard/jobs',        icon: Scissors },
-    { name: 'Premade Orders',path: '/dashboard/orders',      icon: Package },
-    { name: 'Appointments',  path: '/dashboard/appointments',icon: Calendar },
-    { name: 'Catalog',       path: '/dashboard/catalog',     icon: ShoppingBag },
-    { name: 'Customers',     path: '/dashboard/customers',   icon: Users },
-    { name: 'Services',      path: '/dashboard/services',    icon: Package },
-    { name: 'Specializations',path: '/dashboard/specializations',icon: Tag },
-    { name: 'Staff',         path: '/dashboard/staff',       icon: UserCog },
-    { name: 'Branches',      path: '/dashboard/branches',    icon: Building2 },
-    { name: 'Support',       path: '/dashboard/support',     icon: LifeBuoy },
-    { name: 'Reports',       path: '/dashboard/reports',     icon: LayoutDashboard },
-    { name: 'Shop Settings', path: '/dashboard/settings',    icon: Settings },
+  const NAV_GROUPS = [
+    {
+      title: 'Overview',
+      items: [
+        { name: 'Home',          path: '/dashboard',             icon: Home },
+        { name: 'Reports',       path: '/dashboard/reports',     icon: LayoutDashboard },
+        { name: 'Payments Queue',path: '/dashboard/payments',    icon: CreditCard },
+      ]
+    },
+    {
+      title: 'Workroom',
+      items: [
+        { name: 'Jobs',          path: '/dashboard/jobs',        icon: Scissors },
+        { name: 'Appointments',  path: '/dashboard/appointments',icon: Calendar },
+        { name: 'Premade Orders',path: '/dashboard/orders',      icon: Package },
+      ]
+    },
+    {
+      title: 'Showroom',
+      items: [
+        { name: 'Catalog',       path: '/dashboard/catalog',     icon: ShoppingBag },
+        { name: 'Services',      path: '/dashboard/services',    icon: Package },
+        { name: 'Specializations',path: '/dashboard/specializations',icon: Tag },
+      ]
+    },
+    {
+      title: 'People & Support',
+      items: [
+        { name: 'Customers',     path: '/dashboard/customers',   icon: Users },
+        { name: 'Reviews',       path: '/dashboard/reviews',     icon: Star },
+        { name: 'Support',       path: '/dashboard/support',     icon: LifeBuoy },
+      ]
+    },
+    {
+      title: 'Administration',
+      items: [
+        { name: 'Staff',         path: '/dashboard/staff',       icon: UserCog },
+        { name: 'Branches',      path: '/dashboard/branches',    icon: Building2 },
+        { name: 'Shop Settings', path: '/dashboard/settings',    icon: Settings },
+      ]
+    }
   ];
 
   const getNavItemClass = (path: string) => {
     const isActive = pathname === path || (path !== '/dashboard' && pathname.startsWith(path));
-    return `flex items-center gap-3 px-4 py-3 mx-3 rounded-xl text-[15px] font-medium transition-all duration-200 ${
+    return `flex items-center gap-3 px-4 py-2.5 mx-3 rounded-xl text-[14px] font-medium transition-all duration-200 ${
       isActive 
         ? 'bg-[#F0EAE3] text-[#2D2A26]' 
         : 'text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26]'
@@ -110,7 +137,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   return (
     <div className="h-screen bg-[#FAF6F3] flex flex-col overflow-hidden">
       {/* Top Navigation Bar (Facebook Style) */}
-      <header className="h-[64px] bg-white border-b border-[#EBE6E0] flex items-center justify-between px-6 sticky top-0 z-50">
+      <header className="print:hidden h-[64px] bg-white border-b border-[#EBE6E0] flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center w-[256px]">
           <BrandLogo />
         </div>
@@ -174,20 +201,29 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         )}
 
         {/* Sidebar Navigation */}
-        <aside className={`absolute inset-y-0 left-0 z-40 w-[280px] bg-[#FAF6F3] overflow-y-auto transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-          <div className="py-4 space-y-1">
-            {NAV_ITEMS.map((item) => (
-              <Link key={item.path} href={item.path} className={getNavItemClass(item.path)}>
-                <item.icon size={20} className={pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path)) ? 'text-[#9A8073]' : 'text-[#827A73]'} />
-                {item.name}
-              </Link>
+        <aside className={`print:hidden absolute inset-y-0 left-0 z-40 w-[280px] bg-[#FAF6F3] overflow-y-auto transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+          <div className="py-4 space-y-6">
+            {NAV_GROUPS.map((group) => (
+              <div key={group.title} className="space-y-1.5">
+                <h3 className="px-7 text-[10px] font-bold uppercase tracking-wider text-[#A8A19A] select-none">
+                  {group.title}
+                </h3>
+                <div className="space-y-0.5">
+                  {group.items.map((item) => (
+                    <Link key={item.path} href={item.path} className={getNavItemClass(item.path)}>
+                      <item.icon size={18} className={pathname === item.path || (item.path !== '/dashboard' && pathname.startsWith(item.path)) ? 'text-[#9A8073]' : 'text-[#827A73]'} />
+                      {item.name}
+                    </Link>
+                  ))}
+                </div>
+              </div>
             ))}
           </div>
         </aside>
 
         {/* Page Content */}
-        <main className="flex-1 p-8 overflow-y-auto bg-[#FAF6F3]">
-          <div className="max-w-[1400px] mx-auto">
+        <main className="flex-1 p-8 overflow-y-auto bg-[#FAF6F3] print:p-0 print:overflow-visible print:bg-white">
+          <div className="max-w-[1400px] mx-auto print:max-w-none">
              {children}
           </div>
         </main>

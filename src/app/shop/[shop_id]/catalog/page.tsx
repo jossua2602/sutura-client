@@ -26,7 +26,7 @@ export default function PublicCatalogPage({ params }: Readonly<{ params: Readonl
 
   useEffect(() => {
     // We would ideally fetch the shop details here too.
-    api.get(`/shops/${params.shop_id}/catalog`)
+    api.get(`/catalog/${params.shop_id}`)
       .then(res => {
         setItems(res.data.data);
         setLoading(false);

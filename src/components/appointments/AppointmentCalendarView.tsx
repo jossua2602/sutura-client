@@ -1,0 +1,387 @@
+import React from 'react';
+import {
+  ChevronLeft, ChevronRight, ArrowLeft, Clock, Eye, Play, CheckSquare, Scissors, Loader2,
+  Calendar as CalendarIcon
+} from 'lucide-react';
+import {
+  Appointment, AppointmentType, AppointmentStatus, TYPE_CONFIG, STATUS_CONFIG,
+  StatusBadge, TypeBadge
+} from './appointmentHelpers';
+
+interface AppointmentCalendarViewProps {
+  appointments: Appointment[];
+  currentDate: Date;
+  setCurrentDate: (d: Date) => void;
+  selectedDay: Date | null;
+  setSelectedDay: (d: Date | null) => void;
+  calSubMode: 'month' | 'day';
+  setCalSubMode: (m: 'month' | 'day') => void;
+  hoveredAptId: number | null;
+  setHoveredAptId: (id: number | null) => void;
+  actionLoadingId: number | null;
+  isOwnerOrManager: boolean;
+  todayStr: string;
+  minTimeFor: (dateStr: string) => string;
+
+  // Actions
+  onReviewClick: (apt: Appointment) => void;
+  onStartClick: (aptId: number) => void;
+  onCompleteClick: (apt: Appointment) => void;
+  onCreateJobClick: (apt: Appointment) => void;
+  onDetailsClick: (apt: Appointment) => void;
+  onAddClick: (dayStr: string, defaultTime: string) => void;
+}
+
+export default function AppointmentCalendarView({
+  appointments, currentDate, setCurrentDate, selectedDay, setSelectedDay,
+  calSubMode, setCalSubMode, hoveredAptId, setHoveredAptId, actionLoadingId,
+  isOwnerOrManager, todayStr, minTimeFor,
+  onReviewClick, onStartClick, onCompleteClick, onCreateJobClick, onDetailsClick, onAddClick
+}: AppointmentCalendarViewProps) {
+
+  const year = currentDate.getFullYear();
+  const month = currentDate.getMonth();
+  const daysInMonth = new Date(year, month + 1, 0).getDate();
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const daysArray = Array.from({ length: daysInMonth }, (_, i) => i + 1);
+  const paddingDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
+
+  const prevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const nextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+  if (calSubMode === 'month') {
+    return (
+      <div className="p-6">
+        {/* Nav */}
+        <div className="flex items-center justify-between mb-5">
+          <div className="flex items-center gap-3">
+            <h2 className="text-xl font-bold text-[#2D2A26]">
+              {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+            </h2>
+            <button onClick={() => setCurrentDate(new Date())} className="text-xs font-semibold px-3 py-1 rounded-lg border border-[#EBE6E0] bg-[#FAF6F3] text-[#9A8073] hover:bg-[#F0EAE3] transition-colors">Today</button>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={prevMonth} className="p-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg hover:bg-[#F0EAE3] text-[#2D2A26] transition-colors"><ChevronLeft size={18} /></button>
+            <button onClick={nextMonth} className="p-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg hover:bg-[#F0EAE3] text-[#2D2A26] transition-colors"><ChevronRight size={18} /></button>
+          </div>
+        </div>
+
+        {/* Type legend */}
+        <div className="flex items-center gap-4 mb-4 flex-wrap">
+          {(Object.keys(TYPE_CONFIG) as AppointmentType[]).map(t => (
+            <div key={t} className="flex items-center gap-1.5">
+              <span className={`w-2.5 h-2.5 rounded-full ${TYPE_CONFIG[t].dot}`} />
+              <span className="text-xs text-[#827A73]">{TYPE_CONFIG[t].label}</span>
+            </div>
+          ))}
+        </div>
+
+        {/* Day headers */}
+        <div className="grid grid-cols-7 gap-px mb-px">
+          {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(d => (
+            <div key={d} className="text-center text-[11px] font-semibold text-[#A8A19A] uppercase tracking-wider py-2 bg-[#FAF6F3]/50">{d}</div>
+          ))}
+        </div>
+
+        {/* Day cells */}
+        <div className="grid grid-cols-7 gap-px bg-[#EBE6E0]">
+          {paddingDays.map(i => <div key={`e-${i}`} className="min-h-28 bg-white/40 p-1.5" />)}
+          {daysArray.map(day => {
+            const y = year, m = String(month + 1).padStart(2, '0'), d = String(day).padStart(2, '0');
+            const dateStr = `${y}-${m}-${d}`;
+            const dayEvents = appointments.filter(a => a.scheduled_at.startsWith(dateStr));
+            const hasPending = dayEvents.some(a => a.status === 'pending');
+            const todayRef = new Date();
+            const isToday = y === todayRef.getFullYear() && month === todayRef.getMonth() && day === todayRef.getDate();
+            const isPast = new Date(y, month, day) < new Date(todayRef.getFullYear(), todayRef.getMonth(), todayRef.getDate());
+            const dayTextClass = isToday
+              ? 'bg-[#9A8073] text-white'
+              : isPast
+                ? 'text-[#C4BDB6]'
+                : 'text-[#524A44] group-hover:text-[#2D2A26]';
+            return (
+              <div
+                key={day}
+                onClick={() => { setSelectedDay(new Date(y, month, day)); setCalSubMode('day'); }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    setSelectedDay(new Date(y, month, day));
+                    setCalSubMode('day');
+                  }
+                }}
+                role="button"
+                tabIndex={0}
+                className={`min-h-28 p-1.5 group transition-colors ${isPast ? 'bg-[#FAF6F3]/40 cursor-default' : 'bg-white cursor-pointer hover:bg-[#FAF6F3]'} ${!isPast && hasPending ? 'ring-inset ring-1 ring-amber-300' : ''}`}
+              >
+                <div className="flex items-center justify-between mb-1">
+                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${dayTextClass}`}>
+                    {day}
+                  </span>
+                  {dayEvents.length > 0 && (
+                    <span className={`text-[9px] font-medium ${isPast ? 'text-[#C4BDB6]' : 'text-[#A8A19A]'}`}>{dayEvents.length}</span>
+                  )}
+                </div>
+                <div className="space-y-0.5">
+                  {dayEvents.slice(0, 3).map(event => {
+                    const tc = TYPE_CONFIG[event.appointment_type];
+                    const sc = STATUS_CONFIG[event.status];
+                    const time = new Date(event.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true });
+                    const eventColorClass = isPast
+                      ? 'bg-gray-50 border-gray-100 text-gray-400'
+                      : `${tc.bg} ${tc.border} ${tc.text} ${sc.opacity}`;
+                    const borderDashedClass = !isPast && event.status === 'pending' ? 'border-dashed' : '';
+                    return (
+                      <div key={event.id} className={`text-[10px] px-1.5 py-0.5 rounded flex items-center gap-1 border truncate ${eventColorClass} ${borderDashedClass}`}>
+                        <span className={`shrink-0 w-1.5 h-1.5 rounded-full ${isPast ? 'bg-gray-300' : tc.dot}`} />
+                        <span className="truncate">{time} {event.customer?.name}</span>
+                      </div>
+                    );
+                  })}
+                  {dayEvents.length > 3 && (
+                    <div className={`text-[10px] font-medium pl-1 ${isPast ? 'text-[#C4BDB6]' : 'text-[#9A8073]'}`}>+{dayEvents.length - 3} more</div>
+                  )}
+                  {!isPast && dayEvents.length === 0 && (
+                    <div className="text-[9px] text-[#D4CEC9] italic mt-1">Click to add</div>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  // ── DAY VIEW ──────────────────────────────────────────────────────
+  const dayDate = selectedDay || new Date();
+  const dayStr = `${dayDate.getFullYear()}-${String(dayDate.getMonth() + 1).padStart(2, '0')}-${String(dayDate.getDate()).padStart(2, '0')}`;
+  const dayEvents = appointments
+    .filter(a => a.scheduled_at.startsWith(dayStr))
+    .sort((a, b) => new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime());
+
+  const HOUR_START = 7;
+  const HOUR_END = 20;
+  const PX_PER_MIN = 1.5;
+
+  const todayMidnight = new Date(); todayMidnight.setHours(0, 0, 0, 0);
+  const dayMidnight = new Date(dayDate); dayMidnight.setHours(0, 0, 0, 0);
+  const isDayPast = dayMidnight < todayMidnight;
+  const isDayToday = dayMidnight.getTime() === todayMidnight.getTime();
+
+  // Current time indicator position
+  const now = new Date();
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  const nowOffsetMins = nowMins - HOUR_START * 60;
+  const nowTopPx = nowOffsetMins * PX_PER_MIN;
+  const showNowLine = isDayToday && nowOffsetMins >= 0 && nowOffsetMins <= (HOUR_END - HOUR_START) * 60;
+
+  const defaultTimeForDay = () => {
+    if (isDayToday) {
+      const rounded = Math.ceil((now.getHours() * 60 + now.getMinutes() + 30) / 15) * 15;
+      return `${String(Math.floor(rounded / 60) % 24).padStart(2, '0')}:${String(rounded % 60).padStart(2, '0')}`;
+    }
+    return '09:00';
+  };
+
+  const prevDay = () => { const d = new Date(dayDate); d.setDate(d.getDate() - 1); setSelectedDay(d); };
+  const nextDay = () => { const d = new Date(dayDate); d.setDate(d.getDate() + 1); setSelectedDay(d); };
+
+  const renderDayEmptyState = () => {
+    if (isDayPast) {
+      return <p className="text-xs text-[#C4BDB6] italic">Read-only — this date has passed</p>;
+    }
+    if (isOwnerOrManager) {
+      return (
+        <button
+          type="button"
+          onClick={() => onAddClick(dayStr, defaultTimeForDay())}
+          className="text-xs font-medium text-[#9A8073] hover:text-[#9A8073]/70 underline underline-offset-2 transition-colors"
+        >
+          + Add appointment for this day
+        </button>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <div className="flex flex-col">
+      {/* Day nav */}
+      <div className="flex items-center justify-between px-6 py-4 border-b border-[#EBE6E0] bg-[#FAF6F3]/40">
+        <div className="flex items-center gap-3">
+          <button onClick={() => setCalSubMode('month')} className="flex items-center gap-1.5 text-sm font-medium text-[#9A8073] hover:text-[#2D2A26] transition-colors">
+            <ArrowLeft size={16} />
+            {currentDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+          </button>
+          <span className="text-[#EBE6E0]">›</span>
+          <h2 className="text-lg font-bold text-[#2D2A26]">
+            {dayDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+          </h2>
+          {dayEvents.length > 0 && (
+            <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-[#9A8073]/10 text-[#9A8073]">
+              {dayEvents.length} appointment{dayEvents.length === 1 ? '' : 's'}
+            </span>
+          )}
+        </div>
+        <div className="flex gap-2">
+          <button onClick={prevDay} className="p-2 bg-white border border-[#EBE6E0] rounded-lg hover:bg-[#F0EAE3] text-[#2D2A26] transition-colors"><ChevronLeft size={16} /></button>
+          <button onClick={() => setSelectedDay(new Date())} className="text-xs font-semibold px-3 py-1 rounded-lg border border-[#EBE6E0] bg-white text-[#9A8073] hover:bg-[#F0EAE3] transition-colors">Today</button>
+          <button onClick={nextDay} className="p-2 bg-white border border-[#EBE6E0] rounded-lg hover:bg-[#F0EAE3] text-[#2D2A26] transition-colors"><ChevronRight size={16} /></button>
+        </div>
+      </div>
+
+      <div className="flex overflow-hidden">
+        {/* Time labels */}
+        <div className="w-16 shrink-0 border-r border-[#EBE6E0] bg-[#FAF6F3]/30">
+          {Array.from({ length: HOUR_END - HOUR_START }, (_, i) => {
+            const h = HOUR_START + i;
+            let lbl = '';
+            if (h < 12) {
+              lbl = `${h} AM`;
+            } else if (h === 12) {
+              lbl = '12 PM';
+            } else {
+              lbl = `${h - 12} PM`;
+            }
+            return (
+              <div key={h} style={{ height: `${60 * PX_PER_MIN}px` }} className="flex items-start justify-end pr-3 pt-1">
+                <span className="text-[10px] text-[#A8A19A] font-medium">{lbl}</span>
+              </div>
+            );
+          })}
+        </div>
+
+        {/* Events area */}
+        <div className="flex-1 relative bg-white" style={{ height: `${(HOUR_END - HOUR_START) * 60 * PX_PER_MIN}px` }}>
+          {/* Hour lines */}
+          {Array.from({ length: HOUR_END - HOUR_START }, (_, i) => (
+            <div key={i} className="absolute left-0 right-0 border-t border-[#EBE6E0]/70" style={{ top: `${i * 60 * PX_PER_MIN}px` }} />
+          ))}
+          {/* Half-hour dashes */}
+          {Array.from({ length: HOUR_END - HOUR_START }, (_, i) => (
+            <div key={`h-${i}`} className="absolute left-0 right-0 border-t border-[#EBE6E0]/30 border-dashed" style={{ top: `${(i * 60 + 30) * PX_PER_MIN}px` }} />
+          ))}
+
+          {/* Current time indicator */}
+          {showNowLine && (
+            <div className="absolute left-0 right-0 z-20 flex items-center" style={{ top: `${nowTopPx}px` }}>
+              <div className="w-2.5 h-2.5 rounded-full bg-rose-500 -ml-1.5 shrink-0" />
+              <div className="flex-1 border-t-2 border-rose-500" />
+            </div>
+          )}
+
+          {/* Appointment blocks */}
+          {dayEvents.map(event => {
+            const startDate = new Date(event.scheduled_at);
+            const startMins = startDate.getHours() * 60 + startDate.getMinutes();
+            const offsetMins = startMins - HOUR_START * 60;
+            const durMins = event.duration_minutes || 60;
+            const topPx = Math.max(0, offsetMins * PX_PER_MIN);
+            const heightPx = Math.max(42, durMins * PX_PER_MIN);
+            const tc = TYPE_CONFIG[event.appointment_type];
+            const sc = STATUS_CONFIG[event.status];
+            const isHovered = hoveredAptId === event.id;
+            const isLoading = actionLoadingId === event.id;
+            const isPending = event.status === 'pending';
+            const isConfirmed = event.status === 'confirmed';
+            const isInProg = event.status === 'in_progress';
+            const isCompleted = event.status === 'completed';
+            const isClosed = ['cancelled', 'no_show'].includes(event.status);
+
+            return (
+              <div
+                key={event.id}
+                className={`absolute left-2 right-2 rounded-lg border overflow-hidden transition-all duration-150 ${tc.bg} ${tc.border} ${sc.opacity} ${isPending ? 'border-dashed' : sc.borderStyle} ${isHovered && !isClosed ? 'shadow-lg z-10 ring-2 ring-[#9A8073]/30' : 'z-1'}`}
+                style={{ top: `${topPx}px`, height: `${heightPx}px` }}
+                onMouseEnter={() => setHoveredAptId(event.id)}
+                onMouseLeave={() => setHoveredAptId(null)}
+              >
+                <div className="flex h-full">
+                  {/* Type color bar */}
+                  <div className={`w-1 shrink-0 ${tc.dot} ${isInProg ? 'animate-pulse' : ''}`} />
+
+                  <div className="flex-1 px-2 py-1.5 min-w-0 flex flex-col justify-between">
+                    <div>
+                      <div className="flex items-start justify-between gap-1">
+                        <div className="min-w-0">
+                          <p className={`text-xs font-bold truncate ${tc.text} ${isClosed ? 'line-through opacity-60' : ''}`}>
+                            {event.customer?.name}
+                          </p>
+                          <p className="text-[10px] text-[#827A73] truncate">
+                            {TYPE_CONFIG[event.appointment_type].label}
+                            {event.service ? ` · ${event.service.name}` : ''}
+                            {event.assigned_staff ? ` · ${event.assigned_staff.name}` : ''}
+                          </p>
+                        </div>
+                        <StatusBadge status={event.status} />
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5">
+                        <Clock size={9} className="text-[#A8A19A]" />
+                        <span className="text-[10px] text-[#A8A19A]">
+                          {new Date(event.scheduled_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                          {' – '}
+                          {new Date(new Date(event.scheduled_at).getTime() + durMins * 60000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: true })}
+                          {` (${durMins}m)`}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Action buttons — on hover or tall block */}
+                    {(isHovered || heightPx >= 90) && !isClosed && !isLoading && (
+                      <div className="flex items-center gap-1 mt-1.5 flex-wrap">
+                        {isPending && isOwnerOrManager && (
+                          <button type="button" onClick={e => { e.stopPropagation(); onReviewClick(event); }}
+                            className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-amber-50 text-amber-700 hover:bg-amber-100 border border-amber-200 transition-colors">
+                            <Eye size={10} /> Review
+                          </button>
+                        )}
+                        {isConfirmed && (
+                          <button type="button" onClick={e => { e.stopPropagation(); onStartClick(event.id); }}
+                            className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-orange-50 text-orange-700 hover:bg-orange-100 border border-orange-200 transition-colors">
+                            <Play size={10} /> Start
+                          </button>
+                        )}
+                        {isInProg && (
+                          <button type="button" onClick={e => { e.stopPropagation(); onCompleteClick(event); }}
+                            className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors">
+                            <CheckSquare size={10} /> Complete
+                          </button>
+                        )}
+                        {isCompleted && isOwnerOrManager && (
+                          <button type="button" onClick={e => { e.stopPropagation(); onCreateJobClick(event); }}
+                            className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-[#9A8073]/10 text-[#9A8073] hover:bg-[#FAF6F3] border border-[#9A8073]/20 transition-colors">
+                            <Scissors size={10} /> Create Job
+                          </button>
+                        )}
+                        <button type="button" onClick={e => { e.stopPropagation(); onDetailsClick(event); }}
+                          className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-[#FAF6F3] text-[#827A73] hover:bg-[#F0EAE3] border border-[#EBE6E0] transition-colors">
+                          <Eye size={10} /> Details
+                        </button>
+                      </div>
+                    )}
+                    {isLoading && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Loader2 size={12} className="animate-spin text-[#9A8073]" />
+                        <span className="text-[10px] text-[#A8A19A]">Updating...</span>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Empty state */}
+          {dayEvents.length === 0 && (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-2">
+              <CalendarIcon size={36} className="text-[#EBE6E0]" />
+              <p className="text-sm text-[#A8A19A]">No appointments on this day</p>
+              {renderDayEmptyState()}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}

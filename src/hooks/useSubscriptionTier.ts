@@ -36,7 +36,7 @@ export function useSubscriptionTier(): UseSubscriptionTierReturn {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!shop) {
+    if (!shop?.id) {
       setTimeout(() => setLoading(false), 0);
       return;
     }
@@ -63,7 +63,7 @@ export function useSubscriptionTier(): UseSubscriptionTierReturn {
         setTier('premium');
         setLoading(false);
       });
-  }, [shop]);
+  }, [shop?.id]);
 
   /**
    * Returns true if the feature is locked for the current tier.
