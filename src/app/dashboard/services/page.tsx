@@ -4,6 +4,7 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { Plus } from 'lucide-react';
+import { useToast } from '@/context/ToastContext';
 
 import { Service, Specialization } from '@/components/services/serviceHelpers';
 import ServiceFormModal from '@/components/services/ServiceFormModal';
@@ -13,6 +14,7 @@ import ServiceListView from '@/components/services/ServiceListView';
 
 export default function ServicesPage() {
   const { shop, user } = useAuthStore();
+  const toast = useToast();
   const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -47,7 +49,7 @@ export default function ServicesPage() {
         console.error(err);
         setLoading(false);
       });
-  }, [shop?.id, user?.id]);
+  }, [shop, user]);
 
   useEffect(() => {
     fetchServices();
@@ -69,16 +71,17 @@ export default function ServicesPage() {
         name: `${service.name} (Copy)`,
         description: service.description || '',
         category: service.category,
-        base_price: parseFloat(service.base_price),
+        base_price: Number.parseFloat(service.base_price),
         estimated_days: service.estimated_days,
         custom_fields: service.custom_fields || [],
         is_active: service.is_active
       };
       const res = await api.post(`/shops/${shop.id}/services`, payload);
       setServices(prev => [res.data.data, ...prev]);
+      toast.success('Service duplicated successfully.');
     } catch (err) {
       console.error(err);
-      alert('Failed to duplicate service');
+      toast.error('Failed to duplicate service. Please try again.');
     } finally {
       setActionLoadingId(null);
     }
@@ -93,9 +96,11 @@ export default function ServicesPage() {
       if (editingId) {
         const res = await api.put(`/shops/${shop.id}/services/${editingId}`, payload);
         setServices(prev => prev.map(s => s.id === editingId ? res.data.data : s));
+        toast.success('Service updated successfully.');
       } else {
         const res = await api.post(`/shops/${shop.id}/services`, payload);
         setServices(prev => [res.data.data, ...prev]);
+        toast.success('Service created successfully.');
       }
       setIsModalOpen(false);
       setEditingId(null);
@@ -115,11 +120,24 @@ export default function ServicesPage() {
       setServices(prev => prev.filter(s => s.id !== deletingId));
       setIsDeleteModalOpen(false);
       setDeletingId(null);
+      toast.success('Service deleted.');
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to delete service');
+      toast.error(error.response?.data?.message || 'Failed to delete service.');
     } finally {
       setIsSubmitting(false);
+    }
+  };
+
+  const handleBulkDelete = async (ids: number[]) => {
+    if (!shop) return;
+    try {
+      await Promise.all(ids.map(id => api.delete(`/shops/${shop.id}/services/${id}`)));
+      setServices(prev => prev.filter(s => !ids.includes(s.id)));
+      toast.success(`${ids.length} service${ids.length > 1 ? 's' : ''} deleted.`);
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to delete some services. Please try again.');
     }
   };
 
@@ -169,7 +187,6 @@ export default function ServicesPage() {
       </div>
 
       <ServiceListView
-        services={services}
         filteredServices={filtered}
         loading={loading}
         search={search}
@@ -182,6 +199,7 @@ export default function ServicesPage() {
         onManagePricing={handleManagePricingClick}
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
+        onBulkDelete={handleBulkDelete}
       />
 
       <ServiceFormModal
@@ -192,7 +210,6 @@ export default function ServicesPage() {
           setError('');
         }}
         editingId={editingId}
-        services={services}
         onSubmit={handleFormSubmit}
         isSubmitting={isSubmitting}
         error={error}

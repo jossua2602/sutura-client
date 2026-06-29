@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useToast } from '@/context/ToastContext';
 import { Plus } from 'lucide-react';
 import SubscriptionGate from '@/components/SubscriptionGate';
 import { Staff } from '@/components/staff/staffHelpers';
@@ -12,6 +13,7 @@ import StaffListView from '@/components/staff/StaffListView';
 
 export default function StaffPage() {
   const { shop, user } = useAuthStore();
+  const toast = useToast();
   const [staff, setStaff] = useState<Staff[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -47,7 +49,7 @@ export default function StaffPage() {
     } else if (user?.id && !shop?.id) {
       setTimeout(() => setLoading(false), 0);
     }
-  }, [shop?.id, user?.id]);
+  }, [shop, user]);
 
   // Initial load + live refresh every 30 s so statuses stay current
   useEffect(() => {
@@ -56,7 +58,7 @@ export default function StaffPage() {
     return () => clearInterval(interval);
   }, [fetchStaff]);
 
-  const handleAddStaff = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleAddStaff = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!shop) return;
     setSaving(true);
@@ -112,7 +114,7 @@ export default function StaffPage() {
       fetchStaff();
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to save staff');
+      toast.error(error.response?.data?.message || 'Failed to save staff');
     } finally {
       setSaving(false);
     }
@@ -150,7 +152,7 @@ export default function StaffPage() {
       fetchStaff();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to remove staff');
+      toast.error(error.response?.data?.message || 'Failed to remove staff');
     } finally {
       setSaving(false);
     }

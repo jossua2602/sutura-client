@@ -1,4 +1,3 @@
-import React from 'react';
 
 export interface ServicePricing {
   id: number;
@@ -35,6 +34,7 @@ export interface Service {
   base_price: string;
   estimated_days: number;
   is_active: boolean;
+  image_url?: string | null;
   custom_fields?: ServiceField[] | null;
   pricing?: ServicePricing[];
 }

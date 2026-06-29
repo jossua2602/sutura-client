@@ -1,5 +1,7 @@
+export type FulfillmentType = 'shipping' | 'delivery' | 'pickup';
+
 export interface FulfillmentInfo {
-  type: 'shipping' | 'delivery' | 'pickup';
+  type: FulfillmentType;
   name: string;
 }
 

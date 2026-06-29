@@ -4,10 +4,10 @@ import { ShopBranch } from './branchHelpers';
 import BranchCard from './BranchCard';
 
 interface BranchListViewProps {
-  branches: ShopBranch[];
-  onAddClick: () => void;
-  onEdit: (branch: ShopBranch) => void;
-  onDelete: (id: number) => void;
+  readonly branches: ShopBranch[];
+  readonly onAddClick: () => void;
+  readonly onEdit: (branch: ShopBranch) => void;
+  readonly onDelete: (id: number) => void;
 }
 
 export default function BranchListView({

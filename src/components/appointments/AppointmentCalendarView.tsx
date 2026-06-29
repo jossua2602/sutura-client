@@ -4,38 +4,36 @@ import {
   Calendar as CalendarIcon
 } from 'lucide-react';
 import {
-  Appointment, AppointmentType, AppointmentStatus, TYPE_CONFIG, STATUS_CONFIG,
-  StatusBadge, TypeBadge
+  Appointment, AppointmentType, TYPE_CONFIG, STATUS_CONFIG,
+  StatusBadge
 } from './appointmentHelpers';
 
 interface AppointmentCalendarViewProps {
-  appointments: Appointment[];
-  currentDate: Date;
-  setCurrentDate: (d: Date) => void;
-  selectedDay: Date | null;
-  setSelectedDay: (d: Date | null) => void;
-  calSubMode: 'month' | 'day';
-  setCalSubMode: (m: 'month' | 'day') => void;
-  hoveredAptId: number | null;
-  setHoveredAptId: (id: number | null) => void;
-  actionLoadingId: number | null;
-  isOwnerOrManager: boolean;
-  todayStr: string;
-  minTimeFor: (dateStr: string) => string;
+  readonly appointments: Appointment[];
+  readonly currentDate: Date;
+  readonly setCurrentDate: (d: Date) => void;
+  readonly selectedDay: Date | null;
+  readonly setSelectedDay: (d: Date | null) => void;
+  readonly calSubMode: 'month' | 'day';
+  readonly setCalSubMode: (m: 'month' | 'day') => void;
+  readonly hoveredAptId: number | null;
+  readonly setHoveredAptId: (id: number | null) => void;
+  readonly actionLoadingId: number | null;
+  readonly isOwnerOrManager: boolean;
 
   // Actions
-  onReviewClick: (apt: Appointment) => void;
-  onStartClick: (aptId: number) => void;
-  onCompleteClick: (apt: Appointment) => void;
-  onCreateJobClick: (apt: Appointment) => void;
-  onDetailsClick: (apt: Appointment) => void;
-  onAddClick: (dayStr: string, defaultTime: string) => void;
+  readonly onReviewClick: (apt: Appointment) => void;
+  readonly onStartClick: (aptId: number) => void;
+  readonly onCompleteClick: (apt: Appointment) => void;
+  readonly onCreateJobClick: (apt: Appointment) => void;
+  readonly onDetailsClick: (apt: Appointment) => void;
+  readonly onAddClick: (dayStr: string, defaultTime: string) => void;
 }
 
 export default function AppointmentCalendarView({
   appointments, currentDate, setCurrentDate, selectedDay, setSelectedDay,
   calSubMode, setCalSubMode, hoveredAptId, setHoveredAptId, actionLoadingId,
-  isOwnerOrManager, todayStr, minTimeFor,
+  isOwnerOrManager,
   onReviewClick, onStartClick, onCompleteClick, onCreateJobClick, onDetailsClick, onAddClick
 }: AppointmentCalendarViewProps) {
 
@@ -94,13 +92,12 @@ export default function AppointmentCalendarView({
             const todayRef = new Date();
             const isToday = y === todayRef.getFullYear() && month === todayRef.getMonth() && day === todayRef.getDate();
             const isPast = new Date(y, month, day) < new Date(todayRef.getFullYear(), todayRef.getMonth(), todayRef.getDate());
-            const dayTextClass = isToday
-              ? 'bg-[#9A8073] text-white'
-              : isPast
-                ? 'text-[#C4BDB6]'
-                : 'text-[#524A44] group-hover:text-[#2D2A26]';
+            let dayTextClass = 'text-[#524A44] group-hover:text-[#2D2A26]';
+            if (isToday) dayTextClass = 'bg-[#9A8073] text-white';
+            else if (isPast) dayTextClass = 'text-[#C4BDB6]';
             return (
-              <div
+              <button
+                type="button"
                 key={day}
                 onClick={() => { setSelectedDay(new Date(y, month, day)); setCalSubMode('day'); }}
                 onKeyDown={e => {
@@ -110,9 +107,7 @@ export default function AppointmentCalendarView({
                     setCalSubMode('day');
                   }
                 }}
-                role="button"
-                tabIndex={0}
-                className={`min-h-28 p-1.5 group transition-colors ${isPast ? 'bg-[#FAF6F3]/40 cursor-default' : 'bg-white cursor-pointer hover:bg-[#FAF6F3]'} ${!isPast && hasPending ? 'ring-inset ring-1 ring-amber-300' : ''}`}
+                className={`min-h-28 p-1.5 group transition-colors text-left w-full ${isPast ? 'bg-[#FAF6F3]/40 cursor-default' : 'bg-white cursor-pointer hover:bg-[#FAF6F3]'} ${!isPast && hasPending ? 'ring-inset ring-1 ring-amber-300' : ''}`}
               >
                 <div className="flex items-center justify-between mb-1">
                   <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs font-semibold ${dayTextClass}`}>
@@ -145,7 +140,7 @@ export default function AppointmentCalendarView({
                     <div className="text-[9px] text-[#D4CEC9] italic mt-1">Click to add</div>
                   )}
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -290,7 +285,7 @@ export default function AppointmentCalendarView({
             const isClosed = ['cancelled', 'no_show'].includes(event.status);
 
             return (
-              <div
+              <article
                 key={event.id}
                 className={`absolute left-2 right-2 rounded-lg border overflow-hidden transition-all duration-150 ${tc.bg} ${tc.border} ${sc.opacity} ${isPending ? 'border-dashed' : sc.borderStyle} ${isHovered && !isClosed ? 'shadow-lg z-10 ring-2 ring-[#9A8073]/30' : 'z-1'}`}
                 style={{ top: `${topPx}px`, height: `${heightPx}px` }}
@@ -368,7 +363,7 @@ export default function AppointmentCalendarView({
                     )}
                   </div>
                 </div>
-              </div>
+              </article>
             );
           })}
 

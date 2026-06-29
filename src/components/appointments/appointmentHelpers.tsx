@@ -74,7 +74,7 @@ export const STATUS_CONFIG: Record<AppointmentStatus, {
   no_show:     { label: 'No Show',     dot: 'bg-gray-500',    badge: 'bg-gray-100 text-gray-600 border-gray-200',      opacity: 'opacity-40',  borderStyle: 'border-solid' },
 };
 
-export function TypeBadge({ type }: { type: AppointmentType }) {
+export function TypeBadge({ type }: { readonly type: AppointmentType }) {
   const cfg = TYPE_CONFIG[type];
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold border ${cfg.badgeBg} ${cfg.badgeBorder} ${cfg.badgeText}`}>
@@ -83,7 +83,7 @@ export function TypeBadge({ type }: { type: AppointmentType }) {
   );
 }
 
-export function StatusBadge({ status }: { status: AppointmentStatus }) {
+export function StatusBadge({ status }: { readonly status: AppointmentStatus }) {
   const cfg = STATUS_CONFIG[status] || STATUS_CONFIG.pending;
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-medium border ${cfg.badge}`}>

@@ -4,11 +4,11 @@ import { CatalogOrder } from './orderHelpers';
 import OrderListItem from './OrderListItem';
 
 interface OrderListViewProps {
-  filteredOrders: CatalogOrder[];
-  activeTab: 'walkin' | 'online';
-  setActiveTab: (tab: 'walkin' | 'online') => void;
-  updating: number | null;
-  onUpdateStatus: (orderId: number, status: string, extra?: any) => Promise<void>;
+  readonly filteredOrders: CatalogOrder[];
+  readonly activeTab: 'walkin' | 'online';
+  readonly setActiveTab: (tab: 'walkin' | 'online') => void;
+  readonly updating: number | null;
+  readonly onUpdateStatus: (orderId: number, status: string, extra?: Record<string, unknown>) => Promise<void>;
 }
 
 export default function OrderListView({

@@ -1,8 +1,8 @@
 import React from 'react';
 
 interface SettingsBusinessTypeProps {
-  businessType: string;
-  onChange: (value: string) => void;
+  readonly businessType: string;
+  readonly onChange: (value: string) => void;
 }
 
 export default function SettingsBusinessType({

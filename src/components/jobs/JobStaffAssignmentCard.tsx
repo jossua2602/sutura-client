@@ -1,0 +1,80 @@
+import React from 'react';
+import { Save, Loader2 } from 'lucide-react';
+import { Staff } from './jobTypes';
+
+interface JobStaffAssignmentCardProps {
+  readonly allStaff: Staff[];
+  readonly staffAssignments: Record<string, string>;
+  readonly setStaffAssignments: (assignments: Record<string, string>) => void;
+  readonly staffCompletions: Record<string, string | null>;
+  readonly handleUpdateStaff: () => Promise<void>;
+  readonly savingStaff: boolean;
+}
+
+export default function JobStaffAssignmentCard({
+  allStaff,
+  staffAssignments,
+  setStaffAssignments,
+  staffCompletions,
+  handleUpdateStaff,
+  savingStaff,
+}: JobStaffAssignmentCardProps) {
+  return (
+    <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
+      <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Multi-Stage Staff Assignment</h2>
+      <div className="space-y-4">
+        {['design', 'pattern_making', 'cutting', 'sewing', 'finishing'].map(stage => (
+          <div key={stage} className="space-y-1">
+            <div className="flex items-center justify-between">
+              <label className="text-sm font-medium text-[#524A44] capitalize">
+                {stage.replace('_', ' ')} Staff
+              </label>
+              {staffAssignments[stage] && (
+                <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                  staffCompletions[stage] 
+                    ? 'bg-green-100 text-green-700' 
+                    : 'bg-amber-100 text-amber-700'
+                }`}>
+                  {staffCompletions[stage] ? 'Completed' : 'In Progress'}
+                </span>
+              )}
+            </div>
+            <select
+              value={staffAssignments[stage]}
+              onChange={(e) => setStaffAssignments({...staffAssignments, [stage]: e.target.value})}
+              className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+            >
+              <option value="">Unassigned</option>
+              {allStaff.map(staff => {
+                const roleLabel = staff.role ? staff.role.charAt(0).toUpperCase() + staff.role.slice(1).replace('_', ' ') : 'Staff';
+                let specArray: string[] = [];
+                if (Array.isArray(staff.specialization)) {
+                  specArray = staff.specialization;
+                } else if (staff.specialization) {
+                  specArray = [staff.specialization];
+                }
+                const specLabel = specArray.length > 0 ? ` - ${specArray.join(', ')}` : '';
+                return (
+                  <option key={staff.id} value={staff.user.id}>
+                    [{roleLabel}] {staff.user.name}{specLabel}
+                  </option>
+                );
+              })}
+            </select>
+          </div>
+        ))}
+        <div className="pt-2">
+          <button
+            onClick={handleUpdateStaff}
+            disabled={savingStaff}
+            className="w-full bg-[#F0EAE3] hover:bg-[#EBE6E0] border border-[#D1C7BD] text-[#2D2A26] px-4 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+            type="button"
+          >
+            {savingStaff ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={18} />}
+            Save Staff Assignments
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

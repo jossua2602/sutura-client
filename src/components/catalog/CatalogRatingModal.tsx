@@ -3,12 +3,12 @@ import Modal from '@/components/Modal';
 import { Loader2, Star } from 'lucide-react';
 
 interface CatalogRatingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => Promise<void>;
-  ratingValue: number;
-  setRatingValue: (val: number) => void;
-  isSubmitting: boolean;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => Promise<void>;
+  readonly ratingValue: number;
+  readonly setRatingValue: (val: number) => void;
+  readonly isSubmitting: boolean;
 }
 
 export default function CatalogRatingModal({

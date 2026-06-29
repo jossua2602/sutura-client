@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
 import { Loader2 } from 'lucide-react';
-import { CustomerData, isWalkInEmail } from './customerHelpers';
+import { isWalkInEmail } from './customerHelpers';
+import { CustomerData } from './customerTypes';
 
 interface CustomerFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  editingCustomer: CustomerData | null;
-  onSubmit: (payload: Record<string, string | null>) => Promise<void>;
-  isSubmitting: boolean;
-  error: string;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly editingCustomer: CustomerData | null;
+  readonly onSubmit: (payload: Record<string, string | null>) => Promise<void>;
+  readonly isSubmitting: boolean;
+  readonly error: string;
 }
 
 export default function CustomerFormModal({
@@ -31,12 +32,11 @@ export default function CustomerFormModal({
         phone: editingCustomer.phone || '',
       });
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({ name: '', email: '', phone: '' });
     }
   }, [editingCustomer, isOpen]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     const payload = {
       name: formData.name,

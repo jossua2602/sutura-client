@@ -3,33 +3,34 @@ import Modal from '@/components/Modal';
 import { Loader2, AlertCircle } from 'lucide-react';
 import {
   Appointment, CustomerData, ServiceData, BranchData, StaffData, AppointmentType,
-  APPOINTMENT_TYPES, TYPE_CONFIG, TYPES_REQUIRING_SERVICE
+  APPOINTMENT_TYPES, TYPE_CONFIG, TYPES_REQUIRING_SERVICE, JobOrderData
 } from './appointmentHelpers';
 
 interface AppointmentCreateModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  editingApt: Appointment | null;
-  customers: CustomerData[];
-  services: ServiceData[];
-  branches: BranchData[];
-  staff: StaffData[];
-  jobOrders: import('./appointmentHelpers').JobOrderData[];
-  todayStr: string;
-  minTimeFor: (dateStr: string) => string;
-  onSubmit: (payload: Record<string, unknown>) => Promise<void>;
-  isSubmitting: boolean;
-  error: string;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly editingApt?: Appointment | null;
+  readonly customers?: CustomerData[];
+  readonly services?: ServiceData[];
+  readonly branches?: BranchData[];
+  readonly staff?: StaffData[];
+  readonly jobOrders?: JobOrderData[];
+  readonly todayStr: string;
+  readonly minTimeFor: (dateStr: string) => string;
+  readonly onSubmit: (payload: Record<string, unknown>) => Promise<void>;
+  readonly isSubmitting: boolean;
+  readonly error: string;
 }
 
+const defaultForm = {
+  customer_id: '', appointment_type: 'consultation' as AppointmentType,
+  service_id: '', job_order_id: '', shop_branch_id: '', scheduled_date: '', scheduled_time: '',
+  duration_minutes: '60', assigned_staff_id: '', notes: '',
+};
+
 export default function AppointmentCreateModal({
-  isOpen, onClose, editingApt, customers, services, branches, staff, jobOrders, todayStr, minTimeFor, onSubmit, isSubmitting, error
+  isOpen, onClose, editingApt, customers = [], services = [], branches = [], staff = [], jobOrders = [], todayStr, minTimeFor, onSubmit, isSubmitting, error
 }: AppointmentCreateModalProps) {
-  const defaultForm = {
-    customer_id: '', appointment_type: 'consultation' as AppointmentType,
-    service_id: '', job_order_id: '', shop_branch_id: '', scheduled_date: '', scheduled_time: '',
-    duration_minutes: '60', assigned_staff_id: '', notes: '',
-  };
   const [formData, setFormData] = useState(defaultForm);
 
   useEffect(() => {
@@ -51,7 +52,6 @@ export default function AppointmentCreateModal({
         notes: editingApt.notes || '',
       });
     } else {
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         ...defaultForm,
         shop_branch_id: branches.length === 1 ? branches[0].id.toString() : ''
@@ -59,7 +59,7 @@ export default function AppointmentCreateModal({
     }
   }, [editingApt, isOpen, customers, services, branches]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     const payload = {
       customer_id: formData.customer_id,

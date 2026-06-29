@@ -94,8 +94,8 @@ export default function JobCreateForm() {
   
   // Bulk Team Roster State
   const [isBulkOrder, setIsBulkOrder] = useState(false);
-  const [roster, setRoster] = useState<{ name: string; number: string; size: string; custom_details?: string }[]>([
-    { name: '', number: '', size: 'M', custom_details: '' }
+  const [roster, setRoster] = useState<{ id: string; name: string; number: string; size: string; custom_details?: string }[]>([
+    { id: 'roster-0', name: '', number: '', size: 'M', custom_details: '' }
   ]);
 
   const [formData, setFormData] = useState({
@@ -116,6 +116,276 @@ export default function JobCreateForm() {
   });
 
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
+
+  const renderMeasurementSelector = () => {
+    if (isBulkOrder) {
+      return (
+        <p className="text-xs text-[#827A73] italic py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 h-[38px] flex items-center">
+          Bulk Order (Roster Sheet will be used)
+        </p>
+      );
+    }
+
+    if (!formData.customer_id) {
+      return (
+        <p className="text-xs text-[#A8A19A] italic py-3">
+          Please select a customer first.
+        </p>
+      );
+    }
+
+    if (customerMeasurements.length === 0) {
+      return (
+        <div className="text-xs text-[#B26959] bg-[#B26959]/5 border border-[#B26959]/10 rounded-lg p-2.5 flex items-center justify-between">
+          <span>No measurement profiles found.</span>
+          <Link
+            href={`/dashboard/measurements?customer_id=${formData.customer_id}`}
+            className="font-semibold underline text-[#B26959] hover:text-[#B26959]/80 ml-2"
+          >
+            Record Measurements
+          </Link>
+        </div>
+      );
+    }
+
+    // Sort oldest first to assign sequential version numbers (v1, v2, v3...)
+    const chronological = [...customerMeasurements].sort(
+      (a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
+    );
+
+    // Map them to include their version number
+    const measurementsWithVersion = customerMeasurements.map((m) => {
+      const versionIndex = chronological.findIndex((c) => c.id === m.id);
+      return {
+        ...m,
+        version: versionIndex === -1 ? 1 : versionIndex + 1,
+      };
+    });
+
+    // Sort latest first for display in the dropdown
+    const displayMeasurements = [...measurementsWithVersion].sort(
+      (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+    );
+
+    return (
+      <select
+        id="measurement_id"
+        value={formData.measurement_id}
+        onChange={(e) =>
+          setFormData({ ...formData, measurement_id: e.target.value })
+        }
+        className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+      >
+        <option value="">
+          No profile selected / Consultation Only
+        </option>
+        {displayMeasurements.map((m) => (
+          <option key={m.id} value={m.id}>
+            V{m.version} - {m.profile_name}
+          </option>
+        ))}
+      </select>
+    );
+  };
+
+  const handleCheckboxChange = (
+    fieldLabel: string,
+    opt: string,
+    selected: string[],
+    checked: boolean
+  ) => {
+    let nextSelected = [...selected];
+    if (checked) {
+      if (!nextSelected.includes(opt)) {
+        nextSelected.push(opt);
+      }
+    } else {
+      nextSelected = nextSelected.filter((s) => s !== opt);
+    }
+    setCustomFieldValues({
+      ...customFieldValues,
+      [fieldLabel]: nextSelected.join(', '),
+    });
+  };
+
+  const renderCustomField = (field: ServiceField) => {
+    if (field.type === 'select') {
+      return (
+        <select
+          id={field.id}
+          required={field.required}
+          value={customFieldValues[field.label] || ''}
+          onChange={(e) =>
+            setCustomFieldValues({
+              ...customFieldValues,
+              [field.label]: e.target.value,
+            })
+          }
+          className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+        >
+          <option value="">Select an option</option>
+          {field.options?.map((opt) => (
+            <option key={opt} value={opt}>
+              {opt}
+            </option>
+          ))}
+        </select>
+      );
+    }
+
+    if (field.type === 'radio') {
+      return (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {field.options?.map((opt) => {
+            const isSelected = customFieldValues[field.label] === opt;
+            return (
+              <label
+                key={opt}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                  isSelected
+                    ? 'border-taupe bg-[#FAF6F3] text-[#2D2A26]'
+                    : 'border-[#EBE6E0] bg-white text-[#827A73] hover:border-[#D1C7BD] hover:text-[#2D2A26]'
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={field.id}
+                  value={opt}
+                  checked={isSelected}
+                  onChange={() =>
+                    setCustomFieldValues({
+                      ...customFieldValues,
+                      [field.label]: opt,
+                    })
+                  }
+                  className="sr-only"
+                />
+                <div
+                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
+                    isSelected
+                      ? 'border-taupe bg-taupe text-white'
+                      : 'border-[#A8A19A]'
+                  }`}
+                >
+                  {isSelected && (
+                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
+                  )}
+                </div>
+                {opt}
+              </label>
+            );
+          })}
+        </div>
+      );
+    }
+
+    if (field.type === 'checkbox') {
+      return (
+        <div className="flex flex-wrap gap-2 pt-1">
+          {field.options?.map((opt) => {
+            const currentVal = customFieldValues[field.label] || '';
+            const selected = currentVal
+              ? currentVal
+                  .split(',')
+                  .map((s) => s.trim())
+                  .filter(Boolean)
+              : [];
+            const isChecked = selected.includes(opt);
+            return (
+              <label
+                key={opt}
+                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
+                  isChecked
+                    ? 'border-taupe bg-[#FAF6F3] text-[#2D2A26]'
+                    : 'border-[#EBE6E0] bg-white text-[#827A73] hover:border-[#D1C7BD] hover:text-[#2D2A26]'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  name={field.id}
+                  value={opt}
+                  checked={isChecked}
+                  onChange={(e) =>
+                    handleCheckboxChange(field.label, opt, selected, e.target.checked)
+                  }
+                  className="sr-only"
+                />
+                <div
+                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
+                    isChecked
+                      ? 'border-taupe bg-taupe text-white'
+                      : 'border-[#A8A19A]'
+                  }`}
+                >
+                  {isChecked && (
+                    <svg
+                      className="w-2 h-2 fill-current"
+                      viewBox="0 0 20 20"
+                    >
+                      <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
+                    </svg>
+                  )}
+                </div>
+                {opt}
+              </label>
+            );
+          })}
+        </div>
+      );
+    }
+
+    return (
+      <input
+        id={field.id}
+        type={field.type === 'number' ? 'number' : 'text'}
+        required={field.required}
+        value={customFieldValues[field.label] || ''}
+        onChange={(e) =>
+          setCustomFieldValues({
+            ...customFieldValues,
+            [field.label]: e.target.value,
+          })
+        }
+        className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+        placeholder={`Enter ${field.label.toLowerCase()}...`}
+      />
+    );
+  };
+
+  const renderBalanceBadge = () => {
+    const total = Number.parseFloat(formData.total_amount) || 0;
+    const down = Number.parseFloat(formData.downpayment) || 0;
+    
+    if (total <= 0) {
+      return (
+        <span className="text-[9px] bg-zinc-100 text-zinc-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+          —
+        </span>
+      );
+    }
+
+    if (down >= total) {
+      return (
+        <span className="text-[9px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+          Paid
+        </span>
+      );
+    }
+
+    if (down > 0) {
+      return (
+        <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+          Partial
+        </span>
+      );
+    }
+
+    return (
+      <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
+        Unpaid
+      </span>
+    );
+  };
 
   useEffect(() => {
     if (shop) {
@@ -211,27 +481,40 @@ export default function JobCreateForm() {
     if (!isTotalAmountCustom && formData.service_id) {
       const selected = services.find((s) => s.id.toString() === formData.service_id);
       if (selected) {
-        const basePrice = parseFloat(selected.base_price?.toString() || '0');
-        const rushFee = formData.is_rush ? (parseFloat(formData.rush_fee) || 0) : 0;
+        const basePrice = Number.parseFloat(selected.base_price?.toString() || '0');
+        const rushFee = formData.is_rush ? (Number.parseFloat(formData.rush_fee) || 0) : 0;
         const suggested = basePrice + rushFee;
-        setFormData((prev) => ({
-          ...prev,
-          total_amount: suggested > 0 ? suggested.toFixed(2) : '',
-        }));
+        Promise.resolve().then(() => {
+          setFormData((prev) => ({
+            ...prev,
+            total_amount: suggested > 0 ? suggested.toFixed(2) : '',
+          }));
+        });
       }
     }
   }, [formData.service_id, formData.is_rush, formData.rush_fee, services, isTotalAmountCustom]);
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const getFulfillmentValues = () => {
+    const isOnline = formData.order_type === 'online';
+    if (!isOnline) {
+      return { addressVal: null, courierNameVal: null, courierTrackingVal: null };
+    }
+    const addressVal = fulfillmentType === 'pickup' ? 'Store Pickup' : (formData.shipping_address || null);
+    const courierNameVal = serializeCourierName(fulfillmentType, fulfillmentProvider || 'Other');
+    const courierTrackingVal = fulfillmentType === 'pickup' ? null : (trackingNumber || null);
+    return { addressVal, courierNameVal, courierTrackingVal };
+  };
+
+  const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!shop) return;
 
     setSubmitting(true);
     setError('');
 
-    const totalAmt = parseFloat(formData.total_amount) || 0;
-    const downPay = parseFloat(formData.downpayment || '0');
-    const rushFee = formData.is_rush ? (parseFloat(formData.rush_fee) || 0) : 0;
+    const totalAmt = Number.parseFloat(formData.total_amount) || 0;
+    const downPay = Number.parseFloat(formData.downpayment || '0');
+    const rushFee = formData.is_rush ? (Number.parseFloat(formData.rush_fee) || 0) : 0;
 
     if (formData.is_rush && totalAmt < rushFee) {
       setError(`Total Amount must be greater than or equal to the Rush Fee (₱${rushFee.toFixed(2)}).`);
@@ -246,18 +529,7 @@ export default function JobCreateForm() {
     }
 
     const balance = totalAmt - downPay;
-
-    const isOnline = formData.order_type === 'online';
-    const addressVal = isOnline
-      ? fulfillmentType === 'pickup'
-        ? 'Store Pickup'
-        : formData.shipping_address || null
-      : null;
-    const courierNameVal = isOnline
-      ? serializeCourierName(fulfillmentType, fulfillmentProvider || 'Other')
-      : null;
-    const courierTrackingVal =
-      isOnline && fulfillmentType !== 'pickup' ? trackingNumber || null : null;
+    const { addressVal, courierNameVal, courierTrackingVal } = getFulfillmentValues();
 
     try {
       await api.post(`/shops/${shop.id}/jobs`, {
@@ -275,7 +547,12 @@ export default function JobCreateForm() {
         shipping_address: addressVal,
         courier_name: courierNameVal,
         courier_tracking_number: courierTrackingVal,
-        custom_order_data: { ...customFieldValues, roster: isBulkOrder ? roster : null },
+        custom_order_data: {
+          ...customFieldValues,
+          roster: isBulkOrder
+            ? roster.map(({ name, number, size, custom_details }) => ({ name, number, size, custom_details }))
+            : null
+        },
         is_outsourced: formData.is_outsourced,
         partner_shop_name: formData.is_outsourced ? formData.partner_shop_name : null,
         appointment_id: appointmentId ? Number(appointmentId) : null,
@@ -284,8 +561,8 @@ export default function JobCreateForm() {
       });
       router.push('/dashboard/jobs');
     } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to create job order.');
+      const errorResponse = err as { response?: { data?: { message?: string } } };
+      setError(errorResponse.response?.data?.message || 'Failed to create job order.');
       setSubmitting(false);
     }
   };
@@ -444,68 +721,7 @@ export default function JobCreateForm() {
                 >
                   Measurement Profile
                 </label>
-                {isBulkOrder ? (
-                  <p className="text-xs text-[#827A73] italic py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 h-[38px] flex items-center">
-                    Bulk Order (Roster Sheet will be used)
-                  </p>
-                ) : formData.customer_id ? (
-                  customerMeasurements.length > 0 ? (
-                    (() => {
-                      // Sort oldest first to assign sequential version numbers (v1, v2, v3...)
-                      const chronological = [...customerMeasurements].sort(
-                        (a, b) => new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime()
-                      );
-
-                      // Map them to include their version number
-                      const measurementsWithVersion = customerMeasurements.map((m) => {
-                        const versionIndex = chronological.findIndex((c) => c.id === m.id);
-                        return {
-                          ...m,
-                          version: versionIndex !== -1 ? versionIndex + 1 : 1,
-                        };
-                      });
-
-                      // Sort latest first for display in the dropdown
-                      const displayMeasurements = [...measurementsWithVersion].sort(
-                        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-                      );
-
-                      return (
-                        <select
-                          id="measurement_id"
-                          value={formData.measurement_id}
-                          onChange={(e) =>
-                            setFormData({ ...formData, measurement_id: e.target.value })
-                          }
-                          className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                        >
-                          <option value="">
-                            No profile selected / Consultation Only
-                          </option>
-                          {displayMeasurements.map((m) => (
-                            <option key={m.id} value={m.id}>
-                              V{m.version} - {m.profile_name}
-                            </option>
-                          ))}
-                        </select>
-                      );
-                    })()
-                  ) : (
-                    <div className="text-xs text-[#B26959] bg-[#B26959]/5 border border-[#B26959]/10 rounded-lg p-2.5 flex items-center justify-between">
-                      <span>No measurement profiles found.</span>
-                      <Link
-                        href={`/dashboard/measurements?customer_id=${formData.customer_id}`}
-                        className="font-semibold underline text-[#B26959] hover:text-[#B26959]/80 ml-2"
-                      >
-                        Record Measurements
-                      </Link>
-                    </div>
-                  )
-                ) : (
-                  <p className="text-xs text-[#A8A19A] italic py-3">
-                    Please select a customer first.
-                  </p>
-                )}
+                {renderMeasurementSelector()}
               </div>
             </div>
 
@@ -581,7 +797,7 @@ export default function JobCreateForm() {
             </h3>
 
             {/* Dynamic Custom Fields Section */}
-            {formData.service_id && selectedService?.custom_fields?.length ? (
+            {formData.service_id && selectedService?.custom_fields && selectedService.custom_fields.length > 0 ? (
               <div className="space-y-4 border border-[#EBE6E0] rounded-xl p-4">
                 <h4 className="text-xs font-bold text-[#2D2A26] border-b border-[#EBE6E0] pb-2 uppercase tracking-wider">
                   Custom Service Fields
@@ -596,151 +812,7 @@ export default function JobCreateForm() {
                         {field.label}{' '}
                         {field.required && <span className="text-[#B26959]">*</span>}
                       </label>
-                      {field.type === 'select' ? (
-                        <select
-                          id={field.id}
-                          required={field.required}
-                          value={customFieldValues[field.label] || ''}
-                          onChange={(e) =>
-                            setCustomFieldValues({
-                              ...customFieldValues,
-                              [field.label]: e.target.value,
-                            })
-                          }
-                          className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                        >
-                          <option value="">Select an option</option>
-                          {field.options?.map((opt) => (
-                            <option key={opt} value={opt}>
-                              {opt}
-                            </option>
-                          ))}
-                        </select>
-                      ) : field.type === 'radio' ? (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {field.options?.map((opt) => {
-                            const isSelected =
-                              customFieldValues[field.label] === opt;
-                            return (
-                              <label
-                                key={opt}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
-                                  isSelected
-                                    ? 'border-taupe bg-[#FAF6F3] text-[#2D2A26]'
-                                    : 'border-[#EBE6E0] bg-white text-[#827A73] hover:border-[#D1C7BD] hover:text-[#2D2A26]'
-                                }`}
-                              >
-                                <input
-                                  type="radio"
-                                  name={field.id}
-                                  value={opt}
-                                  checked={isSelected}
-                                  onChange={() =>
-                                    setCustomFieldValues({
-                                      ...customFieldValues,
-                                      [field.label]: opt,
-                                    })
-                                  }
-                                  className="sr-only"
-                                />
-                                <div
-                                  className={`w-3.5 h-3.5 rounded-full border flex items-center justify-center shrink-0 ${
-                                    isSelected
-                                      ? 'border-taupe bg-taupe text-white'
-                                      : 'border-[#A8A19A]'
-                                  }`}
-                                >
-                                  {isSelected && (
-                                    <div className="w-1.5 h-1.5 bg-white rounded-full" />
-                                  )}
-                                </div>
-                                {opt}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      ) : field.type === 'checkbox' ? (
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {field.options?.map((opt) => {
-                            const currentVal =
-                              customFieldValues[field.label] || '';
-                            const selected = currentVal
-                              ? currentVal
-                                  .split(',')
-                                  .map((s) => s.trim())
-                                  .filter(Boolean)
-                              : [];
-                            const isChecked = selected.includes(opt);
-                            return (
-                              <label
-                                key={opt}
-                                className={`flex items-center gap-2 px-3 py-1.5 rounded-lg border text-xs font-medium cursor-pointer transition-all ${
-                                  isChecked
-                                    ? 'border-taupe bg-[#FAF6F3] text-[#2D2A26]'
-                                    : 'border-[#EBE6E0] bg-white text-[#827A73] hover:border-[#D1C7BD] hover:text-[#2D2A26]'
-                                }`}
-                              >
-                                <input
-                                  type="checkbox"
-                                  name={field.id}
-                                  value={opt}
-                                  checked={isChecked}
-                                  onChange={(e) => {
-                                    const checked = e.target.checked;
-                                    let nextSelected = [...selected];
-                                    if (checked) {
-                                      if (!nextSelected.includes(opt)) {
-                                        nextSelected.push(opt);
-                                      }
-                                    } else {
-                                      nextSelected = nextSelected.filter(
-                                        (s) => s !== opt
-                                      );
-                                    }
-                                    setCustomFieldValues({
-                                      ...customFieldValues,
-                                      [field.label]: nextSelected.join(', '),
-                                    });
-                                  }}
-                                  className="sr-only"
-                                />
-                                <div
-                                  className={`w-3.5 h-3.5 rounded border flex items-center justify-center shrink-0 ${
-                                    isChecked
-                                      ? 'border-taupe bg-taupe text-white'
-                                      : 'border-[#A8A19A]'
-                                  }`}
-                                >
-                                  {isChecked && (
-                                    <svg
-                                      className="w-2 h-2 fill-current"
-                                      viewBox="0 0 20 20"
-                                    >
-                                      <path d="M0 11l2-2 5 5L18 3l2 2L7 18z" />
-                                    </svg>
-                                  )}
-                                </div>
-                                {opt}
-                              </label>
-                            );
-                          })}
-                        </div>
-                      ) : (
-                        <input
-                          id={field.id}
-                          type={field.type === 'number' ? 'number' : 'text'}
-                          required={field.required}
-                          value={customFieldValues[field.label] || ''}
-                          onChange={(e) =>
-                            setCustomFieldValues({
-                              ...customFieldValues,
-                              [field.label]: e.target.value,
-                            })
-                          }
-                          className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                          placeholder={`Enter ${field.label.toLowerCase()}...`}
-                        />
-                      )}
+                      {renderCustomField(field)}
                     </div>
                   ))}
                 </div>
@@ -791,7 +863,7 @@ export default function JobCreateForm() {
                     <h4 className="text-xs font-bold text-[#827A73] uppercase tracking-wider">Roster List</h4>
                     <button
                       type="button"
-                      onClick={() => setRoster([...roster, { name: '', number: '', size: 'M', custom_details: '' }])}
+                      onClick={() => setRoster([...roster, { id: `${Date.now()}-${Math.random()}`, name: '', number: '', size: 'M', custom_details: '' }])}
                       className="text-xs font-semibold text-blue-600 hover:text-blue-800"
                     >
                       + Add Row
@@ -810,7 +882,7 @@ export default function JobCreateForm() {
                       </thead>
                       <tbody className="divide-y divide-zinc-150">
                         {roster.map((row, idx) => (
-                          <tr key={idx}>
+                          <tr key={row.id}>
                             <td className="py-2 pr-2">
                               <input
                                 type="text"
@@ -874,7 +946,7 @@ export default function JobCreateForm() {
                               {roster.length > 1 && (
                                 <button
                                   type="button"
-                                  onClick={() => setRoster(roster.filter((_, i) => i !== idx))}
+                                  onClick={() => setRoster(roster.filter((r) => r.id !== row.id))}
                                   className="text-red-500 hover:text-red-700 font-semibold"
                                 >
                                   Delete
@@ -1043,7 +1115,14 @@ export default function JobCreateForm() {
                   </div>
                 )}
 
-                {fulfillmentType !== 'pickup' ? (
+                {fulfillmentType === 'pickup' ? (
+                  <div className="bg-blue-100/30 border border-blue-200/50 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+                    <Store size={16} className="shrink-0" />
+                    <span>
+                      Customer will pick up the garments in-store. (Shop address will be used)
+                    </span>
+                  </div>
+                ) : (
                   <div>
                     <label
                       htmlFor="shipping_address"
@@ -1063,13 +1142,6 @@ export default function JobCreateForm() {
                       placeholder="Enter complete delivery details..."
                       className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
                     />
-                  </div>
-                ) : (
-                  <div className="bg-blue-100/30 border border-blue-200/50 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
-                    <Store size={16} className="shrink-0" />
-                    <span>
-                      Customer will pick up the garments in-store. (Shop address will be used)
-                    </span>
                   </div>
                 )}
               </div>
@@ -1171,8 +1243,8 @@ export default function JobCreateForm() {
                         type="button"
                         onClick={() => {
                           setIsTotalAmountCustom(false);
-                          const basePrice = parseFloat(selectedService.base_price?.toString() || '0');
-                          const rushFee = formData.is_rush ? (parseFloat(formData.rush_fee) || 0) : 0;
+                          const basePrice = Number.parseFloat(selectedService.base_price?.toString() || '0');
+                          const rushFee = formData.is_rush ? (Number.parseFloat(formData.rush_fee) || 0) : 0;
                           const suggested = basePrice + rushFee;
                           setFormData((prev) => ({
                             ...prev,
@@ -1199,9 +1271,9 @@ export default function JobCreateForm() {
                     className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
                     placeholder="0.00"
                   />
-                  {formData.is_rush && parseFloat(formData.total_amount) < (parseFloat(formData.rush_fee) || 0) && (
+                  {formData.is_rush && Number.parseFloat(formData.total_amount) < (Number.parseFloat(formData.rush_fee) || 0) && (
                     <p className="text-[10px] text-[#B26959] mt-1 font-semibold">
-                      Must be ≥ Rush Fee (₱{parseFloat(formData.rush_fee).toFixed(2)})
+                      Must be ≥ Rush Fee (₱{Number.parseFloat(formData.rush_fee).toFixed(2)})
                     </p>
                   )}
                 </div>
@@ -1226,41 +1298,23 @@ export default function JobCreateForm() {
                     className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
                     placeholder="0.00"
                   />
-                  {(parseFloat(formData.downpayment) || 0) > (parseFloat(formData.total_amount) || 0) && (
+                  {(Number.parseFloat(formData.downpayment) || 0) > (Number.parseFloat(formData.total_amount) || 0) && (
                     <p className="text-[10px] text-[#B26959] mt-1 font-semibold">
-                      Cannot exceed Total Amount (₱{parseFloat(formData.total_amount || '0').toFixed(2)})
+                      Cannot exceed Total Amount (₱{Number.parseFloat(formData.total_amount || '0').toFixed(2)})
                     </p>
                   )}
                 </div>
 
                 {/* Remaining Balance card */}
                 <div>
-                  <label className="block text-xs font-semibold text-[#827A73] uppercase tracking-wider mb-1">
+                  <span className="block text-xs font-semibold text-[#827A73] uppercase tracking-wider mb-1">
                     Remaining Balance
-                  </label>
+                  </span>
                   <div className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 flex items-center justify-between h-[38px] select-none">
                     <span className="font-bold text-sm text-[#2D2A26]">
-                      ₱{Math.max(0, (parseFloat(formData.total_amount) || 0) - (parseFloat(formData.downpayment) || 0)).toFixed(2)}
+                      ₱{Math.max(0, (Number.parseFloat(formData.total_amount) || 0) - (Number.parseFloat(formData.downpayment) || 0)).toFixed(2)}
                     </span>
-                    {parseFloat(formData.total_amount) > 0 ? (
-                      (parseFloat(formData.downpayment) || 0) >= parseFloat(formData.total_amount) ? (
-                        <span className="text-[9px] bg-green-100 text-green-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          Paid
-                        </span>
-                      ) : (parseFloat(formData.downpayment) || 0) > 0 ? (
-                        <span className="text-[9px] bg-blue-100 text-blue-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          Partial
-                        </span>
-                      ) : (
-                        <span className="text-[9px] bg-amber-100 text-amber-800 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                          Unpaid
-                        </span>
-                      )
-                    ) : (
-                      <span className="text-[9px] bg-zinc-100 text-zinc-600 font-bold px-1.5 py-0.5 rounded uppercase tracking-wider">
-                        —
-                      </span>
-                    )}
+                    {renderBalanceBadge()}
                   </div>
                 </div>
               </div>

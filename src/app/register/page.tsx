@@ -15,7 +15,7 @@ export default function RegisterPage() {
   
   const router = useRouter();
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     setLoading(true);
     setError('');
@@ -43,7 +43,7 @@ export default function RegisterPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-[#FAF6F3] text-[#2D2A26] relative overflow-hidden py-12">
-      <div className="absolute top-0 right-1/4 w-full h-[600px] bg-gradient-to-bl from-[#F0EAE3] to-[#EBE4DC] blur-[100px] pointer-events-none" />
+      <div className="absolute top-0 right-1/4 w-full h-[600px] bg-linear-to-bl from-[#F0EAE3] to-[#EBE4DC] blur-[100px] pointer-events-none" />
       
       <div className="w-full max-w-md p-8 rounded-2xl glass-panel border border-[#EBE6E0] backdrop-blur-xl shadow-2xl relative z-10">
         <div className="text-center mb-8">
@@ -59,11 +59,12 @@ export default function RegisterPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Account Type</label>
+            <label htmlFor="register-role" className="block text-sm font-medium text-[#524A44] mb-1">Account Type</label>
             <select
+              id="register-role"
               value={role}
               onChange={(e) => setRole(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-[var(--brand-taupe)] focus:ring-1 focus:ring-[var(--brand-taupe)] transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-colors"
             >
               <option value="shop_owner">Shop Owner</option>
               <option value="customer">Customer</option>
@@ -71,46 +72,50 @@ export default function RegisterPage() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Full Name</label>
+            <label htmlFor="register-name" className="block text-sm font-medium text-[#524A44] mb-1">Full Name</label>
             <input
+              id="register-name"
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-[var(--brand-taupe)] focus:ring-1 focus:ring-[var(--brand-taupe)] transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-colors"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Email</label>
+            <label htmlFor="register-email" className="block text-sm font-medium text-[#524A44] mb-1">Email</label>
             <input
+              id="register-email"
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-[var(--brand-taupe)] focus:ring-1 focus:ring-[var(--brand-taupe)] transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-colors"
               required
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Password</label>
+            <label htmlFor="register-password" className="block text-sm font-medium text-[#524A44] mb-1">Password</label>
             <input
+              id="register-password"
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-[var(--brand-taupe)] focus:ring-1 focus:ring-[var(--brand-taupe)] transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-colors"
               required
               minLength={8}
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Confirm Password</label>
+            <label htmlFor="register-password-confirm" className="block text-sm font-medium text-[#524A44] mb-1">Confirm Password</label>
             <input
+              id="register-password-confirm"
               type="password"
               value={passwordConfirmation}
               onChange={(e) => setPasswordConfirmation(e.target.value)}
-              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-[var(--brand-taupe)] focus:ring-1 focus:ring-[var(--brand-taupe)] transition-colors"
+              className="w-full px-4 py-3 rounded-lg bg-[#FAF6F3] border border-[#EBE6E0] text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe transition-colors"
               required
             />
           </div>
@@ -118,7 +123,7 @@ export default function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 px-4 rounded-lg bg-[var(--brand-taupe)] hover:bg-[var(--brand-taupe)]/90 text-white font-medium transition-colors disabled:opacity-50 mt-2"
+            className="w-full py-3 px-4 rounded-lg bg-taupe hover:bg-(--brand-taupe)/90 text-white font-medium transition-colors disabled:opacity-50 mt-2"
           >
             {loading ? 'Creating account...' : 'Register'}
           </button>
@@ -126,7 +131,7 @@ export default function RegisterPage() {
 
         <p className="mt-6 text-center text-[#827A73] text-sm">
           Already have an account?{' '}
-          <a href="/login" className="text-[var(--brand-taupe)] hover:text-[var(--brand-taupe-hover)] font-medium">
+          <a href="/login" className="text-taupe hover:text-taupe-hover font-medium">
             Sign in
           </a>
         </p>

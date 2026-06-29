@@ -4,11 +4,11 @@ import { Pencil, Trash2, Heart, Eye, Star, Image as ImageIcon } from 'lucide-rea
 import { CatalogItem, formatCatalogPrice, getCatalogActionLabel, getListingTypeLabel } from './catalogHelpers';
 
 interface CatalogItemCardProps {
-  item: CatalogItem;
-  onSave: (id: number) => Promise<void>;
-  onView: (id: number) => Promise<void>;
-  onOpenRating: (id: number) => void;
-  onOpenDelete: (id: number) => void;
+  readonly item: CatalogItem;
+  readonly onSave: (id: number) => Promise<void>;
+  readonly onView: (id: number) => Promise<void>;
+  readonly onOpenRating: (id: number) => void;
+  readonly onOpenDelete: (id: number) => void;
 }
 
 export default function CatalogItemCard({
@@ -21,7 +21,7 @@ export default function CatalogItemCard({
   const primaryImage = item.images.find(img => img.is_primary)?.image_url || item.images[0]?.image_url;
 
   return (
-    <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden group relative flex flex-col shadow-lg shadow-black/20 text-[#2D2A26]">
+    <div className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden group relative flex flex-col shadow-lg shadow-black/20 text-[#2D2A26]">
       {/* Image Section */}
       <div className="aspect-3/4 bg-[#F0EAE3] relative overflow-hidden">
         {primaryImage ? (

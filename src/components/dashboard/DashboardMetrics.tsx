@@ -3,7 +3,7 @@ import { Scissors, ShoppingBag, Users, Calendar, Package, UserCog, Building2 } f
 import { AnalyticsData } from './dashboardHelpers';
 
 interface DashboardMetricsProps {
-  data: AnalyticsData | null;
+  readonly data: AnalyticsData | null;
 }
 
 export default function DashboardMetrics({
@@ -53,14 +53,16 @@ export default function DashboardMetrics({
   ];
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-[#2D2A26]">
-      {metricsList.map((m, idx) => (
-        <div key={idx} className="p-6 rounded-2xl bg-white shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] border border-[#EBE6E0]">
-          <div className="w-10 h-10 rounded-full bg-[#FAF6F3] border border-[#EBE6E0] flex items-center justify-center mb-4">
-            {m.icon}
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-[#2D2A26]">
+      {metricsList.map((m) => (
+        <div key={m.label} className="p-5 rounded-2xl bg-white shadow-sm border border-[#EBE6E0] flex flex-col gap-3">
+          <div className="flex items-center justify-between">
+            <p className="text-xs font-medium text-[#827A73] uppercase tracking-wider">{m.label}</p>
+            <div className="w-8 h-8 rounded-xl bg-[#FAF6F3] border border-[#EBE6E0] flex items-center justify-center">
+              {m.icon}
+            </div>
           </div>
-          <p className="text-sm font-medium text-[#524A44] mb-1">{m.label}</p>
-          <p className="text-[28px] font-semibold text-[#2D2A26] tracking-tight">{m.value}</p>
+          <p className="text-2xl font-semibold text-[#2D2A26] tracking-tight">{m.value}</p>
         </div>
       ))}
     </div>

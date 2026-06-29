@@ -1,75 +1,28 @@
 'use client';
 
-import { useEffect, useState, FormEvent, use, ComponentType } from 'react';
+import { useEffect, useState, useCallback, use } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { 
-  ArrowLeft, Loader2, Trash2, Edit2, X, Plus, Calendar, 
-  Package, DollarSign, Mail, Phone, Clock, ChevronRight, Scissors,
-  Copy, User, Ruler, RefreshCw
+  ArrowLeft, Loader2, Edit2, X, Mail, Phone, Clock,
+  DollarSign, Scissors, Package, Calendar
 } from 'lucide-react';
-import Link from 'next/link';
-
-interface CustomerData {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  profile_picture?: string;
-  total_spend?: number;
-  active_jobs?: number;
-  completed_jobs?: number;
-  created_at: string;
-}
-
-interface MeasurementProfile {
-  id: number;
-  profile_name: string;
-  metrics: Record<string, number | string>;
-  customer: { id: number; name: string };
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface JobOrder {
-  id: number;
-  order_number: string;
-  order_type: 'walk_in' | 'online';
-  status: string;
-  payment_status: string;
-  total_amount: string | number;
-  balance: string | number;
-  due_date: string | null;
-  service?: { name: string };
-  customer?: { id: number; name: string };
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface Appointment {
-  id: number;
-  status: string;
-  scheduled_at: string;
-  notes?: string;
-  service?: { name: string };
-  customer?: { id: number; name: string };
-  created_at?: string;
-  updated_at?: string;
-}
-
-interface MetricRow {
-  key: string;
-  value: string;
-}
-
-const COMMON_METRICS = ['Chest', 'Waist', 'Hips', 'Inseam', 'Sleeve Length', 'Shoulders', 'Neck', 'Bust'];
+import { CustomerData, MeasurementProfile, JobOrder, Appointment } from '@/components/customers/customerTypes';
+import { isWalkInEmail } from '@/components/customers/customerHelpers';
+import CustomerOverviewTab from '@/components/customers/CustomerOverviewTab';
+import CustomerMeasurementsTab from '@/components/customers/CustomerMeasurementsTab';
+import CustomerJobsTab from '@/components/customers/CustomerJobsTab';
+import CustomerAppointmentsTab from '@/components/customers/CustomerAppointmentsTab';
+import CustomerHistoryTab from '@/components/customers/CustomerHistoryTab';
+import { useToast } from '@/context/ToastContext';
 
 export default function CustomerProfilePage({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
   const resolvedParams = use(params);
   const id = resolvedParams.id;
   const { shop } = useAuthStore();
   const router = useRouter();
+  const toast = useToast();
   
   const [customer, setCustomer] = useState<CustomerData | null>(null);
   const [measurements, setMeasurements] = useState<MeasurementProfile[]>([]);
@@ -87,22 +40,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
   const [editPhone, setEditPhone] = useState('');
   const [savingProfile, setSavingProfile] = useState(false);
 
-  const isWalkInEmail = (email?: string) => email ? (email.startsWith('walkin_') && email.endsWith('@sutura.com')) : false;
-
-  // Measurement Profile state
-  const [isAddingProfile, setIsAddingProfile] = useState(false);
-  const [editingProfileId, setEditingProfileId] = useState<number | null>(null);
-  const [profileName, setProfileName] = useState('');
-  const [metricRows, setMetricRows] = useState<MetricRow[]>([
-    { key: 'Chest', value: '' },
-    { key: 'Waist', value: '' },
-    { key: 'Hips', value: '' }
-  ]);
-  const [savingMeasurement, setSavingMeasurement] = useState(false);
-  const [isDeletingMeasurementId, setIsDeletingMeasurementId] = useState<number | null>(null);
-  const [selectedVersionIds, setSelectedVersionIds] = useState<Record<string, number>>({});
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!shop) return;
     try {
       const [resCustomers, resMeasurements, resJobs, resAppointments] = await Promise.all([
@@ -147,7 +85,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
       console.error('Failed to load profile data', err);
       setLoading(false);
     }
-  };
+  }, [shop, id]);
 
   useEffect(() => {
     if (shop && id) {
@@ -155,9 +93,9 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
         void loadData();
       }, 0);
     }
-  }, [shop, id]);
+  }, [shop, id, loadData]);
 
-  const handleUpdateProfile = async (e: FormEvent) => {
+  const handleUpdateProfile = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!shop || !customer) return;
 
@@ -176,120 +114,14 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
       setIsEditingProfile(false);
     } catch (err) {
       console.error('Failed to update customer details', err);
-      alert('Failed to update profile info. Please ensure email is valid and unique.');
+      toast.error('Failed to update profile info. Please ensure email is valid and unique.');
     } finally {
       setSavingProfile(false);
     }
   };
 
-  const handleStartAddMeasurement = () => {
-    setProfileName('');
-    setMetricRows([
-      { key: 'Chest', value: '' },
-      { key: 'Waist', value: '' },
-      { key: 'Hips', value: '' }
-    ]);
-    setEditingProfileId(null);
-    setIsAddingProfile(true);
-  };
-
-  const handleStartEditMeasurement = (m: MeasurementProfile) => {
-    setProfileName(m.profile_name);
-    const rows = Object.entries(m.metrics || {}).map(([key, val]) => ({
-      key,
-      value: String(val)
-    }));
-    setMetricRows(rows.length > 0 ? rows : [{ key: '', value: '' }]);
-    setEditingProfileId(m.id);
-    setIsAddingProfile(true);
-  };
-
-  const handleCloneMeasurement = (m: MeasurementProfile) => {
-    setProfileName(m.profile_name);
-    const rows = Object.entries(m.metrics || {}).map(([key, val]) => ({
-      key,
-      value: String(val)
-    }));
-    setMetricRows(rows.length > 0 ? rows : [{ key: '', value: '' }]);
-    setEditingProfileId(null);
-    setIsAddingProfile(true);
-  };
-
-  const handleAddMetricRow = () => {
-    setMetricRows([...metricRows, { key: '', value: '' }]);
-  };
-
-  const handleRemoveMetricRow = (index: number) => {
-    setMetricRows(metricRows.filter((_, i) => i !== index));
-  };
-
-  const handleMetricChange = (index: number, field: 'key' | 'value', val: string) => {
-    const updated = [...metricRows];
-    updated[index][field] = val;
-    setMetricRows(updated);
-  };
-
-  const handleSaveMeasurement = async () => {
-    if (!shop || !customer || !profileName.trim()) return;
-
-    setSavingMeasurement(true);
-    
-    // Construct metrics object
-    const metricsObj: Record<string, string | number> = {};
-    metricRows.forEach(row => {
-      if (row.key.trim()) {
-        const num = parseFloat(row.value);
-        metricsObj[row.key.trim()] = isNaN(num) ? row.value.trim() : num;
-      }
-    });
-
-    try {
-      if (editingProfileId) {
-        // Update
-        await api.put(`/shops/${shop.id}/measurements/${editingProfileId}`, {
-          profile_name: profileName,
-          metrics: metricsObj
-        });
-      } else {
-        // Create
-        await api.post(`/shops/${shop.id}/measurements`, {
-          customer_id: customer.id,
-          profile_name: profileName,
-          metrics: metricsObj
-        });
-      }
-
-      // Reload measurements
-      const res = await api.get(`/shops/${shop.id}/measurements`);
-      const allMeas: MeasurementProfile[] = res.data.data || [];
-      setMeasurements(allMeas.filter((m: MeasurementProfile) => m.customer.id.toString() === id));
-      
-      setIsAddingProfile(false);
-    } catch (err) {
-      console.error('Failed to save measurements', err);
-      alert('Failed to save measurements profile.');
-    } finally {
-      setSavingMeasurement(false);
-    }
-  };
-
-  const handleDeleteMeasurement = async (id: number) => {
-    if (!shop || !confirm('Are you sure you want to delete this measurement profile?')) return;
-
-    setIsDeletingMeasurementId(id);
-    try {
-      await api.delete(`/shops/${shop.id}/measurements/${id}`);
-      setMeasurements(prev => prev.filter(m => m.id !== id));
-    } catch (err) {
-      console.error('Failed to delete measurements', err);
-      alert('Failed to delete measurement profile.');
-    } finally {
-      setIsDeletingMeasurementId(null);
-    }
-  };
-
   const calculateTotalSpend = () => {
-    return jobs.reduce((sum, job) => sum + parseFloat(job.total_amount as string || '0'), 0);
+    return jobs.reduce((sum, job) => sum + Number.parseFloat(job.total_amount as string || '0'), 0);
   };
 
   const getActiveJobsCount = () => {
@@ -303,95 +135,11 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-[#A8A19A]">
-        <Loader2 className="w-8 h-8 animate-spin mb-3 text-taupe" />
+        <Loader2 className="w-8 h-8 animate-spin mb-3 text-taupe mx-auto" />
         <span className="text-sm font-medium">Loading customer profile...</span>
       </div>
     );
   }
-
-  const getTimelineEvents = () => {
-    const events: {
-      id: string;
-      type: 'customer' | 'measurement' | 'job' | 'appointment';
-      title: string;
-      description: string;
-      date: Date;
-      icon: ComponentType<{ size?: number; className?: string }>;
-      color: string;
-    }[] = [];
-
-    // 1. Customer Created
-    if (customer) {
-      events.push({
-        id: `cust-${customer.id}`,
-        type: 'customer',
-        title: 'Client Profile Created',
-        description: `Customer profile for ${customer.name} was added to the shop database.`,
-        date: new Date(customer.created_at),
-        icon: User,
-        color: 'bg-[#9A8073] text-white border-[#9A8073]',
-      });
-    }
-
-    // 2. Measurements
-    measurements.forEach(m => {
-      if (m.created_at) {
-        events.push({
-          id: `meas-create-${m.id}`,
-          type: 'measurement',
-          title: `Specs Profile Added: ${m.profile_name}`,
-          description: `Added a new measurement specifications profile (Version Profile #${m.id}).`,
-          date: new Date(m.created_at),
-          icon: Ruler,
-          color: 'bg-emerald-600 text-white border-emerald-600',
-        });
-      }
-      if (m.updated_at && m.updated_at !== m.created_at) {
-        events.push({
-          id: `meas-update-${m.id}`,
-          type: 'measurement',
-          title: `Specs Profile Updated: ${m.profile_name}`,
-          description: `Modified the body measurements metrics for ${m.profile_name}.`,
-          date: new Date(m.updated_at),
-          icon: RefreshCw,
-          color: 'bg-blue-600 text-white border-blue-600',
-        });
-      }
-    });
-
-    // 3. Job Orders
-    jobs.forEach(j => {
-      if (j.created_at) {
-        events.push({
-          id: `job-create-${j.id}`,
-          type: 'job',
-          title: `Job Order Placed: ${j.order_number}`,
-          description: `Placed production run for ${j.service?.name || 'Garment'} with status "${j.status.toUpperCase()}".`,
-          date: new Date(j.created_at),
-          icon: Scissors,
-          color: 'bg-amber-600 text-white border-amber-600',
-        });
-      }
-    });
-
-    // 4. Appointments
-    appointments.forEach(a => {
-      if (a.created_at) {
-        events.push({
-          id: `appt-create-${a.id}`,
-          type: 'appointment',
-          title: 'Appointment Booked',
-          description: `Scheduled fitting/consultation for ${new Date(a.scheduled_at).toLocaleString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}.`,
-          date: new Date(a.created_at),
-          icon: Calendar,
-          color: 'bg-indigo-600 text-white border-indigo-600',
-        });
-      }
-    });
-
-    // Sort by date descending
-    return events.sort((a, b) => b.date.getTime() - a.date.getTime());
-  };
 
   return (
     <div className="max-w-5xl mx-auto space-y-6 pb-12">
@@ -400,7 +148,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
         <div className="flex items-center gap-4">
           <button 
             onClick={() => router.back()}
-            className="p-2 rounded-lg bg-white shadow-sm border border-[#EBE6E0] text-[#827A73] hover:text-[#2D2A26] transition-colors"
+            className="p-2 rounded-lg bg-white shadow-sm border border-[#EBE6E0] text-[#827A73] hover:text-[#2D2A26] transition-colors cursor-pointer"
           >
             <ArrowLeft size={18} />
           </button>
@@ -409,7 +157,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
               <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">{customer?.name}</h1>
               <button 
                 onClick={() => setIsEditingProfile(true)}
-                className="p-1.5 rounded-lg border border-[#EBE6E0] text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] transition-all"
+                className="p-1.5 rounded-lg border border-[#EBE6E0] text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] transition-all cursor-pointer"
                 title="Edit Client Info"
               >
                 <Edit2 size={13} />
@@ -441,10 +189,10 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
           { label: 'Active Projects', value: getActiveJobsCount(), icon: Scissors, color: 'bg-blue-50 text-blue-700 border-blue-100' },
           { label: 'Completed Orders', value: getCompletedJobsCount(), icon: Package, color: 'bg-indigo-50 text-indigo-700 border-indigo-100' },
           { label: 'Appointments', value: appointments.length, icon: Calendar, color: 'bg-amber-50 text-amber-700 border-amber-100' },
-        ].map((stat, idx) => {
+        ].map((stat) => {
           const Icon = stat.icon;
           return (
-            <div key={idx} className="bg-white border border-[#EBE6E0] rounded-xl p-4 flex items-center justify-between shadow-sm">
+            <div key={stat.label} className="bg-white border border-[#EBE6E0] rounded-xl p-4 flex items-center justify-between shadow-sm">
               <div>
                 <span className="text-[11px] font-semibold text-[#827A73] uppercase tracking-wider block">{stat.label}</span>
                 <span className="text-lg font-bold text-[#2D2A26] mt-0.5 block">{stat.value}</span>
@@ -463,16 +211,17 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
           <div className="bg-white border border-[#EBE6E0] rounded-2xl w-full max-w-md p-6 shadow-xl animate-in fade-in zoom-in-95 duration-150">
             <div className="flex justify-between items-center border-b border-[#EBE6E0] pb-3 mb-4">
               <h3 className="text-base font-bold text-[#2D2A26]">Edit Customer Profile</h3>
-              <button onClick={() => setIsEditingProfile(false)} className="text-[#A8A19A] hover:text-[#2D2A26]">
+              <button onClick={() => setIsEditingProfile(false)} className="text-[#A8A19A] hover:text-[#2D2A26] cursor-pointer">
                 <X size={18} />
               </button>
             </div>
             <form onSubmit={handleUpdateProfile} className="space-y-4">
               <div>
-                <label className="block text-xs font-semibold text-[#524A44] mb-1">
+                <label htmlFor="customer-edit-name" className="block text-xs font-semibold text-[#524A44] mb-1">
                   Full Name <span className="text-rose-500">*</span>
                 </label>
                 <input 
+                  id="customer-edit-name"
                   type="text" 
                   required
                   value={editName}
@@ -481,10 +230,11 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#524A44] mb-1">
+                <label htmlFor="customer-edit-email" className="block text-xs font-semibold text-[#524A44] mb-1">
                   Email Address <span className="text-[10px] text-[#827A73] font-normal">(Optional)</span>
                 </label>
                 <input 
+                  id="customer-edit-email"
                   type="email" 
                   value={editEmail}
                   onChange={e => setEditEmail(e.target.value)}
@@ -492,10 +242,11 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold text-[#524A44] mb-1">
+                <label htmlFor="customer-edit-phone" className="block text-xs font-semibold text-[#524A44] mb-1">
                   Phone Number <span className="text-rose-500">*</span>
                 </label>
                 <input 
+                  id="customer-edit-phone"
                   type="text" 
                   required
                   value={editPhone}
@@ -508,14 +259,14 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
                 <button 
                   type="button" 
                   onClick={() => setIsEditingProfile(false)}
-                  className="px-4 py-2 border border-[#EBE6E0] rounded-lg text-xs font-semibold text-[#827A73] hover:bg-[#FAF6F3]"
+                  className="px-4 py-2 border border-[#EBE6E0] rounded-lg text-xs font-semibold text-[#827A73] hover:bg-[#FAF6F3] cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button 
                   type="submit" 
                   disabled={savingProfile}
-                  className="px-4 py-2 bg-taupe hover:bg-taupe/90 text-white rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
+                  className="px-4 py-2 bg-taupe hover:bg-taupe/90 text-white rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50 cursor-pointer"
                 >
                   {savingProfile && <Loader2 size={12} className="animate-spin" />}
                   Save Changes
@@ -537,11 +288,8 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => {
-              setActiveTab(tab.id as 'overview' | 'measurements' | 'orders' | 'appointments' | 'history');
-              setIsAddingProfile(false);
-            }}
-            className={`pb-3 font-semibold text-sm transition-all border-b-2 px-1 ${
+            onClick={() => setActiveTab(tab.id as 'overview' | 'measurements' | 'orders' | 'appointments' | 'history')}
+            className={`pb-3 font-semibold text-sm transition-all border-b-2 px-1 cursor-pointer ${
               activeTab === tab.id
                 ? 'border-taupe text-[#2D2A26]'
                 : 'border-transparent text-[#A8A19A] hover:text-[#524A44]'
@@ -555,476 +303,38 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
       {/* Tab Panels */}
       <div className="space-y-6">
         {activeTab === 'overview' && (
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="md:col-span-2 space-y-6">
-              {/* Profile Details */}
-              <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm space-y-4">
-                <h2 className="text-base font-bold text-[#2D2A26]">Client Details</h2>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                  <div>
-                    <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Full Name</span>
-                    <span className="text-[#2D2A26] font-medium">{customer?.name}</span>
-                  </div>
-                  <div>
-                    <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Email Address</span>
-                    <span className="text-[#2D2A26] font-medium">
-                      {customer?.email && !isWalkInEmail(customer.email) ? customer.email : 'Walk-in (No Email)'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Phone Number</span>
-                    <span className="text-[#2D2A26] font-medium">{customer?.phone || 'N/A'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Profile Reference</span>
-                    <span className="text-[#2D2A26] font-medium">Customer ID #{customer?.id}</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Active Jobs Quick Overview */}
-              <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-base font-bold text-[#2D2A26]">Ongoing Garments Production</h2>
-                  <button onClick={() => setActiveTab('orders')} className="text-xs text-taupe font-semibold hover:underline flex items-center gap-0.5">
-                    View All Orders <ChevronRight size={14} />
-                  </button>
-                </div>
-                <div className="divide-y divide-[#EBE6E0] text-sm">
-                  {jobs.filter(j => !['completed', 'cancelled'].includes(j.status)).map(job => (
-                    <div key={job.id} className="py-3 first:pt-0 last:pb-0 flex items-center justify-between">
-                      <div>
-                        <Link href={`/dashboard/jobs/${job.id}`} className="font-semibold text-taupe hover:underline block">
-                          {job.order_number}
-                        </Link>
-                        <span className="text-xs text-[#827A73]">{job.service?.name}</span>
-                      </div>
-                      <div className="flex items-center gap-4">
-                        <span className="text-xs font-bold text-[#2D2A26]">₱{parseFloat(job.total_amount as string).toLocaleString()}</span>
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
-                          job.status === 'pending' ? 'bg-[#FAF6F3] text-[#827A73] border-[#EBE6E0]' : 'bg-[#BCA89F]/10 text-[#BCA89F] border-[#BCA89F]/20'
-                        }`}>
-                          {job.status}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                  {jobs.filter(j => !['completed', 'cancelled'].includes(j.status)).length === 0 && (
-                    <div className="text-center py-6 text-xs text-[#A8A19A] italic">No active production runs currently.</div>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            {/* Quick Measurements Version Box */}
-            <div className="space-y-6">
-              <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-base font-bold text-[#2D2A26]">Quick Specs</h2>
-                  <button onClick={() => setActiveTab('measurements')} className="text-xs text-taupe font-semibold hover:underline">
-                    Manage
-                  </button>
-                </div>
-                <div className="space-y-3">
-                  {measurements.slice(0, 2).map(m => (
-                    <div key={m.id} className="bg-[#FAF6F3]/50 border border-[#EBE6E0] p-3.5 rounded-xl text-xs">
-                      <div className="font-bold text-[#2D2A26] border-b border-[#EBE6E0]/60 pb-1 mb-2 flex justify-between">
-                        <span>{m.profile_name}</span>
-                        <span className="font-normal text-[10px] text-[#827A73]">({Object.keys(m.metrics || {}).length} specs)</span>
-                      </div>
-                      <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
-                        {Object.entries(m.metrics || {}).slice(0, 4).map(([k, v]) => (
-                          <div key={k} className="flex justify-between border-b border-[#EBE6E0]/20 pb-0.5">
-                            <span className="text-[#827A73] capitalize truncate">{k}</span>
-                            <span className="font-semibold text-[#524A44]">{String(v)}</span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                  {measurements.length === 0 && (
-                    <div className="text-center py-6 text-xs text-[#A8A19A] italic">No specifications entered.</div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <CustomerOverviewTab
+            customer={customer}
+            jobs={jobs}
+            measurements={measurements}
+            setActiveTab={setActiveTab}
+          />
         )}
 
-        {activeTab === 'measurements' && (
-          <div className="space-y-6">
-            {!isAddingProfile ? (
-              <div className="space-y-6">
-                <div className="flex justify-between items-center">
-                  <div>
-                    <h2 className="text-base font-bold text-[#2D2A26]">Garment Fit Profile</h2>
-                    <p className="text-xs text-[#827A73] mt-0.5">Store different versions of body dimensions for this client.</p>
-                  </div>
-                  <button 
-                    onClick={handleStartAddMeasurement}
-                    className="flex items-center gap-1.5 bg-taupe hover:bg-taupe/90 text-white px-3.5 py-2 rounded-lg font-medium text-xs transition-colors"
-                  >
-                    <Plus size={14} /> Add Specs Profile
-                  </button>
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {Object.entries(
-                    measurements.reduce((acc, m) => {
-                      const key = m.profile_name.trim();
-                      if (!acc[key]) acc[key] = [];
-                      acc[key].push(m);
-                      return acc;
-                    }, {} as Record<string, MeasurementProfile[]>)
-                  ).map(([profileName, versions]) => {
-                    // Sort versions by ID ascending
-                    versions.sort((a, b) => a.id - b.id);
-                    
-                    const rKey = `c_${id}_p_${profileName}`;
-                    const selectedId = selectedVersionIds[rKey];
-                    const activeMeas = versions.find(v => v.id === selectedId) || versions[versions.length - 1];
-                    const activeIndex = versions.indexOf(activeMeas);
-                    
-                    return (
-                      <div key={profileName} className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm space-y-4 hover:border-taupe/40 transition-colors relative">
-                        <div className="flex justify-between items-start border-b border-[#EBE6E0]/60 pb-2.5 flex-wrap gap-2">
-                          <div className="min-w-0 flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-bold text-[#2D2A26] truncate">{profileName}</h3>
-                              <span className="text-[10px] text-[#A8A19A] whitespace-nowrap">
-                                Version {activeIndex + 1} of {versions.length}
-                              </span>
-                              {versions.length > 1 && (
-                                <select
-                                  value={activeMeas.id}
-                                  onChange={(e) => {
-                                    const newVerId = Number(e.target.value);
-                                    setSelectedVersionIds(prev => ({ ...prev, [rKey]: newVerId }));
-                                  }}
-                                  className="text-[10px] bg-[#FAF6F3] border border-[#EBE6E0] rounded px-1.5 py-0.5 text-[#524A44] font-semibold focus:outline-none cursor-pointer"
-                                >
-                                  {versions.map((v, idx) => (
-                                    <option key={v.id} value={v.id}>
-                                      Ver {idx + 1}
-                                    </option>
-                                  ))}
-                                </select>
-                              )}
-                            </div>
-                            <span className="text-[10px] text-[#A8A19A] mt-0.5 block">Version Profile #{activeMeas.id}</span>
-                          </div>
-                          <div className="flex items-center gap-1 shrink-0">
-                            <button 
-                              onClick={() => handleCloneMeasurement(activeMeas)}
-                              className="p-1 rounded text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] border border-transparent hover:border-[#EBE6E0] transition-all"
-                              title="Create new version from this profile"
-                            >
-                              <Copy size={13} />
-                            </button>
-                            <button 
-                              onClick={() => handleStartEditMeasurement(activeMeas)}
-                              className="p-1 rounded text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] border border-transparent hover:border-[#EBE6E0] transition-all"
-                              title="Edit measurements"
-                            >
-                              <Edit2 size={13} />
-                            </button>
-                            <button 
-                              onClick={() => handleDeleteMeasurement(activeMeas.id)}
-                              disabled={isDeletingMeasurementId === activeMeas.id}
-                              className="p-1 rounded text-[#A8A19A] hover:bg-red-50 hover:text-[#B26959] border border-transparent hover:border-red-200 transition-all"
-                              title="Delete profile"
-                            >
-                              {isDeletingMeasurementId === activeMeas.id ? (
-                                <Loader2 size={13} className="animate-spin" />
-                              ) : (
-                                <Trash2 size={13} />
-                              )}
-                            </button>
-                          </div>
-                        </div>
-
-                        <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-xs">
-                          {Object.entries(activeMeas.metrics || {}).map(([key, val]) => (
-                            <div key={key} className="flex justify-between border-b border-[#EBE6E0]/30 pb-1">
-                              <span className="text-[#827A73] capitalize font-medium">{key}</span>
-                              <span className="text-[#2D2A26] font-semibold">{String(val)}</span>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    );
-                  })}
-                  {measurements.length === 0 && (
-                    <div className="bg-[#FAF6F3]/50 border border-[#EBE6E0] border-dashed rounded-xl p-12 text-center text-sm text-[#A8A19A] md:col-span-2">
-                      No measurements specified for {customer?.name}. Create a specs profile to track sleeve, waist, and chest sizing.
-                    </div>
-                  )}
-                </div>
-              </div>
-            ) : (
-              // Interactive Key-Value Specs Editor (WOW Design)
-              <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm space-y-6 animate-in slide-in-from-bottom-2 duration-200">
-                <div className="flex justify-between items-center border-b border-[#EBE6E0] pb-4">
-                  <div>
-                    <h3 className="text-base font-bold text-[#2D2A26]">
-                      {editingProfileId ? `Edit ${profileName} Specifications` : 'Add Specifications Profile'}
-                    </h3>
-                    <p className="text-xs text-[#827A73] mt-0.5">Specify measurement keys and values (e.g. Waist, Chest).</p>
-                  </div>
-                  <button 
-                    onClick={() => setIsAddingProfile(false)}
-                    className="p-1.5 rounded-lg border border-[#EBE6E0] text-[#827A73] hover:bg-[#FAF6F3]"
-                  >
-                    <X size={16} />
-                  </button>
-                </div>
-
-                <div className="space-y-4">
-                  <div className="max-w-md">
-                    <label htmlFor="profile_name" className="block text-xs font-semibold text-[#524A44] mb-1">
-                      Specs Profile Name <span className="text-red-500">*</span>
-                    </label>
-                    <input 
-                      id="profile_name"
-                      type="text" 
-                      placeholder="e.g. Slim Suit, Standard Blazer, Gown"
-                      value={profileName}
-                      onChange={e => setProfileName(e.target.value)}
-                      className="w-full px-3 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe" 
-                    />
-                  </div>
-
-                  <div>
-                    <span className="block text-xs font-semibold text-[#524A44] mb-2">Metrics Sizing Checklist</span>
-                    <div className="space-y-2 max-h-96 overflow-y-auto pr-1">
-                      {metricRows.map((row, idx) => (
-                        <div key={idx} className="flex gap-3 items-center">
-                          <div className="flex-1">
-                            <input 
-                              type="text" 
-                              placeholder="Measurement key (e.g. Chest)"
-                              value={row.key}
-                              onChange={e => handleMetricChange(idx, 'key', e.target.value)}
-                              list="common-metrics"
-                              className="w-full px-3 py-1.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-xs text-[#2D2A26] focus:outline-none focus:border-taupe"
-                            />
-                          </div>
-                          <div className="flex-1">
-                            <input 
-                              type="text" 
-                              placeholder="Value (e.g. 40 in, 102 cm)"
-                              value={row.value}
-                              onChange={e => handleMetricChange(idx, 'value', e.target.value)}
-                              className="w-full px-3 py-1.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-xs text-[#2D2A26] focus:outline-none focus:border-taupe"
-                            />
-                          </div>
-                          <button 
-                            type="button"
-                            onClick={() => handleRemoveMetricRow(idx)}
-                            className="p-1.5 rounded-lg border border-transparent hover:border-red-200 hover:bg-red-50 text-[#A8A19A] hover:text-[#B26959]"
-                            title="Remove row"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <datalist id="common-metrics">
-                      {COMMON_METRICS.map(m => <option key={m} value={m} />)}
-                    </datalist>
-
-                    <button
-                      type="button"
-                      onClick={handleAddMetricRow}
-                      className="mt-3 inline-flex items-center gap-1 text-xs text-taupe font-semibold hover:underline"
-                    >
-                      <Plus size={13} /> Add Sizing Row
-                    </button>
-                  </div>
-                </div>
-
-                <div className="flex justify-end gap-3 pt-4 border-t border-[#EBE6E0]">
-                  <button 
-                    type="button" 
-                    onClick={() => setIsAddingProfile(false)}
-                    className="px-4 py-2 border border-[#EBE6E0] rounded-lg text-xs font-semibold text-[#827A73] hover:bg-[#FAF6F3]"
-                  >
-                    Cancel
-                  </button>
-                  <button 
-                    type="button" 
-                    onClick={handleSaveMeasurement}
-                    disabled={savingMeasurement || !profileName.trim()}
-                    className="px-4 py-2 bg-taupe hover:bg-taupe/90 text-white rounded-lg text-xs font-semibold flex items-center gap-1 disabled:opacity-50"
-                  >
-                    {savingMeasurement && <Loader2 size={12} className="animate-spin" />}
-                    Save Specs
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
+        {activeTab === 'measurements' && shop && customer && (
+          <CustomerMeasurementsTab
+            customerId={customer.id}
+            shopId={shop.id}
+            measurements={measurements}
+            onReload={loadData}
+          />
         )}
 
         {activeTab === 'orders' && (
-          <div className="bg-white border border-[#EBE6E0] rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-[#EBE6E0] bg-[#FAF6F3]/30">
-              <h2 className="text-sm font-bold text-[#2D2A26]">garment Job Orders</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-[#FAF6F3]/50 border-b border-[#EBE6E0] text-xs uppercase tracking-wider text-[#827A73]">
-                    <th className="p-4 font-semibold">Order Number</th>
-                    <th className="p-4 font-semibold">Garment / Service</th>
-                    <th className="p-4 font-semibold text-center">Status</th>
-                    <th className="p-4 font-semibold text-center">Payment Status</th>
-                    <th className="p-4 font-semibold text-right">Amount (₱)</th>
-                    <th className="p-4 font-semibold text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EBE6E0]">
-                  {jobs.map(job => (
-                    <tr key={job.id} className="hover:bg-[#FAF6F3]/20 transition-colors">
-                      <td className="p-4 font-bold text-[#2D2A26]">
-                        {job.order_number}
-                        {job.order_type === 'online' ? (
-                          <span className="ml-2 inline-flex items-center text-[9px] font-semibold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 uppercase">Online</span>
-                        ) : (
-                          <span className="ml-2 inline-flex items-center text-[9px] font-semibold bg-[#F0EAE3] text-[#827A73] px-1.5 py-0.5 rounded border border-[#EBE6E0] uppercase">Walk-in</span>
-                        )}
-                      </td>
-                      <td className="p-4 text-[#524A44] font-medium">{job.service?.name}</td>
-                      <td className="p-4 text-center">
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase ${
-                          job.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
-                          job.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                          'bg-amber-50 text-amber-700 border-amber-200'
-                        }`}>
-                          {job.status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-center">
-                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase ${
-                          job.payment_status === 'paid' ? 'bg-[#7A8B76]/15 text-[#7A8B76] border-[#7A8B76]/20' :
-                          job.payment_status === 'partial' ? 'bg-[#BCA89F]/15 text-[#BCA89F] border-[#BCA89F]/20' :
-                          'bg-[#B26959]/15 text-[#B26959] border-[#B26959]/20'
-                        }`}>
-                          {job.payment_status}
-                        </span>
-                      </td>
-                      <td className="p-4 text-right font-bold text-[#2D2A26]">
-                        ₱{parseFloat(job.total_amount as string).toLocaleString()}
-                        {parseFloat(job.balance as string) > 0 && (
-                          <span className="text-[10px] text-[#B26959] block font-semibold">Bal: ₱{parseFloat(job.balance as string).toLocaleString()}</span>
-                        )}
-                      </td>
-                      <td className="p-4 text-right">
-                        <Link 
-                          href={`/dashboard/jobs/${job.id}`}
-                          className="inline-flex items-center gap-1.5 text-xs text-taupe font-semibold hover:underline"
-                        >
-                          View details <ChevronRight size={14} />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                  {jobs.length === 0 && (
-                    <tr>
-                      <td colSpan={6} className="p-8 text-center text-[#A8A19A] italic">
-                        No orders recorded for this customer.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <CustomerJobsTab jobs={jobs} />
         )}
 
         {activeTab === 'appointments' && (
-          <div className="bg-white border border-[#EBE6E0] rounded-2xl shadow-sm overflow-hidden">
-            <div className="p-4 border-b border-[#EBE6E0] bg-[#FAF6F3]/30">
-              <h2 className="text-sm font-bold text-[#2D2A26]">Scheduled Customer Appointments</h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-sm">
-                <thead>
-                  <tr className="bg-[#FAF6F3]/50 border-b border-[#EBE6E0] text-xs uppercase tracking-wider text-[#827A73]">
-                    <th className="p-4 font-semibold">Date & Time</th>
-                    <th className="p-4 font-semibold">Garment Service</th>
-                    <th className="p-4 font-semibold">Status</th>
-                    <th className="p-4 font-semibold">Meeting Notes</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-[#EBE6E0]">
-                  {appointments.map(appt => (
-                    <tr key={appt.id} className="hover:bg-[#FAF6F3]/20 transition-colors">
-                      <td className="p-4 font-semibold text-[#2D2A26]">
-                        {new Date(appt.scheduled_at).toLocaleDateString(undefined, { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })}
-                        <span className="block text-xs font-normal text-[#827A73]">{new Date(appt.scheduled_at).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}</span>
-                      </td>
-                      <td className="p-4 text-[#524A44] font-medium">{appt.service?.name || 'Fitting Session / General'}</td>
-                      <td className="p-4">
-                        <span className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border uppercase ${
-                          appt.status === 'completed' ? 'bg-green-50 text-green-700 border-green-200' :
-                          appt.status === 'cancelled' ? 'bg-red-50 text-red-700 border-red-200' :
-                          appt.status === 'no_show' ? 'bg-slate-50 text-slate-700 border-slate-200' :
-                          'bg-amber-50 text-amber-700 border-amber-200 animate-pulse'
-                        }`}>
-                          {appt.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td className="p-4 text-xs text-[#827A73] max-w-sm truncate" title={appt.notes}>
-                        {appt.notes || '—'}
-                      </td>
-                    </tr>
-                  ))}
-                  {appointments.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="p-8 text-center text-[#A8A19A] italic">
-                        No appointments recorded for this customer.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
+          <CustomerAppointmentsTab appointments={appointments} />
         )}
 
         {activeTab === 'history' && (
-          <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
-            <h2 className="text-base font-bold text-[#2D2A26] mb-6">Client Activity History</h2>
-            <div className="relative pl-6 border-l-2 border-[#EBE6E0] space-y-8 ml-3">
-              {getTimelineEvents().map(event => {
-                const Icon = event.icon;
-                return (
-                  <div key={event.id} className="relative">
-                    {/* Circle marker with icon */}
-                    <span className={`absolute -left-[37px] top-0.5 w-7 h-7 rounded-full flex items-center justify-center border-2 border-white ${event.color} shadow-sm shrink-0`}>
-                      <Icon size={12} />
-                    </span>
-                    <div>
-                      <div className="flex items-center justify-between gap-4">
-                        <h4 className="font-bold text-sm text-[#2D2A26]">{event.title}</h4>
-                        <span className="text-[10px] font-semibold text-[#827A73]">
-                          {event.date.toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-xs text-[#827A73] mt-1">{event.description}</p>
-                    </div>
-                  </div>
-                );
-              })}
-              {getTimelineEvents().length === 0 && (
-                <div className="text-center py-8 text-sm text-[#A8A19A] italic">
-                  No activities recorded yet.
-                </div>
-              )}
-            </div>
-          </div>
+          <CustomerHistoryTab
+            customer={customer}
+            measurements={measurements}
+            jobs={jobs}
+            appointments={appointments}
+          />
         )}
       </div>
     </div>

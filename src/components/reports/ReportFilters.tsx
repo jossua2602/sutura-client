@@ -2,10 +2,10 @@ import React from 'react';
 import { Filter, Download, Printer } from 'lucide-react';
 
 interface ReportFiltersProps {
-  period: string;
-  setPeriod: (period: string) => void;
-  onExportCSV: () => void;
-  onPrint: () => void;
+  readonly period: string;
+  readonly setPeriod: (period: string) => void;
+  readonly onExportCSV: () => void;
+  readonly onPrint: () => void;
 }
 
 export default function ReportFilters({

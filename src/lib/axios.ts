@@ -9,7 +9,7 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  if (typeof window !== 'undefined') {
+  if (globalThis.window !== undefined) {
     const token = localStorage.getItem('sutura_token');
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -21,12 +21,12 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response && error.response.status === 401) {
+    if (error.response?.status === 401) {
       // Don't trigger auto-logout redirect if the user is actively trying to log in
-      if (typeof window !== 'undefined' && window.location.pathname !== '/login' && !error.config.url.includes('/auth/login')) {
+      if (globalThis.window !== undefined && globalThis.window.location.pathname !== '/login' && !error.config.url.includes('/auth/login')) {
         localStorage.removeItem('sutura_token');
         localStorage.removeItem('auth-storage'); 
-        window.location.href = '/login';
+        globalThis.location.href = '/login';
       }
     }
     return Promise.reject(error);

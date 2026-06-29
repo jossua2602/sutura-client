@@ -3,7 +3,7 @@ import { UserCog } from 'lucide-react';
 import { StaffPresence } from './dashboardHelpers';
 
 interface StaffOnlineProps {
-  onlineStaff: StaffPresence[];
+  readonly onlineStaff: StaffPresence[];
 }
 
 export default function StaffOnline({
@@ -41,7 +41,7 @@ export default function StaffOnline({
                 .join('')
                 .toUpperCase();
               const roleLabel = member.role
-                ? member.role.charAt(0).toUpperCase() + member.role.slice(1).replace(/_/g, ' ')
+                ? member.role.charAt(0).toUpperCase() + member.role.slice(1).replaceAll('_', ' ')
                 : 'Staff';
               const avatarColors = [
                 'bg-[#9A8073] text-white',

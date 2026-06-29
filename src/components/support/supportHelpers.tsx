@@ -70,22 +70,31 @@ export const renderAttachments = (urls?: string[], isMe?: boolean) => {
   if (!urls || urls.length === 0) return null;
   return (
     <div className={`mt-2 gap-2 ${urls.length === 1 ? 'max-w-sm block' : 'grid grid-cols-2 max-w-md'}`}>
-      {urls.map((url, i) => {
+      {urls.map((url) => {
         const img = isImage(url);
         const vid = isVideo(url);
         return (
-          <div key={i} className={`relative rounded-lg overflow-hidden border ${isMe ? 'border-white/20 bg-black/10' : 'border-[#EBE6E0] bg-black/5'} aspect-video flex items-center justify-center`}>
+          <div key={url} className={`relative rounded-lg overflow-hidden border ${isMe ? 'border-white/20 bg-black/10' : 'border-[#EBE6E0] bg-black/5'} aspect-video flex items-center justify-center`}>
             {img ? (
-              /* eslint-disable-next-line @next/next/no-img-element */
-              <img
-                src={url}
-                alt="Attachment"
-                className="w-full h-full object-cover cursor-zoom-in hover:scale-105 transition-transform"
-                onClick={() => window.open(url, '_blank')}
-              />
-            ) : vid ? (
-              <video src={url} controls className="w-full h-full object-contain bg-black" />
-            ) : (
+              <button
+                type="button"
+                onClick={() => globalThis.window.open(url, '_blank')}
+                className="w-full h-full cursor-zoom-in focus:outline-none"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={url}
+                  alt="Attachment"
+                  className="w-full h-full object-cover hover:scale-105 transition-transform"
+                />
+              </button>
+            ) : null}
+            {!img && vid && (
+              <video src={url} controls className="w-full h-full object-contain bg-black">
+                <track kind="captions" />
+              </video>
+            )}
+            {!img && !vid && (
               <a
                 href={url}
                 target="_blank"

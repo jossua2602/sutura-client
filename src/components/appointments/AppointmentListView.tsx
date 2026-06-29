@@ -3,24 +3,24 @@ import {
   Calendar as CalendarIcon, Clock, Loader2, Eye, Play, Scissors, CheckSquare, RefreshCw, Pencil, Trash2
 } from 'lucide-react';
 import {
-  Appointment, TYPE_CONFIG, formatScheduled, StatusBadge, TypeBadge
+  Appointment, formatScheduled, StatusBadge, TypeBadge
 } from './appointmentHelpers';
 
 interface AppointmentListViewProps {
-  filtered: Appointment[];
-  loading: boolean;
-  actionLoadingId: number | null;
-  isOwnerOrManager: boolean;
+  readonly filtered: Appointment[];
+  readonly loading: boolean;
+  readonly actionLoadingId: number | null;
+  readonly isOwnerOrManager: boolean;
 
   // Actions
-  onReviewClick: (apt: Appointment) => void;
-  onStartClick: (aptId: number) => void;
-  onCreateJobClick: (apt: Appointment) => void;
-  onCompleteClick: (apt: Appointment) => void;
-  onRescheduleClick: (apt: Appointment) => void;
-  onDetailsClick: (apt: Appointment) => void;
-  onEditClick: (apt: Appointment) => void;
-  onCancelClick: (apt: Appointment) => void;
+  readonly onReviewClick: (apt: Appointment) => void;
+  readonly onStartClick: (aptId: number) => void;
+  readonly onCreateJobClick: (apt: Appointment) => void;
+  readonly onCompleteClick: (apt: Appointment) => void;
+  readonly onRescheduleClick: (apt: Appointment) => void;
+  readonly onDetailsClick: (apt: Appointment) => void;
+  readonly onEditClick: (apt: Appointment) => void;
+  readonly onCancelClick: (apt: Appointment) => void;
 }
 
 export default function AppointmentListView({

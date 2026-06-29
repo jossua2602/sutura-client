@@ -10,16 +10,21 @@ import {
   Pencil,
   Trash2,
   Star,
+  Eye,
 } from 'lucide-react';
+import { useAuthStore } from '@/store/useAuthStore';
 import { ShopBranch, StatusBadge, getMapUrl } from './branchHelpers';
 
 interface BranchCardProps {
-  branch: ShopBranch;
-  onEdit: (branch: ShopBranch) => void;
-  onDelete: (id: number) => void;
+  readonly branch: ShopBranch;
+  readonly onEdit: (branch: ShopBranch) => void;
+  readonly onDelete: (id: number) => void;
 }
 
-export default function BranchCard({ branch, onEdit, onDelete }: BranchCardProps) {
+export default function BranchCard({ branch, onEdit, onDelete }: Readonly<BranchCardProps>) {
+  const { shop } = useAuthStore();
+  const publicProfileUrl = shop?.slug ? `/shop/${shop.slug}?branch_id=${branch.id}` : '#';
+
   return (
     <div className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden hover:border-[#D1C7BD] hover:shadow-md transition-all duration-200 flex flex-col">
       {branch.guide_image_url && (
@@ -70,7 +75,7 @@ export default function BranchCard({ branch, onEdit, onDelete }: BranchCardProps
             <div className="flex items-center gap-2 text-xs text-[#A8A19A]">
               <MapPin className="w-3.5 h-3.5 shrink-0" />
               <span>
-                {parseFloat(branch.latitude).toFixed(4)}, {parseFloat(branch.longitude).toFixed(4)}
+                {Number.parseFloat(branch.latitude).toFixed(4)}, {Number.parseFloat(branch.longitude).toFixed(4)}
               </span>
             </div>
           )}
@@ -91,6 +96,15 @@ export default function BranchCard({ branch, onEdit, onDelete }: BranchCardProps
         </div>
 
         <div className="flex items-center gap-1">
+          <a
+            href={publicProfileUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            title="Preview Customer View"
+            className="p-1.5 text-[#A8A19A] hover:text-taupe transition-colors rounded"
+          >
+            <Eye size={15} />
+          </a>
           <a
             href={getMapUrl(branch)}
             target="_blank"

@@ -4,13 +4,13 @@ import Modal from '@/components/Modal';
 import { CATEGORIES } from './specializationHelpers';
 
 interface SpecializationFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  editingId: number | null;
-  isSubmitting: boolean;
-  error: string;
-  formData: {
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
+  readonly editingId: number | null;
+  readonly isSubmitting: boolean;
+  readonly error: string;
+  readonly formData: {
     category: string;
     name: string;
     description: string;
@@ -19,7 +19,7 @@ interface SpecializationFormModalProps {
     production_time_days: number;
     min_order_qty: number;
   };
-  setFormData: React.Dispatch<React.SetStateAction<{
+  readonly setFormData: React.Dispatch<React.SetStateAction<{
     category: string;
     name: string;
     description: string;
@@ -67,7 +67,7 @@ export default function SpecializationFormModal({
         <div>
           <span className="block text-sm font-semibold text-[#524A44] mb-2">
             Category
-            <span className="ml-1 font-normal text-[#A8A19A] text-xs">(choose one to see presets)</span>
+            {' '}<span className="ml-1 font-normal text-[#A8A19A] text-xs">(choose one to see presets)</span>
           </span>
 
           <div className="space-y-1.5 max-h-56 overflow-y-auto pr-0.5">

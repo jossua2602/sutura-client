@@ -1,204 +1,67 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import api from '@/lib/axios';
-import { useAuthStore } from '@/store/useAuthStore';
+import { Loader2, Save, Store, Clock, FileText, Image, Scissors, Plus, Search } from 'lucide-react';
 import SettingsBusinessType from '@/components/settings/SettingsBusinessType';
 import SettingsBasicInfo from '@/components/settings/SettingsBasicInfo';
 import SettingsOperatingHours from '@/components/settings/SettingsOperatingHours';
-import SettingsRentalPolicies, { ShopSettingsData } from '@/components/settings/SettingsRentalPolicies';
+import SettingsRentalPolicies from '@/components/settings/SettingsRentalPolicies';
 import SettingsGalleryAndCouriers from '@/components/settings/SettingsGalleryAndCouriers';
+import { SettingsSkeleton } from '@/components/ui/Skeleton';
+import SpecializationFormModal from '@/components/specializations/SpecializationFormModal';
+import SpecializationDeleteModal from '@/components/specializations/SpecializationDeleteModal';
+import SpecializationListView from '@/components/specializations/SpecializationListView';
+import { useSettings, SettingsTab } from '@/components/settings/useSettings';
+import { BLANK_FORM } from '@/components/specializations/specializationHelpers';
 
-const DEFAULT_HOURS = {
-  monday: { is_open: true, open: '09:00', close: '18:00' },
-  tuesday: { is_open: true, open: '09:00', close: '18:00' },
-  wednesday: { is_open: true, open: '09:00', close: '18:00' },
-  thursday: { is_open: true, open: '09:00', close: '18:00' },
-  friday: { is_open: true, open: '09:00', close: '18:00' },
-  saturday: { is_open: false, open: '09:00', close: '18:00' },
-  sunday: { is_open: false, open: '09:00', close: '18:00' },
-};
+const TABS: { id: SettingsTab; label: string; icon: React.ElementType }[] = [
+  { id: 'identity',        label: 'Store Identity',   icon: Store },
+  { id: 'hours',           label: 'Hours & Location', icon: Clock },
+  { id: 'policies',        label: 'Policies',         icon: FileText },
+  { id: 'gallery',         label: 'Gallery & Social', icon: Image },
+  { id: 'specializations', label: 'Specializations',  icon: Scissors },
+];
 
 export default function SettingsPage() {
-  const { shop, setAuth, user, token, staffProfile } = useAuthStore();
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-  const [successMsg, setSuccessMsg] = useState('');
+  const {
+    loading,
+    saving,
+    isDirty,
+    activeTab,
+    setActiveTab,
+    specializations,
+    specSearch,
+    setSpecSearch,
+    specModalOpen,
+    setSpecModalOpen,
+    specDeleteModalOpen,
+    setSpecDeleteModalOpen,
+    editingSpecId,
+    setEditingSpecId,
+    setDeletingSpecId,
+    specSubmitting,
+    specError,
+    specFormData,
+    setSpecFormData,
+    formData,
+    setFormDataWithDirty,
+    handleChange,
+    handleBusinessTypeChange,
+    handleSocialChange,
+    handleHoursChange,
+    handleImageUpload,
+    handleRemoveImage,
+    handleSave,
+    handleDiscard,
+    closeSpecModal,
+    confirmSpecDelete,
+    handleSpecSubmit,
+  } = useSettings();
 
-  const [formData, setFormData] = useState<ShopSettingsData>({
-    name: '',
-    description: '',
-    address: '',
-    city: '',
-    province: '',
-    phone: '',
-    email: '',
-    booking_policy: '',
-    booking_questions: [] as string[],
-    latitude: '',
-    longitude: '',
-    social_links: {
-      facebook: '',
-      instagram: '',
-      tiktok: '',
-      youtube: '',
-      website: '',
-    },
-    gallery_images: [] as string[],
-    business_type: 'tailoring_shop',
-    operating_hours: DEFAULT_HOURS as Record<string, { is_open: boolean; open: string; close: string }>,
-    security_deposit: 0,
-    rental_duration_days: 3,
-    overdue_penalty_per_day: 0,
-    fitting_fee: 0,
-    fitting_limit: 3,
-    reschedule_fee_percent: 0,
-    change_reserved_hours: 24,
-    change_reserved_fee_percent: 0,
-    supported_couriers: [] as string[],
-  });
-
-  useEffect(() => {
-    if (shop) {
-      api
-        .get(`/shops/${shop.id}`)
-        .then(res => {
-          const s = res.data.data;
-          setFormData({
-            name: s.name || '',
-            description: s.description || '',
-            address: s.address || '',
-            city: s.city || '',
-            province: s.province || '',
-            phone: s.phone || '',
-            email: s.email || '',
-            booking_policy: s.booking_policy || '',
-            booking_questions: Array.isArray(s.booking_questions) ? s.booking_questions : [],
-            latitude: s.latitude || '',
-            longitude: s.longitude || '',
-            social_links: s.social_links || { facebook: '', instagram: '', tiktok: '', youtube: '', website: '' },
-            gallery_images: Array.isArray(s.gallery_images) ? s.gallery_images : [],
-            business_type: s.business_type || 'tailoring_shop',
-            operating_hours: s.operating_hours || DEFAULT_HOURS,
-            security_deposit:
-              s.security_deposit !== undefined && s.security_deposit !== null ? s.security_deposit : 0,
-            rental_duration_days:
-              s.rental_duration_days !== undefined && s.rental_duration_days !== null
-                ? s.rental_duration_days
-                : 3,
-            overdue_penalty_per_day:
-              s.overdue_penalty_per_day !== undefined && s.overdue_penalty_per_day !== null
-                ? s.overdue_penalty_per_day
-                : 0,
-            fitting_fee: s.fitting_fee !== undefined && s.fitting_fee !== null ? s.fitting_fee : 0,
-            fitting_limit: s.fitting_limit !== undefined && s.fitting_limit !== null ? s.fitting_limit : 3,
-            reschedule_fee_percent:
-              s.reschedule_fee_percent !== undefined && s.reschedule_fee_percent !== null
-                ? s.reschedule_fee_percent
-                : 0,
-            change_reserved_hours:
-              s.change_reserved_hours !== undefined && s.change_reserved_hours !== null
-                ? s.change_reserved_hours
-                : 24,
-            change_reserved_fee_percent:
-              s.change_reserved_fee_percent !== undefined && s.change_reserved_fee_percent !== null
-                ? s.change_reserved_fee_percent
-                : 0,
-            supported_couriers: Array.isArray(s.supported_couriers) ? s.supported_couriers : [],
-          });
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error(err);
-          setLoading(false);
-        });
-    } else if (user && !shop) {
-      setTimeout(() => setLoading(false), 0);
-    }
-  }, [shop, user]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
-  };
-
-  const handleBusinessTypeChange = (value: string) => {
-    setFormData({ ...formData, business_type: value });
-  };
-
-  const handleSocialChange = (platform: string, value: string) => {
-    setFormData({
-      ...formData,
-      social_links: {
-        ...formData.social_links,
-        [platform]: value,
-      },
-    });
-  };
-
-  const handleHoursChange = (day: string, field: 'is_open' | 'open' | 'close', value: string | boolean) => {
-    setFormData({
-      ...formData,
-      operating_hours: {
-        ...formData.operating_hours,
-        [day]: {
-          ...formData.operating_hours[day],
-          [field]: value,
-        },
-      },
-    });
-  };
-
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files[0] && shop) {
-      const file = e.target.files[0];
-      const fd = new FormData();
-      fd.append('file', file);
-      try {
-        const res = await api.post(`/shops/${shop.id}/upload`, fd, {
-          headers: { 'Content-Type': 'multipart/form-data' },
-        });
-        setFormData({
-          ...formData,
-          gallery_images: [...formData.gallery_images, res.data.data.url],
-        });
-      } catch (err) {
-        console.error('Upload failed', err);
-        alert('Failed to upload image.');
-      }
-    }
-  };
-
-  const handleRemoveImage = (indexToRemove: number) => {
-    setFormData({
-      ...formData,
-      gallery_images: formData.gallery_images.filter((_, idx) => idx !== indexToRemove),
-    });
-  };
-
-  const handleSave = async () => {
-    if (!shop) return;
-    setSaving(true);
-    setSuccessMsg('');
-    try {
-      const res = await api.put(`/shops/${shop.id}`, formData);
-      setSuccessMsg('Shop settings updated successfully.');
-      if (user && token) {
-        setAuth(user, token, res.data.data, staffProfile || undefined);
-      }
-    } catch (err) {
-      console.error('Failed to update shop', err);
-    } finally {
-      setSaving(false);
-      setTimeout(() => setSuccessMsg(''), 3000);
-    }
-  };
-
-  if (loading) {
-    return <div className="text-[#A8A19A] py-12 text-center animate-pulse">Loading settings...</div>;
-  }
+  if (loading) return <SettingsSkeleton />;
 
   return (
-    <div className="max-w-4xl mx-auto space-y-6 pb-20">
+    <div className="max-w-4xl mx-auto space-y-6 pb-28">
+      {/* Page Header */}
       <div>
         <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Shop Settings</h1>
         <p className="text-[#827A73] text-sm mt-1">
@@ -206,27 +69,171 @@ export default function SettingsPage() {
         </p>
       </div>
 
-      <SettingsBusinessType businessType={formData.business_type} onChange={handleBusinessTypeChange} />
+      {/* Tab Navigation */}
+      <div className="flex gap-1 flex-wrap bg-[#F0EAE3] p-1 rounded-xl w-fit">
+        {TABS.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          const isHidden = tab.id === 'policies' &&
+            formData.business_type !== 'fashion_designer' &&
+            formData.business_type !== 'hybrid';
+          if (isHidden) return null;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? 'bg-white text-[#2D2A26] shadow-sm'
+                  : 'text-[#827A73] hover:text-[#524A44]'
+              }`}
+            >
+              <Icon size={15} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
 
-      <SettingsBasicInfo formData={formData} onChange={handleChange} />
-
-      {/* Rental & Store Policies Card (Visible for Fashion Designers and Hybrids) */}
-      {(formData.business_type === 'fashion_designer' || formData.business_type === 'hybrid') && (
-        <SettingsRentalPolicies formData={formData} setFormData={setFormData} />
+      {/* Tab: Store Identity */}
+      {activeTab === 'identity' && (
+        <div className="space-y-6 animate-in fade-in duration-200">
+          <SettingsBusinessType businessType={formData.business_type} onChange={handleBusinessTypeChange} />
+          <SettingsBasicInfo formData={formData} onChange={handleChange} />
+        </div>
       )}
 
-      <SettingsOperatingHours operatingHours={formData.operating_hours} onHoursChange={handleHoursChange} />
+      {/* Tab: Hours & Location */}
+      {activeTab === 'hours' && (
+        <div className="animate-in fade-in duration-200">
+          <SettingsOperatingHours operatingHours={formData.operating_hours} onHoursChange={handleHoursChange} />
+        </div>
+      )}
 
-      <SettingsGalleryAndCouriers
-        formData={formData}
-        setFormData={setFormData}
-        handleSocialChange={handleSocialChange}
-        handleImageUpload={handleImageUpload}
-        handleRemoveImage={handleRemoveImage}
-        handleSave={handleSave}
-        saving={saving}
-        successMsg={successMsg}
-      />
+      {/* Tab: Policies (fashion_designer / hybrid only) */}
+      {activeTab === 'policies' && (
+        <div className="animate-in fade-in duration-200">
+          <SettingsRentalPolicies formData={formData} setFormData={setFormDataWithDirty} />
+        </div>
+      )}
+
+      {/* Tab: Gallery & Social */}
+      {activeTab === 'gallery' && (
+        <div className="animate-in fade-in duration-200">
+          <SettingsGalleryAndCouriers
+            formData={formData}
+            setFormData={setFormDataWithDirty}
+            handleSocialChange={handleSocialChange}
+            handleImageUpload={handleImageUpload}
+            handleRemoveImage={handleRemoveImage}
+            handleSave={handleSave}
+            saving={saving}
+            successMsg=""
+          />
+        </div>
+      )}
+
+      {/* Tab: Specializations */}
+      {activeTab === 'specializations' && (
+        <div className="animate-in fade-in duration-200 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold text-[#2D2A26]">Apparel Specializations</h2>
+              <p className="text-sm text-[#827A73] mt-0.5">Declare what garment types your shop specializes in — customers filter shops by these.</p>
+            </div>
+            <button
+              onClick={() => { setEditingSpecId(null); setSpecFormData({ ...BLANK_FORM }); setSpecModalOpen(true); }}
+              className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+            >
+              <Plus size={16} /> Add Specialization
+            </button>
+          </div>
+
+          <div className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-[#EBE6E0]">
+              <div className="relative w-64">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={16} />
+                <input
+                  type="text"
+                  placeholder="Search specializations..."
+                  value={specSearch}
+                  onChange={e => setSpecSearch(e.target.value)}
+                  className="pl-9 pr-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe w-full"
+                />
+              </div>
+            </div>
+            <SpecializationListView
+              specializations={specializations.filter(
+                s => s.name.toLowerCase().includes(specSearch.toLowerCase()) ||
+                     (s.category || '').toLowerCase().includes(specSearch.toLowerCase())
+              )}
+              loading={false}
+              onEdit={spec => {
+                setEditingSpecId(spec.id);
+                setSpecFormData({
+                  category: spec.category || '',
+                  name: spec.name,
+                  description: spec.description || '',
+                  is_active: spec.is_active,
+                  starting_price: spec.starting_price || 0,
+                  production_time_days: spec.production_time_days || 0,
+                  min_order_qty: spec.min_order_qty || 1,
+                });
+                setSpecModalOpen(true);
+              }}
+              onDelete={id => { setDeletingSpecId(id); setSpecDeleteModalOpen(true); }}
+            />
+          </div>
+
+          <SpecializationFormModal
+            isOpen={specModalOpen}
+            onClose={closeSpecModal}
+            onSubmit={handleSpecSubmit}
+            editingId={editingSpecId}
+            isSubmitting={specSubmitting}
+            error={specError}
+            formData={specFormData}
+            setFormData={setSpecFormData}
+          />
+          <SpecializationDeleteModal
+            isOpen={specDeleteModalOpen}
+            onClose={() => setSpecDeleteModalOpen(false)}
+            onConfirm={confirmSpecDelete}
+            isSubmitting={specSubmitting}
+          />
+        </div>
+      )}
+
+      {/* Sticky Save Bar — appears when form is dirty */}
+      {isDirty && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 pointer-events-none">
+          <div className="max-w-4xl mx-auto px-6 pb-6 pointer-events-none">
+            <div className="pointer-events-auto bg-[#2D2A26] text-white rounded-2xl shadow-[0_8px_40px_-8px_rgba(0,0,0,0.4)] px-6 py-4 flex items-center justify-between gap-4 animate-in slide-in-from-bottom-4 duration-300">
+              <div className="flex items-center gap-3">
+                <div className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
+                <p className="text-sm font-medium">You have unsaved changes</p>
+              </div>
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={handleDiscard}
+                  disabled={saving}
+                  className="text-sm text-white/60 hover:text-white transition-colors font-medium disabled:opacity-40"
+                >
+                  Discard
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-2 bg-white text-[#2D2A26] hover:bg-[#FAF6F3] px-5 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50"
+                >
+                  {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={15} />}
+                  Save Changes
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,0 +1,391 @@
+'use client';
+
+import { Loader2, Save, Lock, Eye, EyeOff } from 'lucide-react';
+import { useAccountSettings } from '@/components/account-settings/useAccountSettings';
+import BranchesTab from '@/components/branches/BranchesTab';
+
+const getPasswordStrengthColor = (password: string, level: number): string => {
+  if (password.length < level * 2) return 'bg-[#EBE6E0]';
+  if (level <= 2) return 'bg-[#B26959]';
+  if (level === 3) return 'bg-amber-400';
+  return 'bg-[#7A8B76]';
+};
+
+interface PersonalTabProps {
+  readonly personalForm: { name: string; phone: string };
+  readonly setPersonalForm: React.Dispatch<React.SetStateAction<{ name: string; phone: string }>>;
+  readonly personalErrors: { name?: string; phone?: string };
+  readonly setPersonalErrors: React.Dispatch<React.SetStateAction<{ name?: string; phone?: string }>>;
+  readonly handlePersonalSubmit: (e: React.SyntheticEvent) => void;
+  readonly loadingPersonal: boolean;
+  readonly userEmail: string;
+}
+
+function PersonalTab({
+  personalForm,
+  setPersonalForm,
+  personalErrors,
+  setPersonalErrors,
+  handlePersonalSubmit,
+  loadingPersonal,
+  userEmail,
+}: Readonly<PersonalTabProps>) {
+  return (
+    <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 animate-in fade-in duration-200">
+      <div className="mb-6">
+        <h2 className="text-base font-semibold text-[#2D2A26]">Personal Details</h2>
+        <p className="text-xs text-[#A8A19A] mt-0.5">
+          These details are shown on your profile and used for communication.
+        </p>
+      </div>
+
+      <form onSubmit={handlePersonalSubmit} className="space-y-5">
+        {/* Name */}
+        <div className="space-y-1.5">
+          <label htmlFor="full_name" className="block text-sm font-medium text-[#524A44]">Full Name</label>
+          <input
+            id="full_name"
+            type="text"
+            value={personalForm.name}
+            onChange={e => {
+              setPersonalForm({ ...personalForm, name: e.target.value });
+              if (personalErrors.name) setPersonalErrors(prev => ({ ...prev, name: undefined }));
+            }}
+            className={`w-full px-4 py-2.5 bg-[#FAF6F3] border rounded-xl text-[#2D2A26] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#9A8073]/20 ${
+              personalErrors.name ? 'border-[#B26959] bg-[#B26959]/5' : 'border-[#EBE6E0] focus:border-[#9A8073]'
+            }`}
+            placeholder="Your full name"
+          />
+          {personalErrors.name && (
+            <p className="text-xs text-[#B26959] mt-1">{personalErrors.name}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {/* Email (read-only) */}
+          <div className="space-y-1.5">
+            <label htmlFor="email_address" className="block text-sm font-medium text-[#524A44]">Email Address</label>
+            <input
+              id="email_address"
+              type="email"
+              value={userEmail}
+              disabled
+              className="w-full px-4 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl text-[#A8A19A] cursor-not-allowed text-sm"
+            />
+            <p className="text-[11px] text-[#A8A19A]">Email cannot be changed.</p>
+          </div>
+
+          {/* Phone */}
+          <div className="space-y-1.5">
+            <label htmlFor="phone_number" className="block text-sm font-medium text-[#524A44]">Phone Number</label>
+            <input
+              id="phone_number"
+              type="text"
+              value={personalForm.phone}
+              onChange={e => setPersonalForm({ ...personalForm, phone: e.target.value })}
+              className={`w-full px-4 py-2.5 bg-[#FAF6F3] border rounded-xl text-[#2D2A26] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#9A8073]/20 ${
+                personalErrors.phone ? 'border-[#B26959] bg-[#B26959]/5' : 'border-[#EBE6E0] focus:border-[#9A8073]'
+              }`}
+              placeholder="+63 9XX XXX XXXX"
+            />
+            {personalErrors.phone && (
+              <p className="text-xs text-[#B26959] mt-1">{personalErrors.phone}</p>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-[#EBE6E0] flex justify-end">
+          <button
+            type="submit"
+            disabled={loadingPersonal}
+            className="bg-[#9A8073] hover:bg-[#8a7065] text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
+          >
+            {loadingPersonal ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save size={15} />}
+            Save Changes
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+interface PasswordFormState {
+  current_password: string;
+  password: string;
+  password_confirmation: string;
+}
+
+interface PasswordErrorsState {
+  current_password?: string;
+  password?: string;
+  password_confirmation?: string;
+}
+
+interface SecurityTabProps {
+  readonly passwordForm: PasswordFormState;
+  readonly setPasswordForm: React.Dispatch<React.SetStateAction<PasswordFormState>>;
+  readonly passwordErrors: PasswordErrorsState;
+  readonly setPasswordErrors: React.Dispatch<React.SetStateAction<PasswordErrorsState>>;
+  readonly handlePasswordSubmit: (e: React.SyntheticEvent) => void;
+  readonly loadingPassword: boolean;
+  readonly showCurrent: boolean;
+  readonly setShowCurrent: React.Dispatch<React.SetStateAction<boolean>>;
+  readonly showNew: boolean;
+  readonly setShowNew: React.Dispatch<React.SetStateAction<boolean>>;
+  readonly showConfirm: boolean;
+  readonly setShowConfirm: React.Dispatch<React.SetStateAction<boolean>>;
+}
+
+function SecurityTab({
+  passwordForm,
+  setPasswordForm,
+  passwordErrors,
+  setPasswordErrors,
+  handlePasswordSubmit,
+  loadingPassword,
+  showCurrent,
+  setShowCurrent,
+  showNew,
+  setShowNew,
+  showConfirm,
+  setShowConfirm,
+}: Readonly<SecurityTabProps>) {
+  return (
+    <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6 animate-in fade-in duration-200">
+      <div className="mb-6">
+        <h2 className="text-base font-semibold text-[#2D2A26]">Change Password</h2>
+        <p className="text-xs text-[#A8A19A] mt-0.5">
+          Use a strong password with at least 8 characters.
+        </p>
+      </div>
+
+      <form onSubmit={handlePasswordSubmit} className="space-y-5">
+        {/* Current Password */}
+        <div className="space-y-1.5">
+          <label htmlFor="current_password" className="block text-sm font-medium text-[#524A44]">Current Password</label>
+          <div className="relative">
+            <input
+              id="current_password"
+              type={showCurrent ? 'text' : 'password'}
+              value={passwordForm.current_password || ''}
+              onChange={e => {
+                setPasswordForm({ ...passwordForm, current_password: e.target.value });
+                if (passwordErrors.current_password) setPasswordErrors(prev => ({ ...prev, current_password: undefined }));
+              }}
+              className={`w-full pr-10 px-4 py-2.5 bg-[#FAF6F3] border rounded-xl text-[#2D2A26] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#9A8073]/20 ${
+                passwordErrors.current_password ? 'border-[#B26959] bg-[#B26959]/5' : 'border-[#EBE6E0] focus:border-[#9A8073]'
+              }`}
+              placeholder="••••••••"
+            />
+            <button type="button" onClick={() => setShowCurrent(v => !v)}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A8A19A] hover:text-[#524A44] transition-colors">
+              {showCurrent ? <EyeOff size={16} /> : <Eye size={16} />}
+            </button>
+          </div>
+          {passwordErrors.current_password && (
+            <p className="text-xs text-[#B26959]">{passwordErrors.current_password}</p>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
+          {/* New Password */}
+          <div className="space-y-1.5">
+            <label htmlFor="new_password" className="block text-sm font-medium text-[#524A44]">New Password</label>
+            <div className="relative">
+              <input
+                id="new_password"
+                type={showNew ? 'text' : 'password'}
+                value={passwordForm.password || ''}
+                onChange={e => {
+                  setPasswordForm({ ...passwordForm, password: e.target.value });
+                  if (passwordErrors.password) setPasswordErrors(prev => ({ ...prev, password: undefined }));
+                }}
+                className={`w-full pr-10 px-4 py-2.5 bg-[#FAF6F3] border rounded-xl text-[#2D2A26] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#9A8073]/20 ${
+                  passwordErrors.password ? 'border-[#B26959] bg-[#B26959]/5' : 'border-[#EBE6E0] focus:border-[#9A8073]'
+                }`}
+                placeholder="Min. 8 characters"
+              />
+              <button type="button" onClick={() => setShowNew(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A8A19A] hover:text-[#524A44] transition-colors">
+                {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {passwordErrors.password && (
+              <p className="text-xs text-[#B26959]">{passwordErrors.password}</p>
+            )}
+            {/* Strength hint */}
+            {passwordForm.password && (
+              <div className="flex gap-1 mt-1.5">
+                {[1, 2, 3, 4].map(level => (
+                  <div key={level} className={`h-1 flex-1 rounded-full transition-colors ${getPasswordStrengthColor(passwordForm.password || '', level)}`} />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Confirm Password */}
+          <div className="space-y-1.5">
+            <label htmlFor="password_confirmation" className="block text-sm font-medium text-[#524A44]">Confirm Password</label>
+            <div className="relative">
+              <input
+                id="password_confirmation"
+                type={showConfirm ? 'text' : 'password'}
+                value={passwordForm.password_confirmation || ''}
+                onChange={e => {
+                  setPasswordForm({ ...passwordForm, password_confirmation: e.target.value });
+                  if (passwordErrors.password_confirmation) setPasswordErrors(prev => ({ ...prev, password_confirmation: undefined }));
+                }}
+                className={`w-full pr-10 px-4 py-2.5 bg-[#FAF6F3] border rounded-xl text-[#2D2A26] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#9A8073]/20 ${
+                  passwordErrors.password_confirmation ? 'border-[#B26959] bg-[#B26959]/5' : 'border-[#EBE6E0] focus:border-[#9A8073]'
+                }`}
+                placeholder="Re-enter password"
+              />
+              <button type="button" onClick={() => setShowConfirm(v => !v)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#A8A19A] hover:text-[#524A44] transition-colors">
+                {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
+              </button>
+            </div>
+            {passwordErrors.password_confirmation && (
+              <p className="text-xs text-[#B26959]">{passwordErrors.password_confirmation}</p>
+            )}
+            {/* Match indicator */}
+            {passwordForm.password_confirmation && passwordForm.password && (
+              <p className={`text-xs mt-1 ${
+                passwordForm.password === passwordForm.password_confirmation
+                  ? 'text-[#7A8B76]' : 'text-[#B26959]'
+              }`}>
+                {passwordForm.password === passwordForm.password_confirmation
+                  ? '✓ Passwords match' : '✗ Passwords do not match'}
+              </p>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-2 border-t border-[#EBE6E0] flex justify-end">
+          <button
+            type="submit"
+            disabled={loadingPassword}
+            className="bg-[#9A8073] hover:bg-[#8a7065] text-white px-5 py-2.5 rounded-xl font-medium transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
+          >
+            {loadingPassword ? <Loader2 className="w-4 h-4 animate-spin" /> : <Lock size={15} />}
+            Update Password
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+export default function AccountSettingsPage() {
+  const {
+    user,
+    roleName,
+    activeTab,
+    setActiveTab,
+    tabs,
+    personalForm,
+    setPersonalForm,
+    personalErrors,
+    setPersonalErrors,
+    passwordForm,
+    setPasswordForm,
+    passwordErrors,
+    setPasswordErrors,
+    showCurrent,
+    setShowCurrent,
+    showNew,
+    setShowNew,
+    showConfirm,
+    setShowConfirm,
+    loadingPersonal,
+    loadingPassword,
+    isShopOwner,
+    shop,
+    handlePersonalSubmit,
+    handlePasswordSubmit,
+  } = useAccountSettings();
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-8 pb-12">
+      {/* Page Header */}
+      <div>
+        <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Account Settings</h1>
+        <p className="text-[#827A73] text-sm mt-1">
+          Manage your personal details, security preferences{isShopOwner ? ', and shop branches' : ''}.
+        </p>
+      </div>
+
+      {/* Avatar + Identity Card */}
+      <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm flex items-center gap-5">
+        <div className="w-16 h-16 rounded-full bg-linear-to-br from-[#9A8073] to-[#B26959] flex items-center justify-center text-white text-2xl font-bold shrink-0 select-none">
+          {user?.name?.charAt(0)?.toUpperCase() || 'U'}
+        </div>
+        <div className="min-w-0">
+          <p className="text-lg font-semibold text-[#2D2A26] truncate">{user?.name}</p>
+          <p className="text-sm text-[#827A73] truncate">{user?.email}</p>
+          <span className="inline-block mt-1.5 px-2.5 py-0.5 bg-[#F0EAE3] text-[#9A8073] text-[11px] font-semibold rounded-full capitalize tracking-wide">
+            {roleName}
+          </span>
+        </div>
+      </div>
+
+      {/* Tab Navigation */}
+      <div className="flex gap-1 bg-[#F0EAE3] p-1 rounded-xl w-fit">
+        {tabs.map(tab => {
+          const Icon = tab.icon;
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 ${
+                isActive
+                  ? 'bg-white text-[#2D2A26] shadow-sm'
+                  : 'text-[#827A73] hover:text-[#524A44]'
+              }`}
+            >
+              <Icon size={15} />
+              {tab.label}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Tab: Personal Info */}
+      {activeTab === 'personal' && (
+        <PersonalTab
+          personalForm={personalForm}
+          setPersonalForm={setPersonalForm}
+          personalErrors={personalErrors}
+          setPersonalErrors={setPersonalErrors}
+          handlePersonalSubmit={handlePersonalSubmit}
+          loadingPersonal={loadingPersonal}
+          userEmail={user?.email || ''}
+        />
+      )}
+
+      {/* Tab: Security */}
+      {activeTab === 'security' && (
+        <SecurityTab
+          passwordForm={passwordForm}
+          setPasswordForm={setPasswordForm}
+          passwordErrors={passwordErrors}
+          setPasswordErrors={setPasswordErrors}
+          handlePasswordSubmit={handlePasswordSubmit}
+          loadingPassword={loadingPassword}
+          showCurrent={showCurrent}
+          setShowCurrent={setShowCurrent}
+          showNew={showNew}
+          setShowNew={setShowNew}
+          showConfirm={showConfirm}
+          setShowConfirm={setShowConfirm}
+        />
+      )}
+
+      {/* Tab: Branches */}
+      {activeTab === 'branches' && isShopOwner && (
+        <BranchesTab shopId={shop?.id} />
+      )}
+    </div>
+  );
+}

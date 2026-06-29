@@ -5,11 +5,11 @@ import { Service, ServicePricing, Specialization } from './serviceHelpers';
 import api from '@/lib/axios';
 
 interface ServicePricingModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  shopId: number;
-  service: Service | null;
-  specializations: Specialization[];
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly shopId: number;
+  readonly service: Service | null;
+  readonly specializations: Specialization[];
 }
 
 export default function ServicePricingModal({
@@ -48,7 +48,6 @@ export default function ServicePricingModal({
     if (isOpen && service) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
       loadPricingData();
-      // eslint-disable-next-line react-hooks/set-state-in-effect
       setPricingFormData({
         apparel_specialization_id: '',
         label: '',
@@ -58,7 +57,7 @@ export default function ServicePricingModal({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, service]);
 
-  const handleAddPricing = async (e: React.FormEvent) => {
+  const handleAddPricing = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!service) return;
 
@@ -67,9 +66,9 @@ export default function ServicePricingModal({
     try {
       const payload = {
         label: pricingFormData.label,
-        amount: parseFloat(pricingFormData.amount),
+        amount: Number.parseFloat(pricingFormData.amount),
         apparel_specialization_id: pricingFormData.apparel_specialization_id 
-          ? parseInt(pricingFormData.apparel_specialization_id, 10) 
+          ? Number.parseInt(pricingFormData.apparel_specialization_id, 10) 
           : null
       };
 
@@ -99,6 +98,56 @@ export default function ServicePricingModal({
       alert('Failed to delete pricing option.');
     }
   };
+
+  let pricingsContent = null;
+  if (loadingPricings) {
+    pricingsContent = (
+      <div className="text-center py-6 text-xs text-[#A8A19A] flex items-center justify-center gap-2">
+        <Loader2 size={16} className="animate-spin text-taupe" />
+        Loading options...
+      </div>
+    );
+  } else if (pricings.length === 0) {
+    pricingsContent = (
+      <div className="text-center py-6 text-xs text-[#A8A19A] border border-dashed border-[#EBE6E0] rounded-xl">
+        No pricing options configured yet.
+      </div>
+    );
+  } else {
+    pricingsContent = (
+      <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+        {pricings.map(pricing => (
+          <div 
+            key={pricing.id} 
+            className="flex items-center justify-between p-3 bg-white border border-[#EBE6E0] rounded-lg hover:border-taupe/55 transition-colors"
+          >
+            <div className="space-y-0.5">
+              <div className="font-semibold text-sm text-[#2D2A26]">{pricing.label}</div>
+              {pricing.apparel_specialization && (
+                <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-[#F0EAE3] text-[#827A73] border border-[#EBE6E0] font-medium">
+                  {pricing.apparel_specialization.name}
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center gap-4">
+              <span className="font-bold text-sm text-[#2D2A26]">
+                +₱{Number.parseFloat(pricing.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              </span>
+              <button
+                type="button"
+                onClick={() => handleDeletePricing(pricing.id)}
+                className="text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 p-1.5 rounded-lg border border-transparent hover:border-[#B26959]/20 transition-colors"
+                title="Delete option"
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
 
   return (
     <Modal 
@@ -177,51 +226,11 @@ export default function ServicePricingModal({
           </div>
         </form>
 
+        {/* Existing Pricings */}
         <div className="space-y-3">
           <h3 className="text-xs font-bold text-[#2D2A26] uppercase tracking-wider">Active Pricing Options</h3>
           
-          {loadingPricings ? (
-            <div className="text-center py-6 text-xs text-[#A8A19A] flex items-center justify-center gap-2">
-              <Loader2 size={16} className="animate-spin text-taupe" />
-              Loading options...
-            </div>
-          ) : pricings.length === 0 ? (
-            <div className="text-center py-6 text-xs text-[#A8A19A] border border-dashed border-[#EBE6E0] rounded-xl">
-              No pricing options configured yet.
-            </div>
-          ) : (
-            <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
-              {pricings.map(pricing => (
-                <div 
-                  key={pricing.id} 
-                  className="flex items-center justify-between p-3 bg-white border border-[#EBE6E0] rounded-lg hover:border-taupe/55 transition-colors"
-                >
-                  <div className="space-y-0.5">
-                    <div className="font-semibold text-sm text-[#2D2A26]">{pricing.label}</div>
-                    {pricing.apparel_specialization && (
-                      <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-[#F0EAE3] text-[#827A73] border border-[#EBE6E0] font-medium">
-                        {pricing.apparel_specialization.name}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    <span className="font-bold text-sm text-[#2D2A26]">
-                      +₱{parseFloat(pricing.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleDeletePricing(pricing.id)}
-                      className="text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 p-1.5 rounded-lg border border-transparent hover:border-[#B26959]/20 transition-colors"
-                      title="Delete option"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
+          {pricingsContent}
         </div>
 
         <div className="pt-4 border-t border-[#EBE6E0] flex justify-end">

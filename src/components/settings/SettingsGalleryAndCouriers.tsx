@@ -4,14 +4,14 @@ import SubscriptionGate from '@/components/SubscriptionGate';
 import { ShopSettingsData } from './SettingsRentalPolicies';
 
 interface SettingsGalleryAndCouriersProps {
-  formData: ShopSettingsData;
-  setFormData: React.Dispatch<React.SetStateAction<ShopSettingsData>>;
-  handleSocialChange: (platform: string, value: string) => void;
-  handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
-  handleRemoveImage: (indexToRemove: number) => void;
-  handleSave: () => void;
-  saving: boolean;
-  successMsg: string;
+  readonly formData: ShopSettingsData;
+  readonly setFormData: React.Dispatch<React.SetStateAction<ShopSettingsData>>;
+  readonly handleSocialChange: (platform: string, value: string) => void;
+  readonly handleImageUpload: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  readonly handleRemoveImage: (indexToRemove: number) => void;
+  readonly handleSave: () => void;
+  readonly saving: boolean;
+  readonly successMsg: string;
 }
 
 export default function SettingsGalleryAndCouriers({
@@ -29,6 +29,13 @@ export default function SettingsGalleryAndCouriers({
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleRemoveQuestion = (indexToRemove: number) => {
+    setFormData(prev => ({
+      ...prev,
+      booking_questions: prev.booking_questions.filter((_, i) => i !== indexToRemove),
+    }));
+  };
+
   return (
     <div className="space-y-6">
       {/* Social Media Links */}
@@ -37,8 +44,9 @@ export default function SettingsGalleryAndCouriers({
         <p className="text-sm text-[#827A73] mb-6">These links will be displayed on your public shop profile.</p>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">Facebook URL</label>
+            <label htmlFor="fb-url" className="text-sm font-medium text-[#524A44]">Facebook URL</label>
             <input
+              id="fb-url"
               type="url"
               value={formData.social_links.facebook || ''}
               onChange={e => handleSocialChange('facebook', e.target.value)}
@@ -47,8 +55,9 @@ export default function SettingsGalleryAndCouriers({
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">Instagram URL</label>
+            <label htmlFor="ig-url" className="text-sm font-medium text-[#524A44]">Instagram URL</label>
             <input
+              id="ig-url"
               type="url"
               value={formData.social_links.instagram || ''}
               onChange={e => handleSocialChange('instagram', e.target.value)}
@@ -57,8 +66,9 @@ export default function SettingsGalleryAndCouriers({
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">TikTok URL</label>
+            <label htmlFor="tt-url" className="text-sm font-medium text-[#524A44]">TikTok URL</label>
             <input
+              id="tt-url"
               type="url"
               value={formData.social_links.tiktok || ''}
               onChange={e => handleSocialChange('tiktok', e.target.value)}
@@ -67,8 +77,9 @@ export default function SettingsGalleryAndCouriers({
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">YouTube Channel URL</label>
+            <label htmlFor="yt-url" className="text-sm font-medium text-[#524A44]">YouTube Channel URL</label>
             <input
+              id="yt-url"
               type="url"
               value={formData.social_links.youtube || ''}
               onChange={e => handleSocialChange('youtube', e.target.value)}
@@ -77,8 +88,9 @@ export default function SettingsGalleryAndCouriers({
             />
           </div>
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">Website / Other URL</label>
+            <label htmlFor="web-url" className="text-sm font-medium text-[#524A44]">Website / Other URL</label>
             <input
+              id="web-url"
               type="url"
               value={formData.social_links.website || ''}
               onChange={e => handleSocialChange('website', e.target.value)}
@@ -100,11 +112,21 @@ export default function SettingsGalleryAndCouriers({
               </p>
             </div>
             <div>
-              <label className="cursor-pointer bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors">
+              <button
+                type="button"
+                onClick={() => document.getElementById('gallery-image-upload-input')?.click()}
+                className="bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium text-sm flex items-center gap-2 transition-colors cursor-pointer"
+              >
                 <Plus size={16} />
                 Upload Image
-                <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} />
-              </label>
+              </button>
+              <input
+                id="gallery-image-upload-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleImageUpload}
+              />
             </div>
           </div>
 
@@ -116,7 +138,8 @@ export default function SettingsGalleryAndCouriers({
           ) : (
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {formData.gallery_images.map((img, idx) => (
-                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden group border border-[#EBE6E0]">
+                <div key={`gallery-${img}-${idx}`} className="relative aspect-square rounded-xl overflow-hidden group border border-[#EBE6E0]">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
                     src={img}
                     alt={`Gallery ${idx}`}
@@ -140,10 +163,11 @@ export default function SettingsGalleryAndCouriers({
         <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Booking Flow Setup</h2>
         <div className="space-y-6">
           <div className="space-y-1">
-            <label className="text-sm font-medium text-[#524A44]">
+            <label htmlFor="booking-policy" className="text-sm font-medium text-[#524A44]">
               Cancellation Policy & Service Description
             </label>
             <textarea
+              id="booking-policy"
               name="booking_policy"
               value={formData.booking_policy}
               onChange={handleChange}
@@ -154,7 +178,7 @@ export default function SettingsGalleryAndCouriers({
 
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <label className="text-sm font-medium text-[#524A44]">Custom Booking Questions</label>
+              <span className="text-sm font-medium text-[#524A44]">Custom Booking Questions</span>
               <button
                 onClick={() =>
                   setFormData(prev => ({
@@ -167,9 +191,9 @@ export default function SettingsGalleryAndCouriers({
                 + Add Question
               </button>
             </div>
-
+ 
             {formData.booking_questions.map((q, idx) => (
-              <div key={idx} className="flex gap-2">
+              <div key={`question-${idx}-${q.slice(0, 10)}`} className="flex gap-2">
                 <input
                   type="text"
                   value={q}
@@ -181,12 +205,7 @@ export default function SettingsGalleryAndCouriers({
                   className="flex-1 px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] text-sm focus:outline-none focus:border-taupe"
                 />
                 <button
-                  onClick={() =>
-                    setFormData(prev => ({
-                      ...prev,
-                      booking_questions: prev.booking_questions.filter((_, i) => i !== idx),
-                    }))
-                  }
+                  onClick={() => handleRemoveQuestion(idx)}
                   className="px-3 py-2 text-[#B26959] bg-[#B26959]/10 hover:bg-[#B26959]/20 rounded-lg transition-colors text-sm font-medium"
                 >
                   Remove

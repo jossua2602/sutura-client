@@ -13,6 +13,11 @@ export interface AnalyticsData {
   total_branches: number;
   total_services: number;
   low_stock_items: number;
+  // Enhanced KPIs
+  today_revenue?: number;
+  overdue_jobs?: number;
+  avg_order_value?: number;
+  completion_rate?: number;
   revenue_data?: { month: string; revenue: number }[];
   jobs_by_status?: { status: string; count: number }[];
 }
@@ -42,7 +47,7 @@ export const CustomTooltip = ({ active, payload, label }: {
   payload?: { value: number }[];
   label?: string;
 }) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     return (
       <div className="bg-white border border-[#EBE6E0] rounded-xl shadow-lg px-4 py-3">
         <p className="text-xs text-[#A8A19A] mb-1">{label}</p>
@@ -59,7 +64,7 @@ export const PieTooltip = ({ active, payload }: {
   active?: boolean;
   payload?: { name: string; value: number }[];
 }) => {
-  if (active && payload && payload.length) {
+  if (active && payload?.length) {
     return (
       <div className="bg-white border border-[#EBE6E0] rounded-xl shadow-lg px-4 py-3">
         <p className="text-xs font-medium text-[#2D2A26]">

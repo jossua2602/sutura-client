@@ -3,10 +3,10 @@ import Modal from '@/components/Modal';
 import { Loader2 } from 'lucide-react';
 
 interface JobRejectModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (reason: string) => Promise<void>;
-  actionLoading: boolean;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onConfirm: (reason: string) => Promise<void>;
+  readonly actionLoading: boolean;
 }
 
 export default function JobRejectModal({
@@ -17,7 +17,7 @@ export default function JobRejectModal({
 }: JobRejectModalProps) {
   const [rejectReason, setRejectReason] = useState('');
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
     onConfirm(rejectReason);
   };

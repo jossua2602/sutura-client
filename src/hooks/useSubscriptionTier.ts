@@ -78,31 +78,31 @@ export function useSubscriptionTier(): UseSubscriptionTierReturn {
     if (tier === 'premium') return false;
 
     // Features that require at least PRO
-    const proFeatures: GatedFeature[] = [
+    const proFeatures = new Set<GatedFeature>([
       'portfolio',
       'staff',
       'analytics',
       'notifications',
       'inquiry',
       'boosted_visibility',
-    ];
+    ]);
 
     // Features that require PREMIUM
-    const premiumFeatures: GatedFeature[] = [
+    const premiumFeatures = new Set<GatedFeature>([
       'reports',
       'featured_visibility',
       'custom_branding',
       'advanced_dashboard',
-    ];
+    ]);
 
     if (tier === 'pro') {
       // Pro users are gated only from premium-only features
-      return premiumFeatures.includes(feature);
+      return premiumFeatures.has(feature);
     }
 
     if (tier === 'basic') {
       // Basic users are gated from everything PRO and PREMIUM
-      return proFeatures.includes(feature) || premiumFeatures.includes(feature);
+      return proFeatures.has(feature) || premiumFeatures.has(feature);
     }
 
     return false;

@@ -1,4 +1,6 @@
-**Shop Owner**
+# Shop Owner Subscription Model & Entity Breakdown
+
+## Shop Owner
 
 * Configure profile
 * Manage service catalogs
@@ -7,41 +9,41 @@
 * Appointment schedules
 * Visibility control
 
-**Tailoring Shop = Business Entity**
+## Tailoring Shop = Business Entity
 
-**Shop Owner = Actual User/Actor**
+## Shop Owner = Actual User/Actor
 
-⸻
+---
 
-**Correct Interpretation**
+## Correct Interpretation
 
-**Actor**
+### Actor
 
 * Shop Owner
 
-**Entity Being Managed**
+### Entity Being Managed
 
 * Tailoring Shop
 
-⸻
+---
 
-**Shop Owner Responsibilities**
+## Shop Owner Responsibilities
 
 These are actions:
 
-**Shop Profile Management**
+### Shop Profile Management
 
 * Configure shop profile
 * Update business details
 * Upload logo/banner
 
-**Service Catalog Management**
+### Service Catalog Management
 
 * Add service
 * Edit service
 * Remove service
 
-**Apparel Specialization Management**
+### Apparel Specialization Management
 
 * Filipiniana
 * Barong
@@ -50,81 +52,81 @@ These are actions:
 * Suits
 * Alterations
 
-**Itemized Pricing**
+### Itemized Pricing
 
 * Set prices
 * Update prices
 
-**Appointment Schedule Management**
+### Appointment Schedule Management
 
 * View appointments
 * Approve appointments
 * Reschedule appointments
 
-**Visibility Control**
+### Visibility Control
 
 * Public
 * Hidden
 * Featured (depending on subscription)
 
-**Subscription Management**
+### Subscription Management
 
 * Basic
 * Pro
 * Premium
 
-**Staff Account Management**
+### Staff Account Management
 
 * Add staff
 * Remove staff
 * Assign roles
 
-**Sales Monitoring**
+### Sales Monitoring
 
 * Revenue
 * Orders
 * Productivity
 
-⸻
+---
 
-**Tailoring Shop (Entity)**
+## Tailoring Shop (Entity)
 
 Think of this as the thing being managed.
 
 A tailoring shop contains:
 
-**Shop Information**
+### Shop Information
 
 * Shop Name
 * Description
 * Contact Number
 * Email
 
-**Branches**
+### Branches
 
 * Main Branch
 * Other Branches
 
-**Services**
+### Services
 
 * Tailoring services
 
-**Specializations**
+### Specializations
 
 * Garments
 
-**Pricing**
+### Pricing
 
 * Itemized prices
 
-**Gallery**
+### Gallery
 
 * Portfolio photos
 
-**Operating Hours**
+### Operating Hours
 
-**Subscription Plan**
+### Subscription Plan
 
-**Visibility Status**
+### Visibility Status
 
-…
+...

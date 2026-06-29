@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, SubmitEvent } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -8,9 +8,29 @@ import { Ticket, PRIORITY_ORDER, UploadItem } from '@/components/support/support
 import SupportNewTicket from '@/components/support/SupportNewTicket';
 import SupportDetailView from '@/components/support/SupportDetailView';
 import SupportListView from '@/components/support/SupportListView';
+import { useToast } from '@/context/ToastContext';
+
+// Helper functions to update upload status and progress without nesting functions more than 4 levels deep
+const updateUploadProgress = (
+  setUploads: React.Dispatch<React.SetStateAction<UploadItem[]>>,
+  itemId: string,
+  progress: number
+) => {
+  setUploads(prev => prev.map(u => u.id === itemId ? { ...u, progress } : u));
+};
+
+const updateUploadStatus = (
+  setUploads: React.Dispatch<React.SetStateAction<UploadItem[]>>,
+  itemId: string,
+  status: 'success' | 'failed',
+  url?: string
+) => {
+  setUploads(prev => prev.map(u => u.id === itemId ? { ...u, status, ...(url ? { url } : {}) } : u));
+};
 
 export default function SupportPage() {
   const { shop, user } = useAuthStore();
+  const toast = useToast();
 
   const [tickets, setTickets] = useState<Ticket[]>([]);
   const [loading, setLoading] = useState(true);
@@ -76,7 +96,7 @@ export default function SupportPage() {
       if (file.size > maxSize) {
         const errMsg = `File ${file.name} exceeds the 50MB limit.`;
         if (isReply) {
-          alert(errMsg);
+          toast.error(errMsg);
         } else {
           setFormError(errMsg);
         }
@@ -104,23 +124,23 @@ export default function SupportPage() {
           headers: { 'Content-Type': 'multipart/form-data' },
           onUploadProgress: (progressEvent) => {
             const percent = Math.round((progressEvent.loaded * 100) / (progressEvent.total || 1));
-            setUploads(prev => prev.map(u => u.id === item.id ? { ...u, progress: percent } : u));
+            updateUploadProgress(setUploads, item.id, percent);
           }
         });
 
         if (res.data.success) {
-          setUploads(prev => prev.map(u => u.id === item.id ? { ...u, status: 'success', url: res.data.data.url } : u));
+          updateUploadStatus(setUploads, item.id, 'success', res.data.data.url);
         } else {
-          setUploads(prev => prev.map(u => u.id === item.id ? { ...u, status: 'failed' } : u));
+          updateUploadStatus(setUploads, item.id, 'failed');
         }
       } catch (err) {
         console.error('Upload failed:', err);
-        setUploads(prev => prev.map(u => u.id === item.id ? { ...u, status: 'failed' } : u));
+        updateUploadStatus(setUploads, item.id, 'failed');
       }
     }
   };
 
-  const submitTicket = async (e: React.FormEvent) => {
+  const submitTicket = async (e: SubmitEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!shop) return;
     if (!form.subject.trim() || !form.message.trim()) {

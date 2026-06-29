@@ -8,9 +8,11 @@ import { ShopBranch, EMPTY_FORM } from '@/components/branches/branchHelpers';
 import BranchFormModal from '@/components/branches/BranchFormModal';
 import BranchDeleteModal from '@/components/branches/BranchDeleteModal';
 import BranchListView from '@/components/branches/BranchListView';
+import { useToast } from '@/context/ToastContext';
 
 export default function BranchesPage() {
   const { shop, user } = useAuthStore();
+  const toast = useToast();
   const [branches, setBranches] = useState<ShopBranch[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +40,7 @@ export default function BranchesPage() {
     } else if (user?.id && !shop?.id) {
       setTimeout(() => setLoading(false), 0);
     }
-  }, [shop?.id, user?.id]);
+  }, [shop, user]);
 
   useEffect(() => {
     fetchBranches();
@@ -68,7 +70,7 @@ export default function BranchesPage() {
     setIsModalOpen(true);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!shop) return;
 
@@ -112,7 +114,7 @@ export default function BranchesPage() {
       setDeletingId(null);
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to delete branch');
+      toast.error(error.response?.data?.message || 'Failed to delete branch');
     } finally {
       setIsSubmitting(false);
     }

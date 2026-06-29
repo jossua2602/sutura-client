@@ -1,19 +1,22 @@
 import React from 'react';
 import Image from 'next/image';
 import { Search, Mail, Phone, Package, Eye, Pencil, Trash2 } from 'lucide-react';
-import { CustomerData, isWalkInEmail } from './customerHelpers';
+import { isWalkInEmail } from './customerHelpers';
+import { CustomerData } from './customerTypes';
+
+type FilterType = 'all' | 'online' | 'walkin';
 
 interface CustomerListViewProps {
-  customers: CustomerData[];
-  filteredCustomers: CustomerData[];
-  loading: boolean;
-  search: string;
-  onSearchChange: (val: string) => void;
-  filterType: 'all' | 'online' | 'walkin';
-  onFilterTypeChange: (val: 'all' | 'online' | 'walkin') => void;
-  onView: (id: number) => void;
-  onEdit: (customer: CustomerData) => void;
-  onDelete: (id: number) => void;
+  readonly customers: CustomerData[];
+  readonly filteredCustomers: CustomerData[];
+  readonly loading: boolean;
+  readonly search: string;
+  readonly onSearchChange: (val: string) => void;
+  readonly filterType: FilterType;
+  readonly onFilterTypeChange: (val: FilterType) => void;
+  readonly onView: (id: number) => void;
+  readonly onEdit: (customer: CustomerData) => void;
+  readonly onDelete: (id: number) => void;
 }
 
 export default function CustomerListView({
@@ -60,7 +63,7 @@ export default function CustomerListView({
         <div className="py-12 text-center text-[#A8A19A] animate-pulse">Loading CRM directory...</div>
       ) : (
         <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden">
-          <div className="p-4 border-b border-[#EBE6E0] flex items-center justify-between bg-white bg-white">
+          <div className="p-4 border-b border-[#EBE6E0] flex items-center justify-between bg-white">
             <div className="relative w-80">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={18} />
               <input 
@@ -143,7 +146,7 @@ export default function CustomerListView({
                       </div>
                     </td>
                     <td className="p-4 text-center">
-                      {customer.active_jobs > 0 ? (
+                      {customer.active_jobs && customer.active_jobs > 0 ? (
                         <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#BCA89F]/10 text-[#BCA89F] border border-[#BCA89F]/20">
                           <Package size={12} />
                           {customer.active_jobs} Active

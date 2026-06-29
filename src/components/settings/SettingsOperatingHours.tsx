@@ -2,8 +2,8 @@ import React from 'react';
 import { Clock } from 'lucide-react';
 
 interface SettingsOperatingHoursProps {
-  operatingHours: Record<string, { is_open: boolean; open: string; close: string }>;
-  onHoursChange: (day: string, field: 'is_open' | 'open' | 'close', value: string | boolean) => void;
+  readonly operatingHours: Record<string, { is_open: boolean; open: string; close: string }>;
+  readonly onHoursChange: (day: string, field: 'is_open' | 'open' | 'close', value: string | boolean) => void;
 }
 
 export default function SettingsOperatingHours({

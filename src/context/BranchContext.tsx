@@ -1,0 +1,111 @@
+'use client';
+
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
+import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
+
+export interface Branch {
+  id: number;
+  shop_id: number;
+  name: string;
+  address: string;
+  landmark?: string;
+  city: string;
+  contact_number?: string;
+  is_main: boolean;
+  status: string;
+}
+
+interface BranchContextValue {
+  branches: Branch[];
+  selectedBranchId: number | null; // null means "All Branches"
+  setSelectedBranchId: (id: number | null) => void;
+  loadingBranches: boolean;
+  refreshBranches: () => void;
+}
+
+const BranchContext = createContext<BranchContextValue | undefined>(undefined);
+
+export function BranchProvider({ children }: { readonly children: React.ReactNode }) {
+  const { shop } = useAuthStore();
+  const shopId = shop?.id;
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
+  const [loadingBranches, setLoadingBranches] = useState(false);
+
+  const refreshBranches = useCallback(async () => {
+    await Promise.resolve();
+    if (!shopId) {
+      setBranches([]);
+      setSelectedBranchId(null);
+      return;
+    }
+    setLoadingBranches(true);
+    try {
+      const res = await api.get(`/shops/${shopId}/branches`);
+      if (res.data.success) {
+        const list: Branch[] = res.data.data || [];
+        setBranches(list);
+        
+        // Restore from localStorage or default to main branch
+        const cached = localStorage.getItem(`sutura_branch_${shopId}`);
+        if (cached) {
+          const parsed = cached === 'all' ? null : Number.parseInt(cached, 10);
+          if (parsed === null || list.some(b => b.id === parsed)) {
+            setSelectedBranchId(parsed);
+            setLoadingBranches(false);
+            return;
+          }
+        }
+        
+        // Fallback: main branch
+        const main = list.find(b => b.is_main);
+        if (main) {
+          setSelectedBranchId(main.id);
+        } else if (list.length > 0) {
+          setSelectedBranchId(list[0].id);
+        } else {
+          setSelectedBranchId(null);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load branches:', err);
+    } finally {
+      setLoadingBranches(false);
+    }
+  }, [shopId]);
+
+  useEffect(() => {
+    Promise.resolve().then(() => {
+      refreshBranches();
+    });
+  }, [refreshBranches]);
+
+  useEffect(() => {
+    if (shopId) {
+      localStorage.setItem(`sutura_branch_${shopId}`, selectedBranchId === null ? 'all' : selectedBranchId.toString());
+    }
+  }, [shopId, selectedBranchId]);
+
+  const contextValue = useMemo<BranchContextValue>(() => ({
+    branches,
+    selectedBranchId,
+    setSelectedBranchId,
+    loadingBranches,
+    refreshBranches,
+  }), [branches, selectedBranchId, loadingBranches, refreshBranches]);
+
+  return (
+    <BranchContext.Provider value={contextValue}>
+      {children}
+    </BranchContext.Provider>
+  );
+}
+
+export function useBranch(): BranchContextValue {
+  const context = useContext(BranchContext);
+  if (!context) {
+    throw new Error('useBranch must be used inside a BranchProvider');
+  }
+  return context;
+}

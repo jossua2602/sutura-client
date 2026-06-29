@@ -1,126 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import api from '@/lib/axios';
-import { useAuthStore } from '@/store/useAuthStore';
 import { Plus, Search, Store, ShoppingBag, AlertCircle, Truck, Scissors } from 'lucide-react';
 import Link from 'next/link';
-
-import { Job, Tab, WALKIN_COLUMNS, ONLINE_COLUMNS, ALL_COLUMNS } from '@/components/jobs/jobHelpers';
 import JobRejectModal from '@/components/jobs/JobRejectModal';
 import JobKanbanBoard from '@/components/jobs/JobKanbanBoard';
+import { useJobs } from '@/components/jobs/useJobs';
 
 export default function JobOrdersPage() {
-  const { shop, user } = useAuthStore();
-  const [jobs, setJobs] = useState<Job[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [tab, setTab] = useState<Tab>('all');
-
-  // Review gate state
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [rejectingJobId, setRejectingJobId] = useState<number | null>(null);
-  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (shop) {
-      api.get(`/shops/${shop.id}/jobs`)
-        .then(res => {
-          setJobs(res.data.data.data || res.data.data);
-          setLoading(false);
-        })
-        .catch(err => {
-          console.error(err);
-          setLoading(false);
-        });
-    } else if (user) {
-      setTimeout(() => setLoading(false), 0);
-    }
-  }, [shop, user]);
-
-  const updateJobStatus = async (jobId: number, newStatus: string) => {
-    if (!shop) return;
-    const oldJobs = [...jobs];
-    setJobs(jobs.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
-    try {
-      const jobToUpdate = jobs.find(j => j.id === jobId);
-      if (!jobToUpdate) return;
-      await api.put(`/shops/${shop.id}/jobs/${jobId}`, {
-        status: newStatus,
-        payment_status: jobToUpdate.payment_status,
-        balance: jobToUpdate.balance,
-      });
-    } catch (err) {
-      console.error('Failed to update status', err);
-      setJobs(oldJobs);
-    }
-  };
-
-  const handleApproveJob = async (jobId: number) => {
-    if (!shop) return;
-    setActionLoadingId(jobId);
-    const old = [...jobs];
-    setJobs(jobs.map(j => j.id === jobId ? { ...j, status: 'cutting' } : j));
-    try {
-      const job = jobs.find(j => j.id === jobId);
-      if (!job) return;
-      await api.put(`/shops/${shop.id}/jobs/${jobId}`, { status: 'cutting', payment_status: job.payment_status, balance: job.balance });
-    } catch {
-      setJobs(old);
-      alert('Failed to approve order.');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const openRejectModal = (jobId: number) => {
-    setRejectingJobId(jobId);
-    setRejectModalOpen(true);
-  };
-
-  const handleConfirmReject = async (reason: string) => {
-    if (!shop || !rejectingJobId) return;
-    setActionLoadingId(rejectingJobId);
-    const old = [...jobs];
-    setJobs(jobs.map(j => j.id === rejectingJobId ? { ...j, status: 'cancelled' } : j));
-    try {
-      const job = jobs.find(j => j.id === rejectingJobId);
-      if (!job) return;
-      // We pass the reason optional payload if the backend supports it, otherwise standard properties
-      await api.put(`/shops/${shop.id}/jobs/${rejectingJobId}`, { 
-        status: 'cancelled', 
-        payment_status: job.payment_status, 
-        balance: job.balance,
-        rejection_reason: reason || null 
-      });
-      setRejectModalOpen(false);
-      setRejectingJobId(null);
-    } catch {
-      setJobs(old);
-      alert('Failed to reject order.');
-    } finally {
-      setActionLoadingId(null);
-    }
-  };
-
-  const activeColumns = tab === 'online' ? ONLINE_COLUMNS : tab === 'walk_in' ? WALKIN_COLUMNS : ALL_COLUMNS;
-
-  const filteredJobs = jobs.filter(j => {
-    const matchType = tab === 'all' || j.order_type === tab;
-    const matchSearch = !search
-      || j.order_number?.toLowerCase().includes(search.toLowerCase())
-      || j.customer?.name?.toLowerCase().includes(search.toLowerCase());
-    return matchType && matchSearch;
-  });
-
-  const groupedJobs = activeColumns.reduce((acc, col) => {
-    acc[col.id] = filteredJobs.filter(j => j.status === col.id);
-    return acc;
-  }, {} as Record<string, Job[]>);
-
-  const walkInCount = jobs.filter(j => j.order_type === 'walk_in').length;
-  const onlineCount = jobs.filter(j => j.order_type === 'online').length;
-  const pendingReviewCount = jobs.filter(j => j.status === 'pending').length;
+  const {
+    jobs,
+    loading,
+    search,
+    setSearch,
+    tab,
+    setTab,
+    rejectModalOpen,
+    setRejectModalOpen,
+    actionLoadingId,
+    updateJobStatus,
+    handleApproveJob,
+    openRejectModal,
+    handleConfirmReject,
+    activeColumns,
+    groupedJobs,
+    walkInCount,
+    onlineCount,
+    pendingReviewCount,
+  } = useJobs();
 
   return (
     <div className="space-y-5 h-full flex flex-col text-[#2D2A26]">
@@ -145,7 +51,7 @@ export default function JobOrdersPage() {
           </div>
           <div className="flex-1">
             <p className="text-sm font-semibold text-amber-800">
-              {pendingReviewCount} job order{pendingReviewCount !== 1 ? 's' : ''} awaiting feasibility review
+              {pendingReviewCount} job order{pendingReviewCount === 1 ? '' : 's'} awaiting feasibility review
             </p>
             <p className="text-xs text-amber-600 mt-0.5">Review each pending order and approve it into production or reject it.</p>
           </div>
@@ -236,7 +142,6 @@ export default function JobOrdersPage() {
         isOpen={rejectModalOpen}
         onClose={() => {
           setRejectModalOpen(false);
-          setRejectingJobId(null);
         }}
         onConfirm={handleConfirmReject}
         actionLoading={actionLoadingId !== null}

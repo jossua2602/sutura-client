@@ -4,14 +4,14 @@ import Link from 'next/link';
 import { JobItem } from './dashboardHelpers';
 
 interface DashboardAlertsProps {
-  shopVisible: boolean | null;
-  toggleVisibility: () => Promise<void>;
-  visibilityLoading: boolean;
-  unpaidJobs: JobItem[];
-  balanceExpanded: boolean;
-  setBalanceExpanded: React.Dispatch<React.SetStateAction<boolean>>;
-  dueToday: JobItem[];
-  dueThisWeek: JobItem[];
+  readonly shopVisible: boolean | null;
+  readonly toggleVisibility: () => Promise<void>;
+  readonly visibilityLoading: boolean;
+  readonly unpaidJobs: JobItem[];
+  readonly balanceExpanded: boolean;
+  readonly setBalanceExpanded: React.Dispatch<React.SetStateAction<boolean>>;
+  readonly dueToday: JobItem[];
+  readonly dueThisWeek: JobItem[];
 }
 
 export default function DashboardAlerts({

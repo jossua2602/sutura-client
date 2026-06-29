@@ -17,6 +17,37 @@ interface SupportDetailViewProps {
   handleUpload: (files: File[], isReply: boolean) => Promise<void>;
 }
 
+interface ReplyUploadItemProps {
+  readonly upload: UploadItem;
+  readonly onRemove: (id: string) => void;
+}
+
+function ReplyUploadItem({ upload, onRemove }: ReplyUploadItemProps) {
+  return (
+    <div className="relative flex items-center gap-2 px-3 py-1.5 border border-[#EBE6E0] rounded-lg bg-[#FAF6F3] text-xs max-w-[200px]">
+      {upload.file.type.startsWith('image/') ? (
+        <ImageIcon size={14} className="text-taupe shrink-0" />
+      ) : (
+        <FileVideo size={14} className="text-taupe shrink-0" />
+      )}
+      <span className="truncate flex-1 font-medium text-[#2D2A26]">{upload.name}</span>
+      {upload.status === 'uploading' && (
+        <span className="text-[10px] text-taupe font-semibold">{upload.progress}%</span>
+      )}
+      {upload.status === 'failed' && (
+        <span className="text-[10px] text-red-500 font-semibold">!</span>
+      )}
+      <button
+        type="button"
+        onClick={() => onRemove(upload.id)}
+        className="p-0.5 rounded-full hover:bg-[#EBE6E0] text-[#827A73] transition-colors"
+      >
+        <X size={12} />
+      </button>
+    </div>
+  );
+}
+
 export default function SupportDetailView({
   selected,
   user,
@@ -30,9 +61,11 @@ export default function SupportDetailView({
   replyUploads,
   setReplyUploads,
   handleUpload,
-}: SupportDetailViewProps) {
+}: Readonly<SupportDetailViewProps>) {
   const replyFileInputRef = useRef<HTMLInputElement>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  const handleRemoveReplyUpload = (id: string) => setReplyUploads(prev => prev.filter(u => u.id !== id));
 
   useEffect(() => {
     setTimeout(() => bottomRef.current?.scrollIntoView({ behavior: 'smooth' }), 100);
@@ -135,32 +168,20 @@ export default function SupportDetailView({
           <div ref={bottomRef} />
         </div>
 
-        {!isClosed ? (
+        {isClosed ? (
+          <div className="border-t border-[#EBE6E0] p-4 text-center">
+            <p className="text-sm text-[#A8A19A]">This ticket is closed.</p>
+          </div>
+        ) : (
           <div className="border-t border-[#EBE6E0] p-4 space-y-3">
             {replyUploads.length > 0 && (
               <div className="flex flex-wrap gap-2 pb-2">
                 {replyUploads.map(upload => (
-                  <div key={upload.id} className="relative flex items-center gap-2 px-3 py-1.5 border border-[#EBE6E0] rounded-lg bg-[#FAF6F3] text-xs max-w-[200px]">
-                    {upload.file.type.startsWith('image/') ? (
-                      <ImageIcon size={14} className="text-taupe shrink-0" />
-                    ) : (
-                      <FileVideo size={14} className="text-taupe shrink-0" />
-                    )}
-                    <span className="truncate flex-1 font-medium text-[#2D2A26]">{upload.name}</span>
-                    {upload.status === 'uploading' && (
-                      <span className="text-[10px] text-taupe font-semibold">{upload.progress}%</span>
-                    )}
-                    {upload.status === 'failed' && (
-                      <span className="text-[10px] text-red-500 font-semibold">!</span>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => setReplyUploads(prev => prev.filter(u => u.id !== upload.id))}
-                      className="p-0.5 rounded-full hover:bg-[#EBE6E0] text-[#827A73] transition-colors"
-                    >
-                      <X size={12} />
-                    </button>
-                  </div>
+                  <ReplyUploadItem
+                    key={upload.id}
+                    upload={upload}
+                    onRemove={handleRemoveReplyUpload}
+                  />
                 ))}
               </div>
             )}
@@ -202,10 +223,6 @@ export default function SupportDetailView({
                 {sendingReply ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
               </button>
             </div>
-          </div>
-        ) : (
-          <div className="border-t border-[#EBE6E0] p-4 text-center">
-            <p className="text-sm text-[#A8A19A]">This ticket is closed.</p>
           </div>
         )}
       </div>

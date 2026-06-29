@@ -2,10 +2,10 @@ import React from 'react';
 import { Loader2 } from 'lucide-react';
 
 interface StaffDeleteModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  saving: boolean;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onConfirm: () => void;
+  readonly saving: boolean;
 }
 
 export default function StaffDeleteModal({

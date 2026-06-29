@@ -1,15 +1,15 @@
 import React from 'react';
 import Link from 'next/link';
 import { User, Calendar, Scissors, Check, X, Loader2 } from 'lucide-react';
-import { Job, WALKIN_COLUMNS, getDueStatus, TypeBadge, CourierTag, ColumnIcon } from './jobHelpers';
+import { Job as JobItem, WALKIN_COLUMNS, getDueStatus, TypeBadge, CourierTag, ColumnIcon } from './jobHelpers';
 
 interface JobKanbanBoardProps {
-  groupedJobs: Record<string, Job[]>;
-  activeColumns: typeof WALKIN_COLUMNS;
-  actionLoadingId: number | null;
-  onUpdateStatus: (jobId: number, status: string) => Promise<void>;
-  onApprove: (jobId: number) => Promise<void>;
-  onReject: (jobId: number) => void;
+  readonly groupedJobs: Record<string, JobItem[]>;
+  readonly activeColumns: typeof WALKIN_COLUMNS;
+  readonly actionLoadingId: number | null;
+  readonly onUpdateStatus: (id: number, status: string) => void;
+  readonly onApprove: (id: number) => void;
+  readonly onReject: (id: number) => void;
 }
 
 export default function JobKanbanBoard({
@@ -68,13 +68,16 @@ export default function JobKanbanBoard({
                   <Link href={`/dashboard/jobs/${job.id}`} className="block space-y-1.5">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
                       <h4 className="font-semibold text-[#2D2A26] text-sm truncate">{job.customer?.name || 'Walk-in'}</h4>
-                      <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm border uppercase shrink-0 ${
-                        job.payment_status === 'paid' ? 'bg-[#7A8B76]/15 text-[#7A8B76] border-[#7A8B76]/20' :
-                        job.payment_status === 'partial' ? 'bg-[#BCA89F]/15 text-[#BCA89F] border-[#BCA89F]/20' :
-                        'bg-[#B26959]/15 text-[#B26959] border-[#B26959]/20'
-                      }`}>
-                        {job.payment_status}
-                      </span>
+                      {(() => {
+                        let payBadge = 'bg-[#B26959]/15 text-[#B26959] border-[#B26959]/20';
+                        if (job.payment_status === 'paid') payBadge = 'bg-[#7A8B76]/15 text-[#7A8B76] border-[#7A8B76]/20';
+                        else if (job.payment_status === 'partial') payBadge = 'bg-[#BCA89F]/15 text-[#BCA89F] border-[#BCA89F]/20';
+                        return (
+                          <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-sm border uppercase shrink-0 ${payBadge}`}>
+                            {job.payment_status}
+                          </span>
+                        );
+                      })()}
                     </div>
                     
                     <div className="flex items-center gap-1.5 text-xs text-[#827A73]">

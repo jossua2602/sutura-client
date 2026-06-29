@@ -29,7 +29,7 @@ export const EMPTY_FORM = {
   guide_image_url: '',
 };
 
-export function StatusBadge({ status }: { status?: string }) {
+export function StatusBadge({ status }: Readonly<{ status?: string }>) {
   if (status === 'active') {
     return (
       <span className="flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">

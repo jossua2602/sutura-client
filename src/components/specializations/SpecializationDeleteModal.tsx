@@ -3,10 +3,10 @@ import { Loader2 } from 'lucide-react';
 import Modal from '@/components/Modal';
 
 interface SpecializationDeleteModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-  isSubmitting: boolean;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onConfirm: () => void;
+  readonly isSubmitting: boolean;
 }
 
 export default function SpecializationDeleteModal({

@@ -10,9 +10,11 @@ import { CatalogItem } from '@/components/catalog/catalogHelpers';
 import CatalogItemCard from '@/components/catalog/CatalogItemCard';
 import CatalogRatingModal from '@/components/catalog/CatalogRatingModal';
 import CatalogDeleteModal from '@/components/catalog/CatalogDeleteModal';
+import { useToast } from '@/context/ToastContext';
 
 export default function CatalogPage() {
   const { shop, user } = useAuthStore();
+  const toast = useToast();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +40,7 @@ export default function CatalogPage() {
     } else if (user?.id) {
       setTimeout(() => setLoading(false), 0);
     }
-  }, [shop?.id, user?.id]);
+  }, [shop, user]);
 
   useEffect(() => {
     fetchItems();
@@ -64,7 +66,7 @@ export default function CatalogPage() {
     }
   };
 
-  const submitRating = async (e: React.FormEvent<HTMLFormElement>) => {
+  const submitRating = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!shop || !selectedItemId) return;
     setIsSubmitting(true);
@@ -89,8 +91,8 @@ export default function CatalogPage() {
       setItems(prev => prev.filter(i => i.id !== deletingId));
       setIsDeleteModalOpen(false);
       setDeletingId(null);
-    } catch (e) {
-      alert('Failed to remove item from catalog');
+    } catch {
+      toast.error('Failed to remove item from catalog');
     } finally {
       setIsSubmitting(false);
     }

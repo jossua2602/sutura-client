@@ -2,12 +2,12 @@ import React from 'react';
 import { X, Loader2 } from 'lucide-react';
 
 interface StaffFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (e: React.FormEvent<HTMLFormElement>) => void;
-  editingId: number | null;
-  saving: boolean;
-  formData: {
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onSubmit: (e: React.SyntheticEvent<HTMLFormElement>) => void;
+  readonly editingId: number | null;
+  readonly saving: boolean;
+  readonly formData: {
     name: string;
     email: string;
     password: string;
@@ -17,7 +17,7 @@ interface StaffFormModalProps {
     hired_at: string;
     is_active: boolean;
   };
-  setFormData: React.Dispatch<React.SetStateAction<{
+  readonly setFormData: React.Dispatch<React.SetStateAction<{
     name: string;
     email: string;
     password: string;
@@ -104,7 +104,7 @@ export default function StaffFormModal({
 
           <div>
             <label htmlFor="staff_password" className="block text-sm font-medium text-[#524A44] mb-1">
-              Password {editingId && <span className="text-xs text-[#A8A19A]">(Leave blank to keep current)</span>}
+              Password{editingId ? <>{' '}<span className="text-xs text-[#A8A19A]">(Leave blank to keep current)</span></> : null}
             </label>
             <input
               id="staff_password"
@@ -183,7 +183,7 @@ export default function StaffFormModal({
                 className="w-4 h-4 rounded border-[#EBE6E0] text-taupe focus:ring-taupe"
               />
               <label htmlFor="staff_is_active" className="text-sm font-medium text-[#524A44]">
-                Active Staff Member
+                Active Staff Member{' '}
                 <span className="block text-xs font-normal text-[#A8A19A]">
                   Uncheck to mark as inactive (they won&apos;t appear in job assignment lists)
                 </span>
@@ -204,13 +204,8 @@ export default function StaffFormModal({
               disabled={saving}
               className="bg-taupe hover:bg-taupe/90 text-white px-6 py-2 rounded-lg font-medium transition-colors disabled:opacity-50 flex items-center gap-2 text-sm"
             >
-              {saving ? (
-                <Loader2 className="w-4 h-4 animate-spin" />
-              ) : editingId ? (
-                'Save Changes'
-              ) : (
-                'Create Account'
-              )}
+              {saving && <Loader2 className="w-4 h-4 animate-spin" />}
+              {!saving && (editingId ? 'Save Changes' : 'Create Account')}
             </button>
           </div>
         </form>

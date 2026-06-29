@@ -4,7 +4,7 @@ import { UploadItem } from './supportHelpers';
 
 interface SupportNewTicketProps {
   onBack: () => void;
-  onSubmit: (e: React.FormEvent) => void;
+  onSubmit: (e: React.SubmitEvent<HTMLFormElement>) => void;
   form: { subject: string; message: string; type: string; priority: string };
   setForm: React.Dispatch<React.SetStateAction<{ subject: string; message: string; type: string; priority: string }>>;
   formError: string;
@@ -12,6 +12,45 @@ interface SupportNewTicketProps {
   setNewTicketUploads: React.Dispatch<React.SetStateAction<UploadItem[]>>;
   handleUpload: (files: File[], isReply: boolean) => Promise<void>;
   submitting: boolean;
+}
+
+interface NewTicketUploadItemProps {
+  readonly upload: UploadItem;
+  readonly onRemove: (id: string) => void;
+}
+
+function NewTicketUploadItem({ upload, onRemove }: NewTicketUploadItemProps) {
+  return (
+    <div className="flex items-center justify-between p-3 border border-[#EBE6E0] rounded-xl bg-white text-sm shadow-sm">
+      <div className="flex items-center gap-2 min-w-0 flex-1">
+        {upload.file.type.startsWith('image/') ? (
+          <ImageIcon size={18} className="text-taupe shrink-0" />
+        ) : (
+          <FileVideo size={18} className="text-taupe shrink-0" />
+        )}
+        <div className="min-w-0 flex-1">
+          <p className="font-medium text-[#2D2A26] truncate">{upload.name}</p>
+          {upload.status === 'uploading' && (
+            <div className="w-full bg-[#EBE6E0] h-1.5 rounded-full mt-1 overflow-hidden">
+              <div className="bg-taupe h-full transition-all duration-300" style={{ width: `${upload.progress}%` }} />
+            </div>
+          )}
+          {upload.status === 'success' && <p className="text-xs text-[#7A8B76] mt-0.5 font-medium">Uploaded successfully</p>}
+          {upload.status === 'failed' && <p className="text-xs text-red-500 mt-0.5 font-medium">Upload failed</p>}
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={(e) => {
+          e.stopPropagation();
+          onRemove(upload.id);
+        }}
+        className="p-1.5 rounded-lg text-[#827A73] hover:text-red-500 hover:bg-red-50 transition-colors ml-2 shrink-0"
+      >
+        <Trash2 size={16} />
+      </button>
+    </div>
+  );
 }
 
 export default function SupportNewTicket({
@@ -24,8 +63,9 @@ export default function SupportNewTicket({
   setNewTicketUploads,
   handleUpload,
   submitting,
-}: SupportNewTicketProps) {
+}: Readonly<SupportNewTicketProps>) {
   const newTicketFileInputRef = useRef<HTMLInputElement>(null);
+  const handleRemoveNewTicketUpload = (id: string) => setNewTicketUploads(prev => prev.filter(u => u.id !== id));
 
   return (
     <div className="space-y-6 pb-12 max-w-2xl mx-auto text-[#2D2A26]">
@@ -42,8 +82,9 @@ export default function SupportNewTicket({
       <form onSubmit={onSubmit} className="bg-white border border-[#EBE6E0] rounded-2xl shadow-sm p-6 space-y-5">
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#2D2A26] mb-1.5">Ticket Type <span className="text-red-500">*</span></label>
+            <label htmlFor="ticket-type" className="block text-sm font-medium text-[#2D2A26] mb-1.5">Ticket Type <span className="text-red-500">*</span></label>
             <select
+              id="ticket-type"
               value={form.type}
               onChange={e => setForm(p => ({ ...p, type: e.target.value }))}
               className="w-full border border-[#EBE6E0] rounded-lg px-3 py-2.5 text-sm text-[#2D2A26] bg-white focus:outline-none focus:ring-2 focus:ring-[#9A8073]/40"
@@ -55,8 +96,9 @@ export default function SupportNewTicket({
             </select>
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#2D2A26] mb-1.5">Priority <span className="text-red-500">*</span></label>
+            <label htmlFor="priority" className="block text-sm font-medium text-[#2D2A26] mb-1.5">Priority <span className="text-red-500">*</span></label>
             <select
+              id="priority"
               value={form.priority}
               onChange={e => setForm(p => ({ ...p, priority: e.target.value }))}
               className="w-full border border-[#EBE6E0] rounded-lg px-3 py-2.5 text-sm text-[#2D2A26] bg-white focus:outline-none focus:ring-2 focus:ring-[#9A8073]/40"
@@ -70,9 +112,10 @@ export default function SupportNewTicket({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-[#2D2A26] mb-1.5">Subject <span className="text-red-500">*</span></label>
+          <label htmlFor="subject" className="block text-sm font-medium text-[#2D2A26] mb-1.5">Subject <span className="text-red-500">*</span></label>
           <input
             type="text"
+            id="subject"
             placeholder="Brief summary of your issue..."
             value={form.subject}
             onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
@@ -81,9 +124,10 @@ export default function SupportNewTicket({
         </div>
 
         <div>
-          <label className="block text-sm font-medium text-[#2D2A26] mb-1.5">Message <span className="text-red-500">*</span></label>
+          <label htmlFor="message" className="block text-sm font-medium text-[#2D2A26] mb-1.5">Message <span className="text-red-500">*</span></label>
           <textarea
             rows={6}
+            id="message"
             placeholder="Describe the problem, what you expected, and what actually happened..."
             value={form.message}
             onChange={e => setForm(p => ({ ...p, message: e.target.value }))}
@@ -92,66 +136,45 @@ export default function SupportNewTicket({
         </div>
 
         <div className="space-y-2">
-          <label className="block text-sm font-medium text-[#2D2A26] mb-1">Attachments (Images/Videos up to 50MB)</label>
-          <div 
+          <label htmlFor="attachments-upload" className="block text-sm font-medium text-[#2D2A26] mb-1">Attachments (Images/Videos up to 50MB)</label>
+          <input
+            type="file"
+            id="attachments-upload"
+            ref={newTicketFileInputRef}
+            multiple
+            accept="image/*,video/*"
+            className="hidden"
+            onChange={e => {
+              if (e.target.files) {
+                handleUpload(Array.from(e.target.files), false);
+              }
+            }}
+          />
+          <button
+            type="button"
             onClick={() => newTicketFileInputRef.current?.click()}
-            className="border border-dashed border-[#EBE6E0] hover:border-taupe/40 bg-[#FAF6F3] rounded-xl p-4 text-center cursor-pointer hover:bg-[#FAF6F3]/50 transition-all"
+            className="w-full border border-dashed border-[#EBE6E0] hover:border-taupe/40 bg-[#FAF6F3] rounded-xl p-4 text-center cursor-pointer hover:bg-[#FAF6F3]/50 transition-all focus:outline-none focus:ring-2 focus:ring-[#9A8073]/40"
           >
-            <input
-              type="file"
-              ref={newTicketFileInputRef}
-              multiple
-              accept="image/*,video/*"
-              className="hidden"
-              onChange={e => {
-                if (e.target.files) {
-                  handleUpload(Array.from(e.target.files), false);
-                }
-              }}
-            />
             <div className="flex flex-col items-center gap-1.5">
               <Paperclip size={20} className="text-[#827A73]" />
               <span className="text-sm font-medium text-[#524A44]">Click to select images or video</span>
               <span className="text-xs text-[#A8A19A]">Maximum file size: 50MB</span>
             </div>
-          </div>
+          </button>
 
           {newTicketUploads.length > 0 && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3">
               {newTicketUploads.map(upload => (
-                <div key={upload.id} className="flex items-center justify-between p-3 border border-[#EBE6E0] rounded-xl bg-white text-sm shadow-sm">
-                  <div className="flex items-center gap-2 min-w-0 flex-1">
-                    {upload.file.type.startsWith('image/') ? (
-                      <ImageIcon size={18} className="text-taupe shrink-0" />
-                    ) : (
-                      <FileVideo size={18} className="text-taupe shrink-0" />
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <p className="font-medium text-[#2D2A26] truncate">{upload.name}</p>
-                      {upload.status === 'uploading' && (
-                        <div className="w-full bg-[#EBE6E0] h-1.5 rounded-full mt-1 overflow-hidden">
-                          <div className="bg-taupe h-full transition-all duration-300" style={{ width: `${upload.progress}%` }} />
-                        </div>
-                      )}
-                      {upload.status === 'success' && <p className="text-xs text-[#7A8B76] mt-0.5 font-medium">Uploaded successfully</p>}
-                      {upload.status === 'failed' && <p className="text-xs text-red-500 mt-0.5 font-medium">Upload failed</p>}
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setNewTicketUploads(prev => prev.filter(u => u.id !== upload.id));
-                    }}
-                    className="p-1.5 rounded-lg text-[#827A73] hover:text-red-500 hover:bg-red-50 transition-colors ml-2 shrink-0"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
+                <NewTicketUploadItem
+                  key={upload.id}
+                  upload={upload}
+                  onRemove={handleRemoveNewTicketUpload}
+                />
               ))}
             </div>
           )}
         </div>
+
 
         {formError && (
           <p className="text-sm text-red-500 flex items-center gap-2">

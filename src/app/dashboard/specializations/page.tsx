@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useToast } from '@/context/ToastContext';
 import { Search, Plus } from 'lucide-react';
 import {
   Specialization,
@@ -14,6 +15,7 @@ import SpecializationListView from '@/components/specializations/SpecializationL
 
 export default function SpecializationsPage() {
   const { shop, user } = useAuthStore();
+  const toast = useToast();
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -51,7 +53,7 @@ export default function SpecializationsPage() {
   }, [fetchSpecializations]);
 
   // ── Submit ─────────────────────────────────────────────────────────────────
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleSubmit = async (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!shop) return;
     setIsSubmitting(true);
@@ -103,7 +105,7 @@ export default function SpecializationsPage() {
       setDeletingId(null);
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
-      alert(e.response?.data?.message || 'Failed to delete specialization');
+      toast.error(e.response?.data?.message || 'Failed to delete specialization');
     } finally {
       setIsSubmitting(false);
     }

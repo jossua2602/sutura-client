@@ -3,10 +3,10 @@ import { Pencil, Trash2 } from 'lucide-react';
 import { Specialization, getCategoryIcon } from './specializationHelpers';
 
 interface SpecializationListViewProps {
-  specializations: Specialization[];
-  loading: boolean;
-  onEdit: (spec: Specialization) => void;
-  onDelete: (id: number) => void;
+  readonly specializations: Specialization[];
+  readonly loading: boolean;
+  readonly onEdit: (spec: Specialization) => void;
+  readonly onDelete: (id: number) => void;
 }
 
 export default function SpecializationListView({

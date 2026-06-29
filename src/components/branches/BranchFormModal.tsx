@@ -1,17 +1,17 @@
 import React, { useState } from 'react';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, X } from 'lucide-react';
 import Modal from '@/components/Modal';
 import api from '@/lib/axios';
 
 interface BranchFormModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onSubmit: (e: React.FormEvent) => void;
-  editingId: number | null;
-  isSubmitting: boolean;
-  errorMsg: string;
-  shopId?: number;
-  formData: {
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onSubmit: (e: React.SyntheticEvent) => void;
+  readonly editingId: number | null;
+  readonly isSubmitting: boolean;
+  readonly errorMsg: string;
+  readonly shopId?: number;
+  readonly formData: {
     name: string;
     address: string;
     city: string;
@@ -22,7 +22,7 @@ interface BranchFormModalProps {
     status: string;
     guide_image_url?: string;
   };
-  setFormData: React.Dispatch<React.SetStateAction<{
+  readonly setFormData: React.Dispatch<React.SetStateAction<{
     name: string;
     address: string;
     city: string;
@@ -58,10 +58,11 @@ export default function BranchFormModal({
 
         {/* Branch Name */}
         <div>
-          <label className="block text-sm font-medium text-[#524A44] mb-1">
+          <label htmlFor="branch-name" className="block text-sm font-medium text-[#524A44] mb-1">
             Branch Name <span className="text-red-400">*</span>
           </label>
           <input
+            id="branch-name"
             required
             type="text"
             placeholder="e.g. Matina Branch"
@@ -73,10 +74,11 @@ export default function BranchFormModal({
 
         {/* Address */}
         <div>
-          <label className="block text-sm font-medium text-[#524A44] mb-1">
+          <label htmlFor="branch-address" className="block text-sm font-medium text-[#524A44] mb-1">
             Street Address <span className="text-red-400">*</span>
           </label>
           <input
+            id="branch-address"
             required
             type="text"
             placeholder="e.g. 123 JP Laurel Avenue"
@@ -89,10 +91,11 @@ export default function BranchFormModal({
         {/* City & Contact */}
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">
+            <label htmlFor="branch-city" className="block text-sm font-medium text-[#524A44] mb-1">
               City / District <span className="text-red-400">*</span>
             </label>
             <input
+              id="branch-city"
               required
               type="text"
               placeholder="e.g. Davao City"
@@ -102,8 +105,9 @@ export default function BranchFormModal({
             />
           </div>
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Contact Number</label>
+            <label htmlFor="branch-contact" className="block text-sm font-medium text-[#524A44] mb-1">Contact Number</label>
             <input
+              id="branch-contact"
               type="text"
               placeholder="e.g. 09123456789"
               value={formData.contact_number}
@@ -115,8 +119,9 @@ export default function BranchFormModal({
 
         {/* Operating Hours */}
         <div>
-          <label className="block text-sm font-medium text-[#524A44] mb-1">Operating Hours</label>
+          <label htmlFor="branch-hours" className="block text-sm font-medium text-[#524A44] mb-1">Operating Hours</label>
           <input
+            id="branch-hours"
             type="text"
             placeholder="e.g. Mon–Sat 8:00 AM – 6:00 PM"
             value={formData.operating_hours}
@@ -127,12 +132,13 @@ export default function BranchFormModal({
 
         {/* Map Coordinates */}
         <div>
-          <label className="block text-sm font-medium text-[#524A44] mb-1">
-            Map Coordinates
+          <label htmlFor="branch-lat" className="block text-sm font-medium text-[#524A44] mb-1">
+            Map Coordinates{' '}
             <span className="text-[#A8A19A] font-normal ml-1">(required for map discovery)</span>
           </label>
           <div className="grid grid-cols-2 gap-3">
             <input
+              id="branch-lat"
               type="text"
               placeholder="Latitude (e.g. 7.1907)"
               value={formData.latitude}
@@ -155,8 +161,9 @@ export default function BranchFormModal({
         {/* Status (only for edit) */}
         {editingId && (
           <div>
-            <label className="block text-sm font-medium text-[#524A44] mb-1">Branch Status</label>
+            <label htmlFor="branch-status" className="block text-sm font-medium text-[#524A44] mb-1">Branch Status</label>
             <select
+              id="branch-status"
               value={formData.status}
               onChange={e => setFormData(prev => ({ ...prev, status: e.target.value }))}
               className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe text-sm"
@@ -168,7 +175,7 @@ export default function BranchFormModal({
         )}
         {/* Branch Guide Image */}
         <div>
-          <label className="block text-sm font-medium text-[#524A44] mb-1">
+          <label htmlFor="branch-guide-image" className="block text-sm font-medium text-[#524A44] mb-1">
             Storefront / Direction Guide Image (Optional)
           </label>
           <span className="block text-[11px] text-[#827A73] mb-2">

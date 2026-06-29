@@ -4,10 +4,10 @@ import { MapPin } from 'lucide-react';
 import { CatalogOrder, StatusBadge } from './orderHelpers';
 
 interface OrderListItemProps {
-  order: CatalogOrder;
-  activeTab: 'walkin' | 'online';
-  updating: number | null;
-  onUpdateStatus: (orderId: number, status: string, extra?: any) => Promise<void>;
+  readonly order: CatalogOrder;
+  readonly activeTab: 'walkin' | 'online';
+  readonly updating: number | null;
+  readonly onUpdateStatus: (orderId: number, status: string, extra?: Record<string, string>) => Promise<void>;
 }
 
 export default function OrderListItem({
@@ -15,7 +15,7 @@ export default function OrderListItem({
   activeTab,
   updating,
   onUpdateStatus,
-}: OrderListItemProps) {
+}: Readonly<OrderListItemProps>) {
   const isUpdating = updating === order.id;
   const [showCourierForm, setShowCourierForm] = useState(false);
   const [courierName, setCourierName] = useState(order.courier_name || '');
@@ -25,7 +25,7 @@ export default function OrderListItem({
     <div className="flex flex-col md:flex-row gap-6 p-4 rounded-xl border border-[#EBE6E0] bg-[#FAFAFA] hover:bg-white transition-colors text-[#2D2A26]">
       {/* Image & Product Info */}
       <div className="flex gap-4 md:w-1/3">
-        <div className="h-20 w-20 rounded-lg bg-[#EBE6E0] overflow-hidden flex-shrink-0 relative">
+        <div className="h-20 w-20 rounded-lg bg-[#EBE6E0] overflow-hidden shrink-0 relative">
           {order.catalog_item?.images?.[0] ? (
             <Image src={order.catalog_item.images[0]} alt="Product" fill className="object-cover" />
           ) : (
@@ -34,7 +34,7 @@ export default function OrderListItem({
         </div>
         <div>
           <h4 className="font-medium text-[#2D2A26]">{order.catalog_item?.title || 'Unknown Product'}</h4>
-          <p className="text-sm font-semibold text-[#8A7E72] mt-1">₱{parseFloat(order.total_amount).toLocaleString()}</p>
+          <p className="text-sm font-semibold text-[#8A7E72] mt-1">₱{Number.parseFloat(order.total_amount).toLocaleString()}</p>
           <div className="mt-2">
             <StatusBadge status={order.status} />
           </div>
@@ -54,7 +54,7 @@ export default function OrderListItem({
         {activeTab === 'online' && (
           <div className="space-y-1.5 mt-2 bg-white p-3 rounded-lg border border-[#EBE6E0]">
             <div className="flex gap-2 items-start">
-              <MapPin className="w-4 h-4 text-[#8A7E72] flex-shrink-0 mt-0.5" />
+              <MapPin className="w-4 h-4 text-[#8A7E72] shrink-0 mt-0.5" />
               <span className="text-xs text-[#524A44]">{order.delivery_address || 'No address provided'}</span>
             </div>
             {(order.courier_name || order.courier_tracking_number) && (
@@ -74,15 +74,7 @@ export default function OrderListItem({
         
         {activeTab === 'online' && order.status === 'pending' && (
           <div className="w-full space-y-2">
-            {!showCourierForm ? (
-              <button 
-                onClick={() => setShowCourierForm(true)}
-                disabled={isUpdating}
-                className="w-full sm:w-auto px-4 py-2 bg-[#2D2A26] text-white text-sm font-medium rounded-lg hover:bg-[#1a1816] transition-colors disabled:opacity-50 cursor-pointer"
-              >
-                {isUpdating ? 'Updating...' : 'Send Out for Delivery'}
-              </button>
-            ) : (
+            {showCourierForm ? (
               <div className="bg-white border border-[#EBE6E0] p-3 rounded-lg flex flex-col gap-2 w-64 shadow-xs">
                 <p className="text-[10px] font-bold text-[#8A7E72] uppercase">Courier Details</p>
                 <input 
@@ -120,6 +112,14 @@ export default function OrderListItem({
                   </button>
                 </div>
               </div>
+            ) : (
+              <button 
+                onClick={() => setShowCourierForm(true)}
+                disabled={isUpdating}
+                className="w-full sm:w-auto px-4 py-2 bg-[#2D2A26] text-white text-sm font-medium rounded-lg hover:bg-[#1a1816] transition-colors disabled:opacity-50 cursor-pointer"
+              >
+                {isUpdating ? 'Updating...' : 'Send Out for Delivery'}
+              </button>
             )}
           </div>
         )}

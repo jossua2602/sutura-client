@@ -12,6 +12,22 @@ export interface AnalyticsData {
   total_branches: number;
   total_staff: number;
   total_customers?: number;
+  // New KPI fields
+  overdue_jobs?: number;
+  pending_deposit_jobs?: number;
+  ready_for_pickup_jobs?: number;
+  rush_jobs_active?: number;
+  today_revenue?: number;
+  completion_rate?: number;
+  avg_order_value?: number;
+  today_appointments?: {
+    id: number;
+    scheduled_at: string;
+    appointment_type: string;
+    status: string;
+    customer?: { id: number; name: string };
+    service?: { id: number; name: string };
+  }[];
   recent_jobs?: {
     id: number;
     order_number?: string;
@@ -19,6 +35,7 @@ export interface AnalyticsData {
     customer?: { name: string };
   }[];
   revenue_data?: { month: string; revenue: number }[];
+  jobs_by_status?: { status: string; count: number }[];
 }
 
 export interface JobItem {

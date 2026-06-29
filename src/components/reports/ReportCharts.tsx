@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   PieChart,
   Pie,
-  Cell,
   AreaChart,
   Area,
 } from 'recharts';
@@ -21,14 +20,57 @@ import {
 } from './reportHelpers';
 
 interface ReportChartsProps {
-  data: AnalyticsData | null;
-  revenueChartData: { month: string; revenue: number }[];
-  jobsStatusData: { status: string; count: number }[];
-  completionRate: number;
-  completionPieData: { name: string; value: number; fill: string }[];
-  outstandingRate: number;
-  balancePieData: { name: string; value: number; fill: string }[];
+  readonly data: AnalyticsData | null;
+  readonly revenueChartData: { readonly month: string; readonly revenue: number }[];
+  readonly jobsStatusData: { readonly status: string; readonly count: number }[];
+  readonly completionRate: number;
+  readonly completionPieData: { readonly name: string; readonly value: number; readonly fill: string }[];
+  readonly outstandingRate: number;
+  readonly balancePieData: { readonly name: string; readonly value: number; readonly fill: string }[];
 }
+
+interface StatusTooltipPayload {
+  readonly value: number;
+  readonly payload: {
+    readonly status: string;
+  };
+}
+
+interface StatusTooltipProps {
+  readonly active?: boolean;
+  readonly payload?: readonly StatusTooltipPayload[];
+}
+
+const StatusTooltip = ({ active, payload }: StatusTooltipProps) => {
+  if (active && payload?.length) {
+    return (
+      <div className="bg-white border border-[#EBE6E0] rounded-xl shadow-lg px-3 py-2">
+        <p className="text-xs font-medium text-[#2D2A26]">
+          {STATUS_LABELS[payload[0]?.payload?.status] ?? payload[0]?.payload?.status}
+        </p>
+        <p className="text-sm font-bold text-taupe">{payload[0]?.value} orders</p>
+      </div>
+    );
+  }
+  return null;
+};
+
+interface CustomBarShapeProps {
+  readonly x?: number;
+  readonly y?: number;
+  readonly width?: number;
+  readonly height?: number;
+  readonly payload?: {
+    readonly status: string;
+  };
+}
+
+const CustomBarShape = (props: CustomBarShapeProps) => {
+  const { x, y, width, height, payload } = props;
+  if (payload === undefined) return null;
+  const color = STATUS_COLORS[payload.status] ?? '#9A8073';
+  return <rect x={x} y={y} width={width} height={height} fill={color} rx={6} ry={6} />;
+};
 
 export default function ReportCharts({
   data,
@@ -69,7 +111,10 @@ export default function ReportCharts({
                 fontSize={12}
                 tickLine={false}
                 axisLine={false}
-                tickFormatter={v => `₱${v >= 1000 ? `${v / 1000}k` : v}`}
+                tickFormatter={v => {
+                  const formatted = v >= 1000 ? `${v / 1000}k` : v;
+                  return `₱${formatted}`;
+                }}
               />
               <Tooltip content={<CustomTooltip />} cursor={{ fill: '#F0EAE3', radius: 6 }} />
               <Bar dataKey="revenue" fill="#9A8073" radius={[6, 6, 0, 0]} />
@@ -103,26 +148,8 @@ export default function ReportCharts({
                   axisLine={false}
                   tickFormatter={v => STATUS_LABELS[v] ?? v}
                 />
-                <Tooltip
-                  content={({ active, payload }) => {
-                    if (active && payload?.length) {
-                      return (
-                        <div className="bg-white border border-[#EBE6E0] rounded-xl shadow-lg px-3 py-2">
-                          <p className="text-xs font-medium text-[#2D2A26]">
-                            {STATUS_LABELS[payload[0]?.payload?.status] ?? payload[0]?.payload?.status}
-                          </p>
-                          <p className="text-sm font-bold text-taupe">{payload[0]?.value} orders</p>
-                        </div>
-                      );
-                    }
-                    return null;
-                  }}
-                />
-                <Bar dataKey="count" radius={[0, 6, 6, 0]}>
-                  {jobsStatusData.map((entry, idx) => (
-                    <Cell key={idx} fill={STATUS_COLORS[entry.status] ?? '#9A8073'} />
-                  ))}
-                </Bar>
+                <Tooltip content={<StatusTooltip />} />
+                <Bar dataKey="count" shape={<CustomBarShape />} />
               </BarChart>
             </ResponsiveContainer>
           </div>
@@ -149,11 +176,7 @@ export default function ReportCharts({
                       endAngle={-270}
                       dataKey="value"
                       strokeWidth={0}
-                    >
-                      {completionPieData.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.fill} />
-                      ))}
-                    </Pie>
+                    />
                     <text
                       x="50%"
                       y="47%"
@@ -197,11 +220,7 @@ export default function ReportCharts({
                       endAngle={-270}
                       dataKey="value"
                       strokeWidth={0}
-                    >
-                      {balancePieData.map((entry, idx) => (
-                        <Cell key={idx} fill={entry.fill} />
-                      ))}
-                    </Pie>
+                    />
                     <text
                       x="50%"
                       y="47%"

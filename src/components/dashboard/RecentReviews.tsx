@@ -36,7 +36,7 @@ export default function RecentReviews() {
   }
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-[#EBE6E0] flex flex-col h-full">
+    <div className="bg-white rounded-2xl shadow-sm border border-[#EBE6E0] flex flex-col min-h-[280px]">
       <div className="p-5 border-b border-[#EBE6E0] flex justify-between items-center">
         <h3 className="font-semibold text-[#2D2A26] flex items-center gap-2">
           <MessageSquare size={16} className="text-[#9A8073]" />
@@ -65,7 +65,7 @@ export default function RecentReviews() {
               <div className="flex items-center justify-between mb-1">
                 <span className="text-sm font-medium text-[#2D2A26] truncate">{review.user.name}</span>
                 <div className="flex text-yellow-400">
-                  {[...Array(5)].map((_, i) => (
+                  {Array.from({ length: 5 }, (_, i) => (
                     <Star key={i} size={10} className={i < review.rating ? 'fill-current' : 'text-[#EBE6E0]'} />
                   ))}
                 </div>

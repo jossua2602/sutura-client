@@ -1,25 +1,29 @@
-import React from 'react';
-import { Search, Layers, Loader2, Copy, DollarSign, Pencil, Trash2 } from 'lucide-react';
+'use client';
+
+import React, { useState } from 'react';
+import {
+  Search, Loader2, Copy, DollarSign, Pencil, Trash2,
+  Image as ImageIcon, CheckSquare, Square, Check, Clock, Tag,
+} from 'lucide-react';
 import { Service } from './serviceHelpers';
 
 interface ServiceListViewProps {
-  services: Service[];
-  filteredServices: Service[];
-  loading: boolean;
-  search: string;
-  onSearchChange: (val: string) => void;
-  categoryFilter: string;
-  onCategoryFilterChange: (val: string) => void;
-  allCategories: string[];
-  actionLoadingId: number | null;
-  onDuplicate: (service: Service) => Promise<void>;
-  onManagePricing: (service: Service) => void;
-  onEdit: (service: Service) => void;
-  onDelete: (id: number) => void;
+  readonly filteredServices: Service[];
+  readonly loading: boolean;
+  readonly search: string;
+  readonly onSearchChange: (val: string) => void;
+  readonly categoryFilter: string;
+  readonly onCategoryFilterChange: (val: string) => void;
+  readonly allCategories: string[];
+  readonly actionLoadingId: number | null;
+  readonly onDuplicate: (service: Service) => Promise<void>;
+  readonly onManagePricing: (service: Service) => void;
+  readonly onEdit: (service: Service) => void;
+  readonly onDelete: (id: number) => void;
+  readonly onBulkDelete?: (ids: number[]) => void;
 }
 
 export default function ServiceListView({
-  services,
   filteredServices,
   loading,
   search,
@@ -32,157 +36,273 @@ export default function ServiceListView({
   onManagePricing,
   onEdit,
   onDelete,
+  onBulkDelete,
 }: ServiceListViewProps) {
+  const [selected, setSelected] = useState<Set<number>>(new Set());
+
+  const toggleSelect = (id: number) => {
+    setSelected(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selected.size === filteredServices.length) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(filteredServices.map(s => s.id)));
+    }
+  };
+
+  const clearSelection = () => setSelected(new Set());
+
+  const handleBulkDelete = () => {
+    if (onBulkDelete && selected.size > 0) {
+      onBulkDelete(Array.from(selected));
+      setSelected(new Set());
+    }
+  };
+
+  const allSelected = filteredServices.length > 0 && selected.size === filteredServices.length;
+  const someSelected = selected.size > 0;
+
   return (
-    <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden text-[#2D2A26]">
-      <div className="p-4 border-b border-[#EBE6E0] flex items-center justify-between bg-white">
-        <div className="relative w-80">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={18} />
-          <input
-            type="text"
-            placeholder="Search services by name or category..."
-            value={search}
-            onChange={(e) => onSearchChange(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-          />
+    <div className="space-y-4 text-[#2D2A26]">
+      {/* Search + Filter Bar */}
+      <div className="bg-white border border-[#EBE6E0] rounded-2xl p-4 shadow-sm space-y-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Search */}
+          <div className="relative flex-1 min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" size={16} />
+            <input
+              type="text"
+              placeholder="Search services..."
+              value={search}
+              onChange={(e) => onSearchChange(e.target.value)}
+              className="w-full pl-9 pr-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] transition-colors"
+            />
+          </div>
+
+          {/* Select All toggle */}
+          <button
+            onClick={toggleSelectAll}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${
+              someSelected
+                ? 'bg-[#9A8073] text-white border-[#9A8073]'
+                : 'bg-[#FAF6F3] text-[#827A73] border-[#EBE6E0] hover:border-[#9A8073] hover:text-[#9A8073]'
+            }`}
+          >
+            {allSelected
+              ? <CheckSquare size={15} />
+              : <Square size={15} />
+            }
+            {someSelected ? `${selected.size} selected` : 'Select'}
+          </button>
+
+          {/* Bulk delete */}
+          {someSelected && onBulkDelete && (
+            <button
+              onClick={handleBulkDelete}
+              className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-[#B26959]/10 text-[#B26959] border border-[#B26959]/20 hover:bg-[#B26959]/20 transition-colors"
+            >
+              <Trash2 size={15} />
+              Delete {selected.size}
+            </button>
+          )}
+
+          {someSelected && (
+            <button onClick={clearSelection} className="text-xs text-[#A8A19A] hover:text-[#524A44] transition-colors">
+              Clear
+            </button>
+          )}
+
+          <span className="text-xs text-[#A8A19A] ml-auto font-medium">
+            {filteredServices.length} service{filteredServices.length === 1 ? '' : 's'}
+          </span>
         </div>
-        <div className="text-sm text-[#827A73] font-medium">
-          Total Services: {services.length}
-        </div>
+
+        {/* Category chips */}
+        {allCategories.length > 1 && (
+          <div className="flex gap-2 overflow-x-auto pb-0.5">
+            {allCategories.map(cat => (
+              <button
+                key={cat}
+                onClick={() => onCategoryFilterChange(cat)}
+                className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors shrink-0 ${
+                  categoryFilter === cat
+                    ? 'bg-[#9A8073] text-white'
+                    : 'bg-[#F0EAE3] text-[#827A73] hover:bg-[#EBE6E0]'
+                }`}
+              >
+                {cat}
+              </button>
+            ))}
+          </div>
+        )}
       </div>
 
-      {allCategories.length > 1 && (
-        <div className="flex gap-2 px-4 py-3 border-b border-[#EBE6E0] overflow-x-auto">
-          {allCategories.map(cat => (
-            <button
-              key={cat}
-              onClick={() => onCategoryFilterChange(cat)}
-              className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap transition-colors ${
-                categoryFilter === cat
-                  ? 'bg-[#9A8073] text-white'
-                  : 'bg-[#F0EAE3] text-[#827A73] hover:bg-[#EBE6E0]'
-              }`}
-            >
-              {cat}
-            </button>
+      {/* Loading State */}
+      {loading && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {Array.from({ length: 6 }, (_, i) => (
+            <div key={`skeleton-${i}`} className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden animate-pulse">
+              <div className="h-40 bg-[#EBE6E0]" />
+              <div className="p-4 space-y-2">
+                <div className="h-4 bg-[#EBE6E0] rounded w-3/4" />
+                <div className="h-3 bg-[#EBE6E0] rounded w-1/2" />
+                <div className="h-5 bg-[#EBE6E0] rounded w-1/3 mt-2" />
+              </div>
+            </div>
           ))}
         </div>
       )}
 
-      <div className="overflow-x-auto">
-        <table className="w-full text-left text-sm text-[#524A44]">
-          <thead className="bg-[#FAF6F3]/50 text-xs uppercase text-[#A8A19A] border-b border-[#EBE6E0]">
-            <tr>
-              <th className="px-6 py-4 font-medium">Service Name</th>
-              <th className="px-6 py-4 font-medium">Description</th>
-              <th className="px-6 py-4 font-medium">Pricing Matrix</th>
-              <th className="px-6 py-4 font-medium">Est. Days</th>
-              <th className="px-6 py-4 font-medium">Status</th>
-              <th className="px-6 py-4 font-medium text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#EBE6E0]">
-            {loading && (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-[#A8A19A]">
-                  Loading services...
-                </td>
-              </tr>
-            )}
-            {!loading && filteredServices.length === 0 && (
-              <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-[#A8A19A] text-sm">
-                  {categoryFilter === 'All'
-                    ? 'No services yet. Click "Add Service" to create one.'
-                    : `No services in "${categoryFilter}" category.`}
-                </td>
-              </tr>
-            )}
-            {!loading && filteredServices.length > 0 && (
-              filteredServices.map((service) => (
-                <tr key={service.id} className="hover:bg-[#F0EAE3]/20 transition-colors">
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-[#F0EAE3] flex items-center justify-center text-[#827A73]">
-                        <Layers size={16} />
-                      </div>
-                      <span className="font-medium text-[#2D2A26]">{service.name}</span>
+      {/* Empty State */}
+      {!loading && filteredServices.length === 0 && (
+        <div className="bg-white border border-[#EBE6E0] rounded-2xl py-20 flex flex-col items-center text-center shadow-sm">
+          <div className="w-14 h-14 rounded-2xl bg-[#FAF6F3] border border-[#EBE6E0] flex items-center justify-center mb-4">
+            <ImageIcon size={24} className="text-[#C5BDBA]" />
+          </div>
+          <p className="text-sm font-semibold text-[#2D2A26]">
+            {categoryFilter === 'All' ? 'No services yet' : `No services in "${categoryFilter}"`}
+          </p>
+          <p className="text-xs text-[#A8A19A] mt-1">
+            {categoryFilter === 'All' ? 'Click "Add Service" to create your first one.' : 'Try a different category filter.'}
+          </p>
+        </div>
+      )}
+
+      {/* Card Grid */}
+      {!loading && filteredServices.length > 0 && (
+        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+          {filteredServices.map((service) => {
+            const isSelected = selected.has(service.id);
+            const isLoading = actionLoadingId === service.id;
+
+            return (
+              <div
+                key={service.id}
+                className={`relative bg-white border rounded-2xl overflow-hidden shadow-sm transition-all duration-200 group ${
+                  isSelected
+                    ? 'border-[#9A8073] ring-2 ring-[#9A8073]/20'
+                    : 'border-[#EBE6E0] hover:border-[#9A8073]/40 hover:shadow-md'
+                }`}
+              >
+                {/* Selection checkbox */}
+                <button
+                  onClick={() => toggleSelect(service.id)}
+                  className={`absolute top-3 left-3 z-10 w-6 h-6 rounded-lg flex items-center justify-center transition-all ${
+                    isSelected
+                      ? 'bg-[#9A8073] text-white shadow-sm'
+                      : 'bg-white/80 text-[#A8A19A] border border-[#EBE6E0] opacity-0 group-hover:opacity-100'
+                  }`}
+                >
+                  {isSelected ? <Check size={13} strokeWidth={3} /> : <Square size={13} />}
+                </button>
+
+                {/* Status badge */}
+                <div className="absolute top-3 right-3 z-10">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
+                    service.is_active
+                      ? 'bg-[#7A8B76]/10 text-[#7A8B76] border-[#7A8B76]/20'
+                      : 'bg-zinc-100 text-[#A8A19A] border-zinc-200'
+                  }`}>
+                    {service.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                </div>
+
+                {/* Image area */}
+                <div className="h-40 bg-[#FAF6F3] border-b border-[#EBE6E0] overflow-hidden">
+                  {service.image_url ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
+                    <img
+                      src={service.image_url}
+                      alt={service.name}
+                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                    />
+                  ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#C5BDBA]">
+                      <ImageIcon size={28} />
+                      <span className="text-[11px]">No image</span>
                     </div>
-                  </td>
-                  <td className="px-6 py-4 text-[#827A73] max-w-xs truncate">
-                    {service.description || '-'}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="text-[#524A44] font-medium">Base: ₱{Number.parseFloat(service.base_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}</div>
-                    {service.pricing && service.pricing.length > 0 && (
-                      <div className="flex flex-col gap-1 mt-2 border-l-2 border-[#EBE6E0] pl-2 min-w-[140px]">
-                        {service.pricing.map(p => (
-                          <div key={p.id} className="text-xs text-[#827A73] flex justify-between gap-3">
-                            <span className="truncate">{p.label}</span>
-                            <span className="font-semibold text-[#524A44]">+₱{Number.parseFloat(p.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                          </div>
-                        ))}
+                  )}
+                </div>
+
+                {/* Card body */}
+                <div className="p-4 space-y-3">
+                  {/* Name + category */}
+                  <div>
+                    <h3 className="font-semibold text-[#2D2A26] text-sm leading-tight line-clamp-1">{service.name}</h3>
+                    {service.category && (
+                      <div className="flex items-center gap-1 mt-1">
+                        <Tag size={10} className="text-[#A8A19A]" />
+                        <span className="text-[11px] text-[#A8A19A] truncate">{service.category}</span>
                       </div>
                     )}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="text-[#524A44]">{service.estimated_days} days</span>
-                  </td>
-                  <td className="px-6 py-4">
-                    {service.is_active ? (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-[#7A8B76]/10 text-[#7A8B76] border-[#7A8B76]/20">
-                        Active
-                      </span>
+                  </div>
+
+                  {/* Description */}
+                  {service.description && (
+                    <p className="text-[11px] text-[#827A73] line-clamp-2 leading-relaxed">{service.description}</p>
+                  )}
+
+                  {/* Price + duration */}
+                  <div className="flex items-center justify-between pt-1 border-t border-[#EBE6E0]">
+                    <span className="text-base font-bold text-[#2D2A26]">
+                      ₱{Number.parseFloat(service.base_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    </span>
+                    <div className="flex items-center gap-1 text-[11px] text-[#A8A19A]">
+                      <Clock size={11} />
+                      {service.estimated_days}d
+                    </div>
+                  </div>
+
+                  {/* Action buttons */}
+                  <div className="flex items-center gap-1 pt-1">
+                    {isLoading ? (
+                      <Loader2 size={14} className="animate-spin text-[#A8A19A] mx-auto" />
                     ) : (
-                      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-zinc-500/10 text-[#827A73] border-zinc-500/20">
-                        Inactive
-                      </span>
+                      <>
+                        <button
+                          onClick={() => onEdit(service)}
+                          title="Edit"
+                          className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-[#524A44] bg-[#FAF6F3] hover:bg-[#F0EAE3] rounded-lg transition-colors"
+                        >
+                          <Pencil size={12} /> Edit
+                        </button>
+                        <button
+                          onClick={() => onManagePricing(service)}
+                          title="Pricing"
+                          className="flex items-center justify-center p-1.5 text-[#A8A19A] hover:text-[#9A8073] hover:bg-[#FAF6F3] rounded-lg transition-colors"
+                        >
+                          <DollarSign size={14} />
+                        </button>
+                        <button
+                          onClick={() => onDuplicate(service)}
+                          title="Duplicate"
+                          className="flex items-center justify-center p-1.5 text-[#A8A19A] hover:text-[#9A8073] hover:bg-[#FAF6F3] rounded-lg transition-colors"
+                        >
+                          <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={() => onDelete(service.id)}
+                          title="Delete"
+                          className="flex items-center justify-center p-1.5 text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </>
                     )}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                      {actionLoadingId === service.id ? (
-                        <Loader2 size={16} className="animate-spin text-[#A8A19A]" />
-                      ) : (
-                        <>
-                          <button
-                            onClick={() => onDuplicate(service)}
-                            title="Duplicate Service"
-                            className="text-[#A8A19A] hover:text-[#9A8073] hover:bg-[#FAF6F3] p-1.5 rounded-lg border border-transparent hover:border-[#EBE6E0] transition-colors"
-                          >
-                            <Copy size={14} />
-                          </button>
-                          <button
-                            onClick={() => onManagePricing(service)}
-                            title="Manage Pricing Options"
-                            className="text-[#A8A19A] hover:text-[#2D2A26] hover:bg-[#FAF6F3] p-1.5 rounded-lg border border-transparent hover:border-[#EBE6E0] transition-colors"
-                          >
-                            <DollarSign size={14} />
-                          </button>
-                          <button
-                            onClick={() => onEdit(service)}
-                            title="Edit Service"
-                            className="text-[#A8A19A] hover:text-[#2D2A26] hover:bg-[#FAF6F3] p-1.5 rounded-lg border border-transparent hover:border-[#EBE6E0] transition-colors"
-                          >
-                            <Pencil size={14} />
-                          </button>
-                          <button
-                            onClick={() => onDelete(service.id)}
-                            title="Delete Service"
-                            className="text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 p-1.5 rounded-lg border border-transparent hover:border-[#B26959]/20 transition-colors"
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </>
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))
-            )}
-          </tbody>
-        </table>
-      </div>
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
     </div>
   );
 }

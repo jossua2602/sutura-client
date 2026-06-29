@@ -1,156 +1,38 @@
 'use client';
 
-import { useEffect, useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
 import Image from 'next/image';
-import api from '@/lib/axios';
-import { useAuthStore } from '@/store/useAuthStore';
 import { Search, Package, Phone, Mail, Plus, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
 import Modal from '@/components/Modal';
-
-interface CustomerData {
-  id: number;
-  name: string;
-  email: string;
-  phone: string;
-  profile_picture: string;
-  total_spend: number;
-  active_jobs: number;
-  completed_jobs: number;
-  created_at: string;
-}
+import { useCustomers } from '@/components/customers/useCustomers';
 
 export default function CustomersPage() {
-  const router = useRouter();
-  const { shop , user } = useAuthStore();
-  const [customers, setCustomers] = useState<CustomerData[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  
-  // Modal State
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
-  const [error, setError] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'online' | 'walkin'>('all');
-
-  const isWalkInEmail = (email?: string) => email ? (email.startsWith('walkin_') && email.endsWith('@sutura.com')) : false;
-
-  useEffect(() => {
-    if (!shop) {
-      const timer = setTimeout(() => setLoading(false), 0);
-      return () => clearTimeout(timer);
-    }
-
-    let active = true;
-    api.get(`/shops/${shop.id}/customers`)
-      .then(res => {
-        if (active) {
-          setCustomers(res.data.data);
-          setLoading(false);
-        }
-      })
-      .catch(err => {
-        console.error(err);
-        if (active) {
-          setLoading(false);
-        }
-      });
-
-    return () => {
-      active = false;
-    };
-  }, [shop, user]);
-
-  const handleAddCustomer = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    if (!shop) return;
-    
-    setIsSubmitting(true);
-    setError('');
-    
-    const payload = {
-      name: formData.name,
-      email: formData.email.trim() || null,
-      phone: formData.phone.trim() || null,
-    };
-    
-    try {
-      if (editingId) {
-        const res = await api.put(`/shops/${shop.id}/customers/${editingId}`, payload);
-        setCustomers(prev => prev.map(c => c.id === editingId ? { ...c, ...res.data.data } : c));
-      } else {
-        const res = await api.post(`/shops/${shop.id}/customers`, payload);
-        setCustomers(prev => [
-          { ...res.data.data, active_jobs: 0, completed_jobs: 0, total_spend: 0 }, 
-          ...prev
-        ]);
-      }
-      setIsModalOpen(false);
-      setEditingId(null);
-      setFormData({ name: '', email: '', phone: '' });
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setError(error.response?.data?.message || 'Failed to save customer');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const handleEditClick = (e: React.MouseEvent, customer: CustomerData) => {
-    e.stopPropagation();
-    setEditingId(customer.id);
-    setFormData({
-      name: customer.name,
-      email: isWalkInEmail(customer.email) ? '' : customer.email,
-      phone: customer.phone || ''
-    });
-    setIsModalOpen(true);
-  };
-
-  const handleDeleteClick = (e: React.MouseEvent, id: number) => {
-    e.stopPropagation();
-    setDeletingId(id);
-    setIsDeleteModalOpen(true);
-  };
-
-  const confirmDelete = async () => {
-    if (!shop || !deletingId) return;
-    setIsSubmitting(true);
-    try {
-      await api.delete(`/shops/${shop.id}/customers/${deletingId}`);
-      setCustomers(prev => prev.filter(c => c.id !== deletingId));
-      setIsDeleteModalOpen(false);
-      setDeletingId(null);
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      alert(error.response?.data?.message || 'Failed to remove customer');
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditingId(null);
-    setFormData({ name: '', email: '', phone: '' });
-    setError('');
-  };
-
-  const filtered = customers.filter(c => {
-    const matchesSearch = c.name.toLowerCase().includes(search.toLowerCase()) || 
-      (c.email && !isWalkInEmail(c.email) && c.email.toLowerCase().includes(search.toLowerCase()));
-      
-    if (!matchesSearch) return false;
-    
-    const isWalkIn = isWalkInEmail(c.email);
-    if (filterType === 'online') return !isWalkIn;
-    if (filterType === 'walkin') return isWalkIn;
-    return true;
-  });
+  const {
+    router,
+    customers,
+    loading,
+    search,
+    setSearch,
+    isModalOpen,
+    setIsModalOpen,
+    isDeleteModalOpen,
+    setIsDeleteModalOpen,
+    editingId,
+    setEditingId,
+    isSubmitting,
+    formData,
+    setFormData,
+    error,
+    setError,
+    filterType,
+    setFilterType,
+    isWalkInEmail,
+    handleAddCustomer,
+    handleEditClick,
+    handleDeleteClick,
+    confirmDelete,
+    closeModal,
+    filtered,
+  } = useCustomers();
 
   return (
     <div className="space-y-6 pb-12">
@@ -299,26 +181,26 @@ export default function CustomersPage() {
                       <div className="font-semibold text-[#2D2A26]">₱{Number(customer.total_spend).toLocaleString()}</div>
                       <div className="text-xs text-[#A8A19A]">{customer.completed_jobs} completed orders</div>
                     </td>
-                      <td className="p-4 text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          <button 
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              router.push(`/dashboard/customers/${customer.id}`);
-                            }} 
-                            className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1"
-                            title="View Profile"
-                          >
-                            <Eye size={16} />
-                          </button>
-                          <button onClick={(e) => handleEditClick(e, customer)} className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1">
-                            <Pencil size={16} />
-                          </button>
-                          <button onClick={(e) => handleDeleteClick(e, customer.id)} className="text-[#A8A19A] hover:text-[#B26959] transition-colors p-1">
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
+                    <td className="p-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            router.push(`/dashboard/customers/${customer.id}`);
+                          }} 
+                          className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1"
+                          title="View Profile"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button onClick={(e) => handleEditClick(e, customer)} className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1">
+                          <Pencil size={16} />
+                        </button>
+                        <button onClick={(e) => handleDeleteClick(e, customer.id)} className="text-[#A8A19A] hover:text-[#B26959] transition-colors p-1">
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
                   </tr>
                 ))}
               </tbody>

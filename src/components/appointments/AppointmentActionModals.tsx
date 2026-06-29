@@ -1,54 +1,52 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
-import { Loader2, RefreshCw, CheckSquare, X, Check, Eye, Scissors, Calendar as CalendarIcon, Clock, Ruler } from 'lucide-react';
+import { Loader2, RefreshCw, CheckSquare, X, Check, Scissors, Ruler } from 'lucide-react';
 import {
-  Appointment, JobOrderData, CustomerData, AppointmentStatus,
-  TypeBadge, StatusBadge, getErrorMessage
+  Appointment, JobOrderData,
+  TypeBadge, StatusBadge
 } from './appointmentHelpers';
 
 interface AppointmentActionModalsProps {
   // Modal visibility & active records
-  showReviewModal: boolean;
-  setShowReviewModal: (v: boolean) => void;
-  reviewApt: Appointment | null;
-  setReviewApt: (a: Appointment | null) => void;
+  readonly showReviewModal: boolean;
+  readonly setShowReviewModal: (v: boolean) => void;
+  readonly reviewApt: Appointment | null;
+  readonly setReviewApt: (a: Appointment | null) => void;
 
-  showRescheduleModal: boolean;
-  setShowRescheduleModal: (v: boolean) => void;
-  rescheduleApt: Appointment | null;
-  setRescheduleApt: (a: Appointment | null) => void;
+  readonly showRescheduleModal: boolean;
+  readonly setShowRescheduleModal: (v: boolean) => void;
+  readonly rescheduleApt: Appointment | null;
+  readonly setRescheduleApt: (a: Appointment | null) => void;
 
-  showCompleteModal: boolean;
-  setShowCompleteModal: (v: boolean) => void;
-  completeApt: Appointment | null;
-  setCompleteApt: (a: Appointment | null) => void;
+  readonly showCompleteModal: boolean;
+  readonly setShowCompleteModal: (v: boolean) => void;
+  readonly completeApt: Appointment | null;
+  readonly setCompleteApt: (a: Appointment | null) => void;
 
-  showCancelModal: boolean;
-  setShowCancelModal: (v: boolean) => void;
-  cancelApt: Appointment | null;
-  setCancelApt: (a: Appointment | null) => void;
+  readonly showCancelModal: boolean;
+  readonly setShowCancelModal: (v: boolean) => void;
+  readonly cancelApt: Appointment | null;
+  readonly setCancelApt: (a: Appointment | null) => void;
 
-  showViewModal: boolean;
-  setShowViewModal: (v: boolean) => void;
-  viewApt: Appointment | null;
-  setViewApt: (a: Appointment | null) => void;
+  readonly showViewModal: boolean;
+  readonly setShowViewModal: (v: boolean) => void;
+  readonly viewApt: Appointment | null;
+  readonly setViewApt: (a: Appointment | null) => void;
 
   // Reference Data & Statuses
-  jobOrders: JobOrderData[];
-  customers: CustomerData[];
-  isOwnerOrManager: boolean;
-  todayStr: string;
-  minTimeFor: (dateStr: string) => string;
-  isSubmitting: boolean;
-  actionLoadingId: number | null;
+  readonly jobOrders: JobOrderData[];
+  readonly todayStr: string;
+  readonly minTimeFor: (dateStr: string) => string;
+  readonly isSubmitting: boolean;
+  readonly actionLoadingId: number | null;
 
   // Async triggers
-  onConfirmReview: (aptId: number) => Promise<void>;
-  onRejectReview: (aptId: number) => Promise<void>;
-  onRescheduleSubmit: (aptId: number, date: string, time: string, notes: string) => Promise<void>;
-  onCompleteSubmit: (aptId: number, notes: string, jobOrderId: string, measurementAction: 'none' | 'record') => Promise<void>;
-  onCancelConfirm: (aptId: number) => Promise<void>;
-  onCreateJob: (apt: Appointment) => void;
+  readonly onConfirmReview: (aptId: number) => Promise<void>;
+  readonly onRejectReview: (aptId: number) => Promise<void>;
+  readonly onRescheduleSubmit: (aptId: number, date: string, time: string, notes: string) => Promise<void>;
+  readonly onCompleteSubmit: (aptId: number, notes: string, jobOrderId: string, measurementAction: 'none' | 'record') => Promise<void>;
+  readonly onCancelConfirm: (aptId: number) => Promise<void>;
+  readonly onCreateJob: (apt: Appointment) => void;
 }
 
 export default function AppointmentActionModals({
@@ -57,7 +55,7 @@ export default function AppointmentActionModals({
   showCompleteModal, setShowCompleteModal, completeApt, setCompleteApt,
   showCancelModal, setShowCancelModal, cancelApt, setCancelApt,
   showViewModal, setShowViewModal, viewApt, setViewApt,
-  jobOrders, customers, isOwnerOrManager, todayStr, minTimeFor,
+  jobOrders = [], todayStr, minTimeFor,
   isSubmitting, actionLoadingId,
   onConfirmReview, onRejectReview, onRescheduleSubmit, onCompleteSubmit, onCancelConfirm, onCreateJob
 }: AppointmentActionModalsProps) {
@@ -89,7 +87,7 @@ export default function AppointmentActionModals({
     }
   }, [completeApt]);
 
-  const handleReschedule = (e: React.FormEvent) => {
+  const handleReschedule = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!rescheduleApt) return;
     onRescheduleSubmit(
@@ -100,7 +98,7 @@ export default function AppointmentActionModals({
     );
   };
 
-  const handleComplete = (e: React.FormEvent) => {
+  const handleComplete = (e: React.SyntheticEvent) => {
     e.preventDefault();
     if (!completeApt) return;
     onCompleteSubmit(

@@ -3,10 +3,10 @@ import Modal from '@/components/Modal';
 import { Loader2 } from 'lucide-react';
 
 interface CustomerDeleteModalProps {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => Promise<void>;
-  isSubmitting: boolean;
+  readonly isOpen: boolean;
+  readonly onClose: () => void;
+  readonly onConfirm: () => Promise<void>;
+  readonly isSubmitting: boolean;
 }
 
 export default function CustomerDeleteModal({

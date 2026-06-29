@@ -1,0 +1,168 @@
+import { useState, useEffect } from 'react';
+import api from '@/lib/axios';
+import { useAuthStore } from '@/store/useAuthStore';
+import { useToast } from '@/context/ToastContext';
+import { useBranch } from '@/context/BranchContext';
+import { Job, Tab, WALKIN_COLUMNS, ONLINE_COLUMNS, ALL_COLUMNS } from './jobHelpers';
+
+export function useJobs() {
+  const { shop, user } = useAuthStore();
+  const { selectedBranchId } = useBranch();
+  const toast = useToast();
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState('');
+  const [tab, setTab] = useState<Tab>('all');
+
+  // Review gate state
+  const [rejectModalOpen, setRejectModalOpen] = useState(false);
+  const [rejectingJobId, setRejectingJobId] = useState<number | null>(null);
+  const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
+
+  const fetchJobs = () => {
+    if (shop) {
+      const timer = setTimeout(() => setLoading(true), 0);
+      const params: Record<string, string | number> = { per_page: 200 };
+      if (selectedBranchId !== null) {
+        params.branch_id = selectedBranchId;
+      }
+      api.get(`/shops/${shop.id}/jobs`, { params })
+        .then(res => {
+          setJobs(res.data.data.data || res.data.data);
+          setLoading(false);
+        })
+        .catch(err => {
+          console.error(err);
+          setLoading(false);
+        });
+      return () => clearTimeout(timer);
+    } else if (user) {
+      const timer = setTimeout(() => setLoading(false), 0);
+      return () => clearTimeout(timer);
+    }
+  };
+
+  useEffect(() => {
+    const cleanup = fetchJobs();
+    return () => {
+      if (cleanup) cleanup();
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop, user, selectedBranchId]);
+
+  const updateJobStatus = async (jobId: number, newStatus: string) => {
+    if (!shop) return;
+    const oldJobs = [...jobs];
+    setJobs(jobs.map(j => j.id === jobId ? { ...j, status: newStatus } : j));
+    try {
+      const jobToUpdate = jobs.find(j => j.id === jobId);
+      if (!jobToUpdate) return;
+      await api.put(`/shops/${shop.id}/jobs/${jobId}`, {
+        status: newStatus,
+        payment_status: jobToUpdate.payment_status,
+        balance: jobToUpdate.balance,
+      });
+      toast.success('Job status updated successfully.');
+    } catch (err) {
+      console.error('Failed to update status', err);
+      setJobs(oldJobs);
+      toast.error('Failed to update status.');
+    }
+  };
+
+  const handleApproveJob = async (jobId: number) => {
+    if (!shop) return;
+    setActionLoadingId(jobId);
+    const old = [...jobs];
+    setJobs(jobs.map(j => j.id === jobId ? { ...j, status: 'cutting' } : j));
+    try {
+      const job = jobs.find(j => j.id === jobId);
+      if (!job) return;
+      await api.put(`/shops/${shop.id}/jobs/${jobId}`, { status: 'cutting', payment_status: job.payment_status, balance: job.balance });
+      toast.success('Job order approved into production.');
+    } catch {
+      setJobs(old);
+      toast.error('Failed to approve order.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  const openRejectModal = (jobId: number) => {
+    setRejectingJobId(jobId);
+    setRejectModalOpen(true);
+  };
+
+  const handleConfirmReject = async (reason: string) => {
+    if (!shop || !rejectingJobId) return;
+    setActionLoadingId(rejectingJobId);
+    const old = [...jobs];
+    setJobs(jobs.map(j => j.id === rejectingJobId ? { ...j, status: 'cancelled' } : j));
+    try {
+      const job = jobs.find(j => j.id === rejectingJobId);
+      if (!job) return;
+      await api.put(`/shops/${shop.id}/jobs/${rejectingJobId}`, { 
+        status: 'cancelled', 
+        payment_status: job.payment_status, 
+        balance: job.balance,
+        rejection_reason: reason || null 
+      });
+      setRejectModalOpen(false);
+      setRejectingJobId(null);
+      toast.success('Job order rejected.');
+    } catch {
+      setJobs(old);
+      toast.error('Failed to reject order.');
+    } finally {
+      setActionLoadingId(null);
+    }
+  };
+
+  let activeColumns = ALL_COLUMNS;
+  if (tab === 'online') {
+    activeColumns = ONLINE_COLUMNS;
+  } else if (tab === 'walk_in') {
+    activeColumns = WALKIN_COLUMNS;
+  }
+
+  const filteredJobs = jobs.filter(j => {
+    const matchType = tab === 'all' || j.order_type === tab;
+    const matchSearch = !search
+      || j.order_number?.toLowerCase().includes(search.toLowerCase())
+      || j.customer?.name?.toLowerCase().includes(search.toLowerCase());
+    return matchType && matchSearch;
+  });
+
+  const groupedJobs = activeColumns.reduce((acc, col) => {
+    acc[col.id] = filteredJobs.filter(j => j.status === col.id);
+    return acc;
+  }, {} as Record<string, Job[]>);
+
+  const walkInCount = jobs.filter(j => j.order_type === 'walk_in').length;
+  const onlineCount = jobs.filter(j => j.order_type === 'online').length;
+  const pendingReviewCount = jobs.filter(j => j.status === 'pending').length;
+
+  return {
+    jobs,
+    loading,
+    search,
+    setSearch,
+    tab,
+    setTab,
+    rejectModalOpen,
+    setRejectModalOpen,
+    rejectingJobId,
+    setRejectingJobId,
+    actionLoadingId,
+    updateJobStatus,
+    handleApproveJob,
+    openRejectModal,
+    handleConfirmReject,
+    activeColumns,
+    filteredJobs,
+    groupedJobs,
+    walkInCount,
+    onlineCount,
+    pendingReviewCount,
+  };
+}

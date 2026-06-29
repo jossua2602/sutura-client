@@ -1,310 +1,448 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import api from '@/lib/axios';
-import { useAuthStore } from '@/store/useAuthStore';
-import { CreditCard, Check, X, ExternalLink, Calendar, ShoppingBag, User, CheckCircle2 } from 'lucide-react';
+import {
+  CreditCard, Check, X, ExternalLink, Calendar, ShoppingBag,
+  CheckCircle2, Banknote, Smartphone, Scissors, Loader2,
+} from 'lucide-react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { usePayments, Tab } from '@/components/payments/usePayments';
 
-interface PaymentItem {
-  id: number;
-  type: 'appointment' | 'catalog_order';
-  customer_name: string;
-  customer_email: string;
-  itemName: string;
-  payment_method: string;
-  payment_reference: string;
-  payment_receipt_path: string;
-  amount: string | number;
-  date: string;
-  status: string;
-  payment_status: string;
-}
+const METHOD_ICON: Record<string, React.ReactNode> = {
+  cash:          <Banknote size={14} className="text-emerald-600" />,
+  gcash:         <Smartphone size={14} className="text-blue-500" />,
+  bank_transfer: <CreditCard size={14} className="text-violet-500" />,
+};
+
+const getPaymentStatusBadgeClass = (paymentStatus: string): string => {
+  if (paymentStatus === 'paid') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (paymentStatus === 'pending') return 'bg-amber-50 text-amber-700 border-amber-200';
+  return 'bg-red-50 text-red-600 border-red-200';
+};
+
+const getOrderStatusBadgeClass = (status: string): string => {
+  if (status === 'completed') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+  if (status === 'shipped') return 'bg-blue-50 text-blue-700 border-blue-200';
+  return 'bg-[#F0EAE3] text-[#827A73] border-[#EBE6E0]';
+};
 
 export default function PaymentQueuePage() {
-  const { shop } = useAuthStore();
-  const [payments, setPayments] = useState<PaymentItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedPayment, setSelectedPayment] = useState<PaymentItem | null>(null);
-  const [processingId, setProcessingId] = useState<number | null>(null);
-  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const {
+    activeTab,
+    setActiveTab,
+    receipts,
+    selectedReceipt,
+    setSelectedReceipt,
+    processingId,
+    receiptsLoading,
+    jobBalances,
+    balancesLoading,
+    balanceSearch,
+    setBalanceSearch,
+    logPaymentJob,
+    setLogPaymentJob,
+    payAmount,
+    setPayAmount,
+    payMethod,
+    setPayMethod,
+    payNotes,
+    setPayNotes,
+    payReference,
+    setPayReference,
+    paySubmitting,
+    catalogOrders,
+    catalogLoading,
+    handleVerify,
+    handleLogPayment,
+    filteredBalances,
+  } = usePayments();
 
-  const fetchPayments = async () => {
-    if (!shop) return;
-    setLoading(true);
-    try {
-      // Fetch appointments and catalog orders
-      const [appointmentsRes, ordersRes] = await Promise.all([
-        api.get(`/shops/${shop.id}/appointments`),
-        api.get(`/shops/${shop.id}/catalog-orders`)
-      ]);
+  const TAB_DEFS: { id: Tab; label: string; count?: number }[] = [
+    { id: 'receipts',      label: 'Digital Receipts',  count: receipts.length },
+    { id: 'job_balances',  label: 'Job Balances',       count: jobBalances.length },
+    { id: 'catalog_orders',label: 'Catalog Orders' },
+  ];
 
-      const items: PaymentItem[] = [];
-
-      // Map appointments with gcash/bank transfer payments
-      if (appointmentsRes.data.success) {
-        appointmentsRes.data.data.forEach((app: any) => {
-          if (
-            app.payment_method &&
-            app.payment_method !== 'cash' &&
-            app.payment_status === 'pending'
-          ) {
-            items.push({
-              id: app.id,
-              type: 'appointment',
-              customer_name: app.customer?.name || 'Guest User',
-              customer_email: app.customer?.email || '',
-              itemName: `${app.appointment_type.toUpperCase()} - ${app.service?.name || 'General Consultation'}`,
-              payment_method: app.payment_method,
-              payment_reference: app.payment_reference || 'N/A',
-              payment_receipt_path: app.payment_receipt_path || '',
-              amount: app.service?.base_price || '0.00',
-              date: app.scheduled_at,
-              status: app.status,
-              payment_status: app.payment_status,
-            });
-          }
-        });
-      }
-
-      // Map catalog orders with gcash/bank transfer payments
-      if (ordersRes.data.data) {
-        ordersRes.data.data.forEach((ord: any) => {
-          if (
-            ord.payment_method &&
-            ord.payment_method !== 'cash' &&
-            ord.payment_status === 'pending'
-          ) {
-            items.push({
-              id: ord.id,
-              type: 'catalog_order',
-              customer_name: ord.customer?.name || 'Guest User',
-              customer_email: ord.customer?.email || '',
-              itemName: ord.catalog_item?.title || 'Catalog Purchase',
-              payment_method: ord.payment_method,
-              payment_reference: ord.payment_reference || 'N/A',
-              payment_receipt_path: ord.payment_receipt_path || '',
-              amount: ord.total_amount,
-              date: ord.created_at,
-              status: ord.status,
-              payment_status: ord.payment_status,
-            });
-          }
-        });
-      }
-
-      setPayments(items);
-      if (selectedPayment) {
-        const updated = items.find(i => i.id === selectedPayment.id && i.type === selectedPayment.type);
-        setSelectedPayment(updated || null);
-      }
-    } catch (err) {
-      console.error('Failed to fetch payment queue:', err);
-    } finally {
-      setLoading(false);
+  // ── TAB 1: Digital Receipts ───────────────────────────────────────
+  const renderReceiptsTab = () => {
+    if (receiptsLoading) {
+      return (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="animate-spin text-[#9A8073]" size={28} />
+        </div>
+      );
     }
+
+    if (receipts.length === 0) {
+      return (
+        <div className="text-center py-20">
+          <CheckCircle2 className="mx-auto h-12 w-12 text-[#7A8B76] mb-3" />
+          <h3 className="font-semibold text-[#2D2A26]">Payment Queue Clean!</h3>
+          <p className="text-sm text-[#827A73] mt-1">No pending GCash or Bank receipts to verify.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 lg:grid-cols-3">
+        {/* List */}
+        <div className="lg:col-span-2 divide-y divide-[#EBE6E0]">
+          {receipts.map(item => (
+            <button
+              key={`${item.type}-${item.id}`}
+              onClick={() => setSelectedReceipt(item)}
+              className={`w-full flex items-center justify-between p-4 text-left hover:bg-[#FAF6F3] transition-colors ${
+                selectedReceipt?.id === item.id && selectedReceipt.type === item.type ? 'bg-[#F0EAE3]' : ''
+              }`}
+            >
+              <div className="flex gap-3 items-center min-w-0">
+                <div className={`p-2.5 rounded-xl ${
+                  item.type === 'appointment' ? 'bg-[#7A8B76]/10 text-[#7A8B76]' : 'bg-[#9A8073]/10 text-[#9A8073]'
+                }`}>
+                  {item.type === 'appointment' ? <Calendar size={18} /> : <ShoppingBag size={18} />}
+                </div>
+                <div className="min-w-0">
+                  <p className="font-semibold text-sm text-[#2D2A26] truncate">{item.itemName}</p>
+                  <p className="text-xs text-[#827A73] mt-0.5">
+                    {item.customer_name} · <span className="capitalize">{item.payment_method.replaceAll('_', ' ')}</span> · <span className="font-mono">{item.payment_reference}</span>
+                  </p>
+                </div>
+              </div>
+              <div className="text-right shrink-0 ml-3">
+                <p className="font-bold text-sm">₱{Number(item.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}</p>
+                <p className="text-[10px] text-[#A8A19A] mt-0.5">{new Date(item.date).toLocaleDateString('en-PH')}</p>
+              </div>
+            </button>
+          ))}
+        </div>
+        {/* Detail panel */}
+        <div className="lg:col-span-1 border-l border-[#EBE6E0]">
+          {selectedReceipt ? (
+            <div className="p-5 space-y-5">
+              <div>
+                <p className="text-xs text-[#A8A19A] uppercase font-semibold mb-1">{selectedReceipt.type.replaceAll('_', ' ')}</p>
+                <h3 className="font-bold text-[#2D2A26]">{selectedReceipt.itemName}</h3>
+              </div>
+              <div className="space-y-2 text-sm">
+                {[
+                  ['Customer', selectedReceipt.customer_name],
+                  ['Amount', `₱${Number(selectedReceipt.amount).toLocaleString('en-PH', { minimumFractionDigits: 2 })}`],
+                  ['Method', selectedReceipt.payment_method.replaceAll('_', ' ')],
+                  ['Reference', selectedReceipt.payment_reference],
+                ].map(([k, v]) => (
+                  <div key={k} className="flex justify-between">
+                    <span className="text-[#827A73]">{k}</span>
+                    <span className="font-medium text-[#2D2A26]">{v}</span>
+                  </div>
+                ))}
+              </div>
+              {selectedReceipt.payment_receipt_path ? (
+                <div className="relative aspect-3/4 rounded-xl overflow-hidden border border-[#EBE6E0] bg-zinc-50">
+                  <Image src={selectedReceipt.payment_receipt_path} alt="Receipt" fill className="object-contain" unoptimized />
+                  <a href={selectedReceipt.payment_receipt_path} target="_blank" rel="noopener noreferrer" className="absolute bottom-2 right-2 bg-black/60 text-white p-1.5 rounded-lg text-[10px] flex items-center gap-1">
+                    <ExternalLink size={11} /> Open
+                  </a>
+                </div>
+              ) : (
+                <div className="h-32 rounded-xl border border-dashed border-[#EBE6E0] flex items-center justify-center text-xs text-[#A8A19A]">
+                  No receipt uploaded
+                </div>
+              )}
+              <div className="flex gap-2">
+                <button
+                  onClick={() => handleVerify(selectedReceipt, 'paid')}
+                  disabled={processingId !== null}
+                  className="flex-1 bg-[#7A8B76] hover:bg-[#7A8B76]/90 disabled:opacity-50 text-white font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm transition-colors"
+                >
+                  {processingId === selectedReceipt.id ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
+                  Approve
+                </button>
+                <button
+                  onClick={() => setSelectedReceipt(null)}
+                  className="px-3 border border-[#EBE6E0] hover:bg-red-50 hover:text-red-600 rounded-xl transition-colors"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="p-8 text-center text-sm text-[#A8A19A] h-full flex items-center justify-center">
+              Select a receipt to view details
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  useEffect(() => {
-    if (shop) {
-      fetchPayments();
+  // ── TAB 2: Job Balances ────────────────────────────────────────────
+  const renderJobBalancesTab = () => {
+    if (balancesLoading) {
+      return (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="animate-spin text-[#9A8073]" size={28} />
+        </div>
+      );
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [shop]);
 
-  const handleVerify = async (item: PaymentItem, status: 'paid' | 'pending') => {
-    if (!shop) return;
-    setProcessingId(item.id);
-    try {
-      const endpoint = item.type === 'appointment'
-        ? `/shops/${shop.id}/appointments/${item.id}/verify-payment`
-        : `/shops/${shop.id}/catalog-orders/${item.id}/verify-payment`;
-
-      await api.put(endpoint, { payment_status: status });
-      
-      setShowSuccessModal(true);
-      setTimeout(() => setShowSuccessModal(false), 2000);
-      
-      if (selectedPayment?.id === item.id && selectedPayment.type === item.type) {
-        setSelectedPayment(null);
-      }
-      fetchPayments();
-    } catch (err) {
-      console.error('Failed to verify payment:', err);
-      alert('Failed to update payment verification. Please try again.');
-    } finally {
-      setProcessingId(null);
+    if (filteredBalances.length === 0) {
+      return (
+        <div className="text-center py-16">
+          <CheckCircle2 className="mx-auto h-10 w-10 text-[#7A8B76] mb-3" />
+          <p className="font-semibold text-[#2D2A26]">No Outstanding Balances</p>
+          <p className="text-sm text-[#827A73] mt-1">All active job orders have been paid in full.</p>
+        </div>
+      );
     }
+
+    return (
+      <div className="divide-y divide-[#EBE6E0]">
+        {/* Header row */}
+        <div className="grid grid-cols-12 px-5 py-2.5 text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider bg-[#FAF6F3]">
+          <div className="col-span-3">Order</div>
+          <div className="col-span-3">Customer</div>
+          <div className="col-span-2 text-right">Total</div>
+          <div className="col-span-2 text-right">Balance Due</div>
+          <div className="col-span-2 text-right">Action</div>
+        </div>
+        {filteredBalances.map(job => {
+          const amountPaid = job.total_amount - job.balance;
+          const psConfig = {
+            unpaid:  { label: 'Unpaid',   cls: 'bg-red-50 text-red-600 border-red-200' },
+            partial: { label: 'Partial',  cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+          }[job.payment_status as 'unpaid' | 'partial'] ?? { label: job.payment_status, cls: 'bg-gray-100 text-gray-600 border-gray-200' };
+
+          return (
+            <div key={job.id} className="grid grid-cols-12 px-5 py-3.5 items-center hover:bg-[#FAF6F3] transition-colors">
+              <div className="col-span-3">
+                <Link href={`/dashboard/jobs/${job.id}`} className="font-mono text-sm font-semibold text-[#9A8073] hover:underline">
+                  {job.order_number}
+                </Link>
+                <p className="text-[10px] text-[#A8A19A] mt-0.5 capitalize">{job.status.replaceAll('_', ' ')}</p>
+              </div>
+              <div className="col-span-3">
+                <p className="text-sm text-[#2D2A26]">{job.customer?.name || <span className="text-[#A8A19A] italic">Walk-in</span>}</p>
+              </div>
+              <div className="col-span-2 text-right">
+                <p className="text-sm font-medium text-[#2D2A26]">₱{job.total_amount.toFixed(2)}</p>
+                <p className="text-[10px] text-[#7A8B76]">Paid: ₱{amountPaid.toFixed(2)}</p>
+              </div>
+              <div className="col-span-2 text-right">
+                <p className="text-base font-bold text-[#B26959]">₱{job.balance.toFixed(2)}</p>
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded border uppercase ${psConfig.cls}`}>{psConfig.label}</span>
+              </div>
+              <div className="col-span-2 flex justify-end">
+                <button
+                  onClick={() => { setLogPaymentJob(job); setPayAmount(String(job.balance)); }}
+                  className="text-xs font-semibold px-3 py-1.5 bg-taupe hover:bg-taupe/90 text-white rounded-lg transition-colors"
+                >
+                  Log Payment
+                </button>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
+  // ── TAB 3: Catalog Orders ──────────────────────────────────────────
+  const renderCatalogOrdersTab = () => {
+    if (catalogLoading) {
+      return (
+        <div className="flex items-center justify-center h-48">
+          <Loader2 className="animate-spin text-[#9A8073]" size={28} />
+        </div>
+      );
+    }
+
+    if (catalogOrders.length === 0) {
+      return (
+        <div className="text-center py-16">
+          <ShoppingBag className="mx-auto h-10 w-10 text-[#C5BDBA] mb-3" />
+          <p className="font-semibold text-[#2D2A26]">No Catalog Orders</p>
+          <p className="text-sm text-[#827A73] mt-1">No ready-to-wear orders have been placed yet.</p>
+        </div>
+      );
+    }
+
+    return (
+      <div className="divide-y divide-[#EBE6E0]">
+        <div className="grid grid-cols-12 px-5 py-2.5 text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider bg-[#FAF6F3]">
+          <div className="col-span-4">Item</div>
+          <div className="col-span-3">Customer</div>
+          <div className="col-span-2 text-right">Amount</div>
+          <div className="col-span-2">Payment</div>
+          <div className="col-span-1">Status</div>
+        </div>
+        {catalogOrders.map(ord => (
+          <div key={ord.id} className="grid grid-cols-12 px-5 py-3.5 items-center hover:bg-[#FAF6F3] transition-colors">
+            <div className="col-span-4">
+              <p className="text-sm font-semibold text-[#2D2A26] truncate">{ord.catalog_item?.title || 'Catalog Item'}</p>
+              <p className="text-[10px] text-[#A8A19A]">{new Date(ord.created_at).toLocaleDateString('en-PH')}</p>
+            </div>
+            <div className="col-span-3">
+              <p className="text-sm text-[#2D2A26]">{ord.customer?.name || <span className="italic text-[#A8A19A]">Guest</span>}</p>
+            </div>
+            <div className="col-span-2 text-right">
+              <p className="text-sm font-bold text-[#2D2A26]">₱{Number(ord.total_amount).toFixed(2)}</p>
+            </div>
+            <div className="col-span-2">
+              <div className="flex items-center gap-1">
+                {METHOD_ICON[ord.payment_method] ?? <CreditCard size={13} />}
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${getPaymentStatusBadgeClass(ord.payment_status)}`}>
+                  {ord.payment_status}
+                </span>
+              </div>
+            </div>
+            <div className="col-span-1">
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${getOrderStatusBadgeClass(ord.status)}`}>
+                {ord.status}
+              </span>
+            </div>
+          </div>
+        ))}
+      </div>
+    );
   };
 
   return (
     <div className="space-y-6 text-[#2D2A26]">
       <div>
-        <h1 className="text-2xl font-semibold text-[#2D2A26]">Payment Verification Queue</h1>
-        <p className="text-sm text-[#524A44] mt-1">Review manual GCash and Bank Transfer receipts submitted by customers</p>
+        <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Payment Center</h1>
+        <p className="text-sm text-[#827A73] mt-1">Verify digital receipts, collect job order balances, and manage catalog order payments.</p>
       </div>
 
-      {loading && payments.length === 0 ? (
-        <div className="flex h-64 items-center justify-center bg-white rounded-2xl border border-[#EBE6E0]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8A7E72]"></div>
+      {/* Tabs */}
+      <div className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm">
+        <div className="flex border-b border-[#EBE6E0]">
+          {TAB_DEFS.map(t => (
+            <button
+              key={t.id}
+              onClick={() => setActiveTab(t.id)}
+              className={`flex items-center gap-2 px-5 py-3.5 text-sm font-medium transition-colors border-b-2 -mb-px ${
+                activeTab === t.id
+                  ? 'border-taupe text-taupe'
+                  : 'border-transparent text-[#827A73] hover:text-[#2D2A26]'
+              }`}
+            >
+              {t.label}
+              {t.count !== undefined && (
+                <span className={`text-xs px-2 py-0.5 rounded-full font-bold ${
+                  t.count > 0
+                    ? 'bg-[#B26959]/10 text-[#B26959]'
+                    : 'bg-[#F0EAE3] text-[#A8A19A]'
+                }`}>{t.count}</span>
+              )}
+            </button>
+          ))}
         </div>
-      ) : payments.length === 0 ? (
-        <div className="text-center py-20 bg-white rounded-2xl border border-[#EBE6E0]">
-          <CreditCard className="mx-auto h-12 w-12 text-[#B8B2A9] mb-4" />
-          <h3 className="text-md font-semibold text-[#2D2A26]">Payment Queue Clean!</h3>
-          <p className="text-sm text-[#827A73] mt-1">There are no pending GCash or Bank receipts to verify right now.</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* List Column */}
-          <div className="lg:col-span-2 space-y-4">
-            <div className="bg-white rounded-2xl border border-[#EBE6E0] overflow-hidden">
-              <div className="p-4 border-b border-[#EBE6E0] bg-[#FAF6F3]">
-                <h3 className="font-semibold text-sm">Pending Verification ({payments.length})</h3>
-              </div>
-              <div className="divide-y divide-[#EBE6E0]">
-                {payments.map(item => (
-                  <button
-                    key={`${item.type}-${item.id}`}
-                    onClick={() => setSelectedPayment(item)}
-                    className={`w-full flex items-center justify-between p-4 text-left hover:bg-[#FAF6F3] transition-colors ${
-                      selectedPayment?.id === item.id && selectedPayment.type === item.type
-                        ? 'bg-[#F0EAE3]'
-                        : ''
-                    }`}
-                  >
-                    <div className="flex gap-4 items-center min-w-0">
-                      <div className={`p-2.5 rounded-xl ${
-                        item.type === 'appointment' ? 'bg-[#7A8B76]/10 text-[#7A8B76]' : 'bg-[#9A8073]/10 text-[#9A8073]'
-                      }`}>
-                        {item.type === 'appointment' ? <Calendar size={20} /> : <ShoppingBag size={20} />}
-                      </div>
-                      <div className="min-w-0">
-                        <h4 className="font-semibold text-sm text-[#2D2A26] truncate">{item.itemName}</h4>
-                        <div className="flex items-center gap-2 mt-1 text-xs text-[#827A73]">
-                          <span className="font-medium text-[#2D2A26]">{item.customer_name}</span>
-                          <span>•</span>
-                          <span className="capitalize">{item.payment_method.replace('_', ' ')}</span>
-                          <span>•</span>
-                          <span className="font-mono text-zinc-600 font-bold">{item.payment_reference}</span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="text-right shrink-0">
-                      <p className="font-bold text-sm">₱{Number(item.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</p>
-                      <p className="text-[10px] text-[#A8A19A] mt-1">{new Date(item.date).toLocaleDateString()}</p>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </div>
 
-          {/* Details Column */}
-          <div className="lg:col-span-1">
-            {selectedPayment ? (
-              <div className="bg-white rounded-2xl border border-[#EBE6E0] p-6 space-y-6 sticky top-24 shadow-sm">
+        {activeTab === 'receipts' && renderReceiptsTab()}
+        {activeTab === 'job_balances' && (
+          <div>
+            <div className="p-4 border-b border-[#EBE6E0] flex items-center gap-3">
+              <input
+                type="text"
+                placeholder="Search order # or customer..."
+                value={balanceSearch}
+                onChange={e => setBalanceSearch(e.target.value)}
+                className="flex-1 max-w-xs px-3 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm focus:outline-none focus:border-taupe"
+              />
+              <span className="text-xs text-[#A8A19A]">{filteredBalances.length} orders with balance</span>
+            </div>
+            {renderJobBalancesTab()}
+          </div>
+        )}
+        {activeTab === 'catalog_orders' && renderCatalogOrdersTab()}
+      </div>
+
+      {/* ── Log Payment Modal ──────────────────────────────────────────────── */}
+      {logPaymentJob && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl border border-[#EBE6E0] w-full max-w-md">
+            <div className="p-6 border-b border-[#EBE6E0]">
+              <h3 className="font-bold text-[#2D2A26] text-lg">Log Payment</h3>
+              <p className="text-sm text-[#827A73] mt-0.5">
+                {logPaymentJob.order_number} · {logPaymentJob.customer?.name || 'Walk-in'}
+              </p>
+            </div>
+            <div className="p-6 space-y-4">
+              <div>
+                <p className="text-xs text-[#A8A19A] mb-1">Balance Due</p>
+                <p className="text-2xl font-bold text-[#B26959]">₱{logPaymentJob.balance.toFixed(2)}</p>
+              </div>
+              <div>
+                <label htmlFor="pay-amount-input" className="text-xs font-medium text-[#524A44] block mb-1">Amount</label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]">₱</span>
+                  <input
+                    id="pay-amount-input"
+                    type="number"
+                    step="0.01"
+                    min="0.01"
+                    max={logPaymentJob.balance}
+                    value={payAmount}
+                    onChange={e => setPayAmount(e.target.value)}
+                    className="w-full pl-7 pr-4 py-2.5 border border-[#D1C7BD] rounded-lg focus:outline-none focus:border-taupe text-[#2D2A26]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="pay-method-select" className="text-xs font-medium text-[#524A44] block mb-1">Payment Method</label>
+                <select
+                  id="pay-method-select"
+                  value={payMethod}
+                  onChange={e => setPayMethod(e.target.value)}
+                  className="w-full px-3 py-2.5 border border-[#D1C7BD] rounded-lg focus:outline-none focus:border-taupe text-[#2D2A26] text-sm"
+                >
+                  <option value="cash">Cash</option>
+                  <option value="gcash">GCash</option>
+                  <option value="bank_transfer">Bank Transfer</option>
+                </select>
+              </div>
+              {(payMethod === 'gcash' || payMethod === 'bank_transfer') && (
                 <div>
-                  <span className={`inline-block px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider mb-2 ${
-                    selectedPayment.type === 'appointment' ? 'bg-[#7A8B76]/15 text-[#7A8B76]' : 'bg-[#9A8073]/15 text-[#9A8073]'
-                  }`}>
-                    {selectedPayment.type.replace('_', ' ')}
-                  </span>
-                  <h3 className="text-lg font-bold text-[#2D2A26]">{selectedPayment.itemName}</h3>
+                  <label htmlFor="pay-reference-input" className="text-xs font-medium text-[#524A44] block mb-1">
+                    {payMethod === 'gcash' ? 'GCash Reference #' : 'Bank Transfer Reference #'}
+                  </label>
+                  <input
+                    id="pay-reference-input"
+                    type="text"
+                    value={payReference}
+                    onChange={e => setPayReference(e.target.value)}
+                    placeholder="e.g. 9876543210"
+                    className="w-full px-3 py-2.5 border border-[#D1C7BD] rounded-lg focus:outline-none focus:border-taupe text-sm text-[#2D2A26]"
+                  />
                 </div>
-
-                <div className="border-t border-b border-[#EBE6E0] py-4 space-y-3">
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#827A73] flex items-center gap-1.5"><User size={16} /> Customer</span>
-                    <span className="font-medium text-[#2D2A26]">{selectedPayment.customer_name}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#827A73]">Email</span>
-                    <span className="font-medium text-[#2D2A26] truncate max-w-[180px]">{selectedPayment.customer_email}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#827A73]">Amount Paid</span>
-                    <span className="font-bold text-[#2D2A26]">₱{Number(selectedPayment.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#827A73]">Payment Method</span>
-                    <span className="font-medium text-[#2D2A26] capitalize">{selectedPayment.payment_method.replace('_', ' ')}</span>
-                  </div>
-                  <div className="flex justify-between text-sm">
-                    <span className="text-[#827A73]">Reference Code</span>
-                    <span className="font-mono text-zinc-900 font-bold bg-zinc-100 px-1.5 py-0.5 rounded">{selectedPayment.payment_reference}</span>
-                  </div>
-                </div>
-
-                {/* Receipt Image */}
-                <div className="space-y-2">
-                  <span className="text-xs font-semibold text-[#827A73] block">Proof of Payment</span>
-                  {selectedPayment.payment_receipt_path ? (
-                    <div className="relative w-full aspect-3/4 rounded-xl overflow-hidden border border-[#EBE6E0] bg-zinc-50 group">
-                      <Image
-                        src={selectedPayment.payment_receipt_path}
-                        alt="GCash Receipt Proof"
-                        fill
-                        className="object-contain"
-                        unoptimized
-                      />
-                      <a
-                        href={selectedPayment.payment_receipt_path}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="absolute bottom-3 right-3 bg-black/60 hover:bg-black text-white p-2 rounded-full transition-colors flex items-center gap-1 text-[10px] uppercase font-bold tracking-wider"
-                      >
-                        <ExternalLink size={12} /> Open Link
-                      </a>
-                    </div>
-                  ) : (
-                    <div className="h-40 rounded-xl border border-dashed border-[#EBE6E0] flex items-center justify-center text-xs text-[#A8A19A]">
-                      No receipt screenshot uploaded
-                    </div>
-                  )}
-                </div>
-
-                {/* Approval Actions */}
-                <div className="flex gap-2 pt-2">
-                  <button
-                    onClick={() => handleVerify(selectedPayment, 'paid')}
-                    disabled={processingId !== null}
-                    className="flex-1 bg-green-600 hover:bg-green-700 disabled:opacity-50 text-white font-medium py-3 rounded-xl transition-colors flex items-center justify-center gap-2 cursor-pointer shadow-sm text-sm"
-                  >
-                    <Check size={16} /> Approve Payment
-                  </button>
-                  <button
-                    onClick={() => {
-                      if (confirm('Are you sure you want to decline this receipt?')) {
-                        setSelectedPayment(null);
-                      }
-                    }}
-                    className="p-3 border border-[#EBE6E0] hover:bg-red-50 hover:text-red-600 rounded-xl text-[#827A73] transition-colors cursor-pointer"
-                  >
-                    <X size={18} />
-                  </button>
-                </div>
+              )}
+              <div>
+                <label htmlFor="pay-notes-input" className="text-xs font-medium text-[#524A44] block mb-1">Notes (optional)</label>
+                <input
+                  id="pay-notes-input"
+                  type="text"
+                  value={payNotes}
+                  onChange={e => setPayNotes(e.target.value)}
+                  placeholder="Internal notes..."
+                  className="w-full px-3 py-2.5 border border-[#D1C7BD] rounded-lg focus:outline-none focus:border-taupe text-sm text-[#2D2A26]"
+                />
               </div>
-            ) : (
-              <div className="bg-white rounded-2xl border border-dashed border-[#EBE6E0] p-12 text-center text-[#827A73] sticky top-24">
-                Select a payment request to view reference receipts and details
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-
-      {/* Success Modal Notification */}
-      {showSuccessModal && (
-        <div className="fixed inset-0 bg-black/35 flex items-center justify-center z-50 animate-in fade-in">
-          <div className="bg-white p-6 rounded-2xl shadow-xl border border-[#EBE6E0] text-center max-w-sm w-full mx-4 space-y-4">
-            <div className="w-12 h-12 rounded-full bg-green-50 text-green-600 flex items-center justify-center mx-auto">
-              <CheckCircle2 size={24} />
             </div>
-            <div>
-              <h3 className="font-semibold text-lg">Payment Verified</h3>
-              <p className="text-xs text-[#827A73] mt-1">The manual deposit has been verified and approved.</p>
+            <div className="p-6 pt-0 flex gap-3">
+              <button
+                onClick={() => { setLogPaymentJob(null); setPayAmount(''); setPayNotes(''); setPayReference(''); }}
+                className="flex-1 py-2.5 border border-[#EBE6E0] rounded-xl text-sm font-medium text-[#524A44] hover:bg-[#FAF6F3] transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleLogPayment}
+                disabled={paySubmitting || !payAmount || Number.parseFloat(payAmount) <= 0}
+                className="flex-1 bg-taupe hover:bg-taupe/90 disabled:opacity-50 text-white py-2.5 rounded-xl text-sm font-medium flex items-center justify-center gap-2 transition-colors"
+              >
+                {paySubmitting ? <Loader2 size={15} className="animate-spin" /> : <Scissors size={15} />}
+                Confirm Payment
+              </button>
             </div>
           </div>
         </div>

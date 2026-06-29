@@ -8,9 +8,11 @@ import { AnalyticsData, STATUS_LABELS } from '@/components/reports/reportHelpers
 import ReportKpiCards from '@/components/reports/ReportKpiCards';
 import ReportCharts from '@/components/reports/ReportCharts';
 import ReportFilters from '@/components/reports/ReportFilters';
+import { useBranch } from '@/context/BranchContext';
 
 export default function ReportsPage() {
   const { shop, user } = useAuthStore();
+  const { selectedBranchId } = useBranch();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('all_time');
@@ -41,9 +43,7 @@ export default function ReportsPage() {
     }
 
     if (data.jobs_by_status) {
-      rows.push([]);
-      rows.push(['Jobs by Status Breakdown']);
-      rows.push(['Status', 'Count']);
+      rows.push([], ['Jobs by Status Breakdown'], ['Status', 'Count']);
       data.jobs_by_status.forEach(row => {
         rows.push([STATUS_LABELS[row.status] || row.status, row.count]);
       });
@@ -51,7 +51,7 @@ export default function ReportsPage() {
 
     const csvContent =
       'data:text/csv;charset=utf-8,' +
-      rows.map(e => e.map(val => `"${String(val).replace(/"/g, '""')}"`).join(',')).join('\n');
+      rows.map(e => e.map(val => `"${String(val).replaceAll('"', '""')}"`).join(',')).join('\n');
 
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
@@ -59,11 +59,11 @@ export default function ReportsPage() {
     link.setAttribute('download', `sutura_reports_${period}_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
-    document.body.removeChild(link);
+    link.remove();
   };
 
   const handlePrint = () => {
-    window.print();
+    globalThis.print();
   };
 
   useEffect(() => {
@@ -93,7 +93,11 @@ export default function ReportsPage() {
       }
 
       let url = `/shops/${shop?.id}/analytics`;
-      if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
+      const queryParams: string[] = [];
+      if (startDate && endDate) queryParams.push(`start_date=${startDate}`, `end_date=${endDate}`);
+      if (selectedBranchId !== null) queryParams.push(`branch_id=${selectedBranchId}`);
+      
+      if (queryParams.length > 0) url += `?${queryParams.join('&')}`;
 
       try {
         const res = await api.get(url);
@@ -106,7 +110,7 @@ export default function ReportsPage() {
     }
 
     fetchAnalytics();
-  }, [shop?.id, period, user?.id]);
+  }, [shop?.id, period, user?.id, selectedBranchId]);
 
   // ─── Derived chart data ──────────────────────────────────────────────────
 
