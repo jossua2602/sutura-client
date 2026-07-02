@@ -38,6 +38,7 @@ export default function MeasurementFormModal({
       isOpen={isOpen}
       onClose={onClose}
       title={editingId ? 'Edit Measurement Profile' : 'New Measurement Profile'}
+      maxWidth="max-w-lg"
     >
       <form onSubmit={onSubmit} className="space-y-5">
         {error && (
@@ -93,43 +94,47 @@ export default function MeasurementFormModal({
             <span className="text-[#A8A19A] font-normal text-xs">— all in inches (″), leave blank if not applicable</span>
           </p>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 gap-4">
             {/* Upper Body */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold text-[#A8A19A] uppercase tracking-wider">Upper Body</p>
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold text-[#A8A19A] uppercase tracking-wider border-b border-[#EBE6E0] pb-1 mb-2">Upper Body</p>
               {UPPER.map(f => (
-                <div key={f.key} className="flex items-center gap-2">
-                  <label className="text-xs text-[#524A44] w-28 shrink-0">{f.label}</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={form.metrics[f.key] || ''}
-                    onChange={e => setMetric(f.key, e.target.value)}
-                    placeholder="—"
-                    className="flex-1 px-3 py-1.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-1 focus:ring-[#9A8073]/30 text-right font-mono"
-                  />
-                  <span className="text-xs text-[#A8A19A] w-4">″</span>
+                <div key={f.key} className="flex flex-col gap-1">
+                  <label className="text-xs text-[#524A44] font-medium">{f.label}</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={form.metrics[f.key] || ''}
+                      onChange={e => setMetric(f.key, e.target.value)}
+                      placeholder="—"
+                      className="w-full pl-3 pr-8 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-1 focus:ring-[#9A8073]/30 font-mono text-right"
+                    />
+                    <span className="absolute right-3 text-xs text-[#A8A19A] pointer-events-none">″</span>
+                  </div>
                 </div>
               ))}
             </div>
 
             {/* Lower Body */}
-            <div className="space-y-2">
-              <p className="text-[10px] font-bold text-[#A8A19A] uppercase tracking-wider">Lower Body</p>
+            <div className="space-y-3">
+              <p className="text-[10px] font-bold text-[#A8A19A] uppercase tracking-wider border-b border-[#EBE6E0] pb-1 mb-2">Lower Body</p>
               {LOWER.map(f => (
-                <div key={f.key} className="flex items-center gap-2">
-                  <label className="text-xs text-[#524A44] w-28 shrink-0">{f.label}</label>
-                  <input
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    value={form.metrics[f.key] || ''}
-                    onChange={e => setMetric(f.key, e.target.value)}
-                    placeholder="—"
-                    className="flex-1 px-3 py-1.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-1 focus:ring-[#9A8073]/30 text-right font-mono"
-                  />
-                  <span className="text-xs text-[#A8A19A] w-4">″</span>
+                <div key={f.key} className="flex flex-col gap-1">
+                  <label className="text-xs text-[#524A44] font-medium">{f.label}</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="number"
+                      step="0.1"
+                      min="0"
+                      value={form.metrics[f.key] || ''}
+                      onChange={e => setMetric(f.key, e.target.value)}
+                      placeholder="—"
+                      className="w-full pl-3 pr-8 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-1 focus:ring-[#9A8073]/30 font-mono text-right"
+                    />
+                    <span className="absolute right-3 text-xs text-[#A8A19A] pointer-events-none">″</span>
+                  </div>
                 </div>
               ))}
             </div>

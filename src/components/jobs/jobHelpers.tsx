@@ -35,7 +35,8 @@ export const ALL_COLUMNS = [
 export interface Job {
   id: number;
   order_number?: string;
-  order_type: 'walk_in' | 'online';
+  intake_channel: 'walk_in' | 'online';
+  fulfillment_type: 'pickup' | 'shipping';
   courier_name?: string | null;
   courier_tracking_number?: string | null;
   status: string;
@@ -88,8 +89,23 @@ export function TypeBadge({ type }: { readonly type: string }) {
   );
 }
 
+export function FulfillmentBadge({ type }: { readonly type: string }) {
+  if (type === 'shipping' || type === 'delivery') {
+    return (
+      <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200 px-1.5 py-0.5 rounded">
+        <Truck size={9} /> Shipping
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200 px-1.5 py-0.5 rounded">
+      <Store size={9} /> Pickup
+    </span>
+  );
+}
+
 export function CourierTag({ job }: { readonly job: Job }) {
-  if (job.order_type !== 'online') return null;
+  if (job.fulfillment_type !== 'shipping') return null;
   
   const { type, name } = parseCourierName(job.courier_name);
   const displayLabel = formatFulfillmentLabel(type, name);

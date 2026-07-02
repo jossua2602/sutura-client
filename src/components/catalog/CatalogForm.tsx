@@ -289,7 +289,9 @@ export default function CatalogForm({
                   >
                     <option value="made_to_order">Made To Order (Custom Sizing)</option>
                     <option value="ready_to_wear">Ready-To-Wear (In-Stock Retail)</option>
-                    <option value="rental">Rental Item</option>
+                    <option value="for_rent">For Rent Only</option>
+                    <option value="for_sale">For Sale Only</option>
+                    <option value="rent_or_sale">For Rent and Sale</option>
                     <option value="portfolio">Portfolio (Showcase Only)</option>
                   </select>
                 </div>

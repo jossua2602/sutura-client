@@ -1,5 +1,4 @@
-import React from 'react';
-import { ShoppingBag, Truck, CheckCircle, Clock } from 'lucide-react';
+import { ShoppingBag, Truck, CheckCircle, Clock, Calendar } from 'lucide-react';
 
 export interface CatalogOrder {
   id: number;
@@ -13,22 +12,28 @@ export interface CatalogOrder {
   created_at: string;
   courier_name: string | null;
   courier_tracking_number: string | null;
+  fulfillment_type: string;
+  rental_start_date: string | null;
+  rental_end_date: string | null;
+  security_deposit_amount: string | null;
   catalog_item: {
-    title: string;
-    images: string[];
+    name: string;
+    images: { id: number; image_url: string; view_angle: string; is_primary: boolean }[];
     price: string;
+    listing_type?: string;
   };
   customer: {
     name: string;
   } | null;
 }
 
-export function StatusBadge({ status }: { readonly status: string }) {
+export function StatusBadge({ status, listingType }: { readonly status: string; readonly listingType?: string }) {
+  const isRental = listingType === 'for_rent';
   switch (status) {
     case 'pending':
       return (
         <span className="px-2 py-1 bg-amber-100 text-amber-800 rounded-full text-xs font-medium flex items-center gap-1">
-          <Clock className="w-3 h-3"/> Pending Prep
+          <Clock className="w-3 h-3"/> {isRental ? 'Pending Booking' : 'Pending Prep'}
         </span>
       );
     case 'ready':
@@ -40,13 +45,21 @@ export function StatusBadge({ status }: { readonly status: string }) {
     case 'out_for_delivery':
       return (
         <span className="px-2 py-1 bg-purple-100 text-purple-800 rounded-full text-xs font-medium flex items-center gap-1">
-          <Truck className="w-3 h-3"/> Out for Delivery
+          {isRental ? (
+            <>
+              <Calendar className="w-3 h-3"/> Active Rental
+            </>
+          ) : (
+            <>
+              <Truck className="w-3 h-3"/> Out for Delivery
+            </>
+          )}
         </span>
       );
     case 'completed':
       return (
         <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
-          <CheckCircle className="w-3 h-3"/> Completed
+          <CheckCircle className="w-3 h-3"/> {isRental ? 'Returned & Fulfilled' : 'Completed'}
         </span>
       );
     default:

@@ -1,25 +1,42 @@
 import React from 'react';
 
+import { Trash2, Plus } from 'lucide-react';
+import { ShopSettingsData } from './SettingsRentalPolicies';
+
 interface SettingsBasicInfoProps {
-  readonly formData: {
-    readonly name: string;
-    readonly description: string;
-    readonly address: string;
-    readonly landmark?: string;
-    readonly city: string;
-    readonly province: string;
-    readonly phone: string;
-    readonly email: string;
-    readonly latitude: string;
-    readonly longitude: string;
-  };
+  readonly formData: ShopSettingsData;
   readonly onChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  readonly handleSocialChange: (newLinks: { label: string; url: string }[]) => void;
+  readonly setFormData: React.Dispatch<React.SetStateAction<ShopSettingsData>>;
+  readonly activeTab: 'basic_info' | 'social_links' | 'booking_flow' | 'map_coordinates' | 'business_type';
 }
 
-export default function SettingsBasicInfo({ formData, onChange }: SettingsBasicInfoProps) {
+export default function SettingsBasicInfo({ formData, onChange, handleSocialChange, setFormData, activeTab }: SettingsBasicInfoProps) {
+  const handleAddQuestion = () => {
+    setFormData(prev => ({
+      ...prev,
+      booking_questions: [...prev.booking_questions, ''],
+    }));
+  };
+
+  const handleQuestionChange = (idx: number, value: string) => {
+    setFormData(prev => {
+      const qs = [...prev.booking_questions];
+      qs[idx] = value;
+      return { ...prev, booking_questions: qs };
+    });
+  };
+
+  const handleRemoveQuestion = (idx: number) => {
+    setFormData(prev => ({
+      ...prev,
+      booking_questions: prev.booking_questions.filter((_, i) => i !== idx),
+    }));
+  };
   return (
     <div className="space-y-6">
       {/* Basic Info & Contact */}
+      {activeTab === 'basic_info' && (
       <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Basic Info & Contact</h2>
         <div className="space-y-6">
@@ -107,10 +124,10 @@ export default function SettingsBasicInfo({ formData, onChange }: SettingsBasicI
               />
             </div>
             <div className="space-y-1">
-              <label htmlFor="shop-phone" className="text-sm font-medium text-[#524A44]">Contact Phone</label>
+              <label htmlFor="shop-phone" className="text-sm font-medium text-[#524A44]">Phone Number</label>
               <input
                 id="shop-phone"
-                type="text"
+                type="tel"
                 name="phone"
                 value={formData.phone}
                 onChange={onChange}
@@ -120,8 +137,130 @@ export default function SettingsBasicInfo({ formData, onChange }: SettingsBasicI
           </div>
         </div>
       </div>
+      )}
+
+      {/* Social Media Links */}
+      {activeTab === 'social_links' && (
+      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
+        <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Social Media Links</h2>
+        <div className="flex items-center justify-between mb-6">
+          <p className="text-sm text-[#827A73]">These links will be displayed on your public shop profile.</p>
+          <button
+            type="button"
+            onClick={() => handleSocialChange([...(formData.social_links || []), { label: '', url: '' }])}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold text-[#9A8073] bg-[#FAF6F3] rounded-lg hover:bg-[#F0EAE3] transition-colors"
+          >
+            <Plus size={16} /> Add Link
+          </button>
+        </div>
+        <div className="space-y-4">
+          {(formData.social_links || []).map((link, idx) => (
+            <div key={idx} className="flex flex-col md:flex-row gap-4 items-start md:items-center">
+              <div className="w-full md:w-1/3">
+                <input
+                  type="text"
+                  value={link.label}
+                  onChange={e => {
+                    const newLinks = [...formData.social_links];
+                    newLinks[idx].label = e.target.value;
+                    handleSocialChange(newLinks);
+                  }}
+                  placeholder="Platform (e.g., Facebook)"
+                  className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] text-sm focus:border-taupe outline-none"
+                />
+              </div>
+              <div className="w-full md:w-2/3 flex items-center gap-2">
+                <input
+                  type="url"
+                  value={link.url}
+                  onChange={e => {
+                    const newLinks = [...formData.social_links];
+                    newLinks[idx].url = e.target.value;
+                    handleSocialChange(newLinks);
+                  }}
+                  placeholder="https://..."
+                  className="flex-1 px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] text-sm focus:border-taupe outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => {
+                    const newLinks = formData.social_links.filter((_, i) => i !== idx);
+                    handleSocialChange(newLinks);
+                  }}
+                  className="p-2 text-[#B26959] hover:bg-[#B26959]/10 rounded-lg transition-colors"
+                  title="Remove link"
+                >
+                  <Trash2 size={18} />
+                </button>
+              </div>
+            </div>
+          ))}
+          {(!formData.social_links || formData.social_links.length === 0) && (
+            <div className="text-center py-6 bg-[#FAF6F3] rounded-xl border border-dashed border-[#EBE6E0]">
+              <p className="text-sm text-[#827A73]">No social links added yet.</p>
+            </div>
+          )}
+        </div>
+      </div>
+      )}
+
+      {/* Booking Flow Setup */}
+      {activeTab === 'booking_flow' && (
+      <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
+        <h2 className="text-lg font-medium text-[#2D2A26] mb-6">Booking Flow Setup</h2>
+        <div className="space-y-6">
+          <div className="space-y-1">
+            <label htmlFor="booking-policy" className="text-sm font-medium text-[#524A44]">
+              Cancellation Policy & Service Description
+            </label>
+            <textarea
+              id="booking-policy"
+              name="booking_policy"
+              value={formData.booking_policy || ''}
+              onChange={onChange}
+              rows={4}
+              className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe text-sm"
+            />
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-medium text-[#524A44]">Custom Booking Questions</span>
+              <button
+                onClick={() => handleAddQuestion()}
+                className="text-xs text-taupe hover:text-taupe-hover"
+                type="button"
+              >
+                + Add Question
+              </button>
+            </div>
+ 
+            {(formData.booking_questions || []).map((q: string, idx: number) => (
+              <div key={`question-${idx}`} className="flex gap-2">
+                <input
+                  type="text"
+                  value={q}
+                  onChange={e => handleQuestionChange(idx, e.target.value)}
+                  placeholder={`Question ${idx + 1}`}
+                  className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] text-sm focus:outline-none focus:border-taupe"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleRemoveQuestion(idx)}
+                  className="px-3 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors"
+                >
+                  <span className="sr-only">Remove</span>
+                  &times;
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+      )}
 
       {/* Map Coordinates */}
+      {activeTab === 'map_coordinates' && (
       <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
         <div className="mb-6">
           <h2 className="text-lg font-medium text-[#2D2A26]">Map Coordinates</h2>
@@ -157,6 +296,7 @@ export default function SettingsBasicInfo({ formData, onChange }: SettingsBasicI
           </div>
         </div>
       </div>
+      )}
     </div>
   );
 }

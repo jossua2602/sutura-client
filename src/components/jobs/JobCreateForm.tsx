@@ -54,6 +54,7 @@ interface ServiceData {
   category?: string;
   base_price?: string | number;
   custom_fields?: ServiceField[] | null;
+  tags?: string[];
 }
 
 interface StaffData {
@@ -69,6 +70,34 @@ interface CustomerMeasurement {
   id: number;
   profile_name: string;
   updated_at: string;
+}
+
+function sanitizeServiceCustomFields(servicesRaw: unknown[]): ServiceData[] {
+  return servicesRaw.map((s) => {
+    const serviceObj = s as Record<string, unknown>;
+    const customFieldsRaw = Array.isArray(serviceObj.custom_fields) ? serviceObj.custom_fields : [];
+    const sanitizedFields = customFieldsRaw.map((f) => {
+      const fieldObj = f as Record<string, unknown>;
+      const fieldType = String(fieldObj.type || 'text');
+      const resolvedType = fieldType === 'dropdown' ? 'select' : (fieldType === 'short_text' ? 'text' : fieldType);
+      return {
+        id: String(fieldObj.id || fieldObj.name || Math.random().toString(36).substring(2, 11)),
+        label: String(fieldObj.label || ''),
+        type: resolvedType as 'text' | 'number' | 'select' | 'radio' | 'checkbox',
+        required: Boolean(fieldObj.required),
+        options: Array.isArray(fieldObj.options) ? fieldObj.options.map(String) : [],
+      };
+    });
+    return {
+      ...serviceObj,
+      id: Number(serviceObj.id),
+      name: String(serviceObj.name || ''),
+      category: typeof serviceObj.category === 'string' ? serviceObj.category : undefined,
+      base_price: serviceObj.base_price !== null && serviceObj.base_price !== undefined ? String(serviceObj.base_price) : undefined,
+      custom_fields: sanitizedFields,
+      tags: Array.isArray(serviceObj.tags) ? serviceObj.tags : [],
+    } as ServiceData;
+  });
 }
 
 export default function JobCreateForm() {
@@ -94,12 +123,13 @@ export default function JobCreateForm() {
   
   // Bulk Team Roster State
   const [isBulkOrder, setIsBulkOrder] = useState(false);
-  const [roster, setRoster] = useState<{ id: string; name: string; number: string; size: string; custom_details?: string }[]>([
-    { id: 'roster-0', name: '', number: '', size: 'M', custom_details: '' }
+  const [teamName, setTeamName] = useState('');
+  const [roster, setRoster] = useState<{ id: string; name: string; print_name: string; number: string; size: string }[]>([
+    { id: 'roster-0', name: '', print_name: '', number: '', size: 'M' }
   ]);
 
   const [formData, setFormData] = useState({
-    order_type: 'walk_in',
+    intake_channel: 'walk_in',
     customer_id: '',
     service_id: '',
     assigned_staff_id: '',
@@ -397,7 +427,7 @@ export default function JobCreateForm() {
       ])
         .then(([resCustomers, resServices, resStaff, resShop]) => {
           const custs = resCustomers.data.data || [];
-          const servs = resServices.data.data || [];
+          const servs = sanitizeServiceCustomFields(resServices.data.data || []);
           setCustomers(custs);
           setServices(servs);
           setStaff(resStaff.data.data || []);
@@ -495,10 +525,6 @@ export default function JobCreateForm() {
   }, [formData.service_id, formData.is_rush, formData.rush_fee, services, isTotalAmountCustom]);
 
   const getFulfillmentValues = () => {
-    const isOnline = formData.order_type === 'online';
-    if (!isOnline) {
-      return { addressVal: null, courierNameVal: null, courierTrackingVal: null };
-    }
     const addressVal = fulfillmentType === 'pickup' ? 'Store Pickup' : (formData.shipping_address || null);
     const courierNameVal = serializeCourierName(fulfillmentType, fulfillmentProvider || 'Other');
     const courierTrackingVal = fulfillmentType === 'pickup' ? null : (trackingNumber || null);
@@ -533,7 +559,8 @@ export default function JobCreateForm() {
 
     try {
       await api.post(`/shops/${shop.id}/jobs`, {
-        order_type: formData.order_type,
+        intake_channel: formData.intake_channel,
+        fulfillment_type: fulfillmentType,
         customer_id: formData.customer_id,
         service_id: formData.service_id,
         assigned_staff_id: formData.assigned_staff_id || null,
@@ -549,8 +576,9 @@ export default function JobCreateForm() {
         courier_tracking_number: courierTrackingVal,
         custom_order_data: {
           ...customFieldValues,
-          roster: isBulkOrder
-            ? roster.map(({ name, number, size, custom_details }) => ({ name, number, size, custom_details }))
+          team_name: teamName || null,
+          team_roster: isBulkOrder
+            ? roster.map(({ name, print_name, number, size }) => ({ name, print_name, number, size }))
             : null
         },
         is_outsourced: formData.is_outsourced,
@@ -642,16 +670,16 @@ export default function JobCreateForm() {
             {/* Order Type Toggle */}
             <div>
               <span className="block text-xs font-semibold text-[#827A73] mb-2 uppercase tracking-wider">
-                Order Type <span className="text-[#B26959]">*</span>
+                Intake Channel <span className="text-[#B26959]">*</span>
               </span>
               <div className="grid grid-cols-2 gap-3">
                 <button
                   type="button"
                   onClick={() =>
-                    setFormData({ ...formData, order_type: 'walk_in' })
+                    setFormData({ ...formData, intake_channel: 'walk_in' })
                   }
                   className={`flex flex-col items-center justify-center gap-1 px-4 py-3 rounded-xl border-2 font-medium text-sm transition-all ${
-                    formData.order_type === 'walk_in'
+                    formData.intake_channel === 'walk_in'
                       ? 'border-taupe bg-[#FAF6F3] text-[#2D2A26]'
                       : 'border-[#EBE6E0] text-[#A8A19A] hover:border-[#D1C7BD]'
                   }`}
@@ -661,17 +689,17 @@ export default function JobCreateForm() {
                     <span>Walk-in</span>
                   </div>
                   <span className="text-[10px] font-normal opacity-70">
-                    Customer visits shop
+                    Customer visits shop physically
                   </span>
                 </button>
                 <button
                   type="button"
                   onClick={() =>
-                    setFormData({ ...formData, order_type: 'online' })
+                    setFormData({ ...formData, intake_channel: 'online' })
                   }
                   className={`flex flex-col items-center justify-center gap-1 px-4 py-3 rounded-xl border-2 font-medium text-sm transition-all ${
-                    formData.order_type === 'online'
-                      ? 'border-blue-500 bg-blue-50 text-blue-700'
+                    formData.intake_channel === 'online'
+                      ? 'border-taupe bg-[#FAF6F3] text-[#2D2A26]'
                       : 'border-[#EBE6E0] text-[#A8A19A] hover:border-[#D1C7BD]'
                   }`}
                 >
@@ -680,7 +708,7 @@ export default function JobCreateForm() {
                     <span>Online</span>
                   </div>
                   <span className="text-[10px] font-normal opacity-70">
-                    Shipping, delivery, or store pickup
+                    Web booking or messaging inquiry
                   </span>
                 </button>
               </div>
@@ -750,17 +778,35 @@ export default function JobCreateForm() {
                       initialValues[f.label] = '';
                     });
                     setCustomFieldValues(initialValues);
+
+                    // Auto-identify sports and esports jerseys to tick roster toggle
+                    if (selected) {
+                      const name = selected.name.toLowerCase();
+                      if (
+                        name.includes('jersey') ||
+                        name.includes('sublimation') ||
+                        name.includes('uniform') ||
+                        name.includes('esports')
+                      ) {
+                        setIsBulkOrder(true);
+                      }
+                    }
                   }}
                   className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
                 >
                   <option value="" disabled>
                     Select a service
                   </option>
-                  {services.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.name}
-                    </option>
-                  ))}
+                  {services.map((s) => {
+                    const label = s.tags && s.tags.length > 0 
+                      ? `${s.name} (${s.tags.slice(0, 3).join(', ')}${s.tags.length > 3 ? '...' : ''})` 
+                      : s.name;
+                    return (
+                      <option key={s.id} value={s.id}>
+                        {label}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -859,15 +905,68 @@ export default function JobCreateForm() {
 
               {isBulkOrder && (
                 <div className="mt-4 bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-xs font-bold text-[#827A73] uppercase tracking-wider">Roster List</h4>
-                    <button
-                      type="button"
-                      onClick={() => setRoster([...roster, { id: `${Date.now()}-${Math.random()}`, name: '', number: '', size: 'M', custom_details: '' }])}
-                      className="text-xs font-semibold text-blue-600 hover:text-blue-800"
-                    >
-                      + Add Row
-                    </button>
+                  <div>
+                    <label htmlFor="team-name-input" className="block text-xs font-semibold text-[#827A73] mb-1 uppercase tracking-wider">
+                      Team Name
+                    </label>
+                    <input
+                      id="team-name-input"
+                      type="text"
+                      value={teamName}
+                      onChange={(e) => setTeamName(e.target.value)}
+                      placeholder="e.g. Gilas Pilipinas, Blacklist Esports"
+                      className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe max-w-md"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <h4 className="text-xs font-bold text-[#827A73] uppercase tracking-wider">Roster List</h4>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRow = { id: `${Date.now()}-${Math.random()}`, name: '', print_name: '', number: '', size: 'M' };
+                            setRoster([...roster, newRow]);
+                          }}
+                          className="bg-[#FAF6F3] hover:bg-[#EBE6E0] border border-[#EBE6E0] text-[#2D2A26] px-2.5 py-1 rounded text-xs font-bold cursor-pointer transition-colors"
+                        >
+                          + Add 1 Player
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRows = Array.from({ length: 5 }).map((_, idx) => ({
+                              id: `${Date.now()}-${Math.random()}-${idx}`,
+                              name: '',
+                              print_name: '',
+                              number: '',
+                              size: 'M'
+                            }));
+                            setRoster([...roster, ...newRows]);
+                          }}
+                          className="bg-[#FAF6F3] hover:bg-[#EBE6E0] border border-[#EBE6E0] text-[#2D2A26] px-2.5 py-1 rounded text-xs font-bold cursor-pointer transition-colors"
+                        >
+                          + Add 5 Players
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const newRows = Array.from({ length: 10 }).map((_, idx) => ({
+                              id: `${Date.now()}-${Math.random()}-${idx}`,
+                              name: '',
+                              print_name: '',
+                              number: '',
+                              size: 'M'
+                            }));
+                            setRoster([...roster, ...newRows]);
+                          }}
+                          className="bg-[#FAF6F3] hover:bg-[#EBE6E0] border border-[#EBE6E0] text-[#2D2A26] px-2.5 py-1 rounded text-xs font-bold cursor-pointer transition-colors"
+                        >
+                          + Add 10 Players
+                        </button>
+                      </div>
+                    </div>
                   </div>
                   
                   <div className="overflow-x-auto">
@@ -875,6 +974,7 @@ export default function JobCreateForm() {
                       <thead>
                         <tr>
                           <th className="pb-2 font-semibold text-zinc-600">Player/Employee Name</th>
+                          <th className="pb-2 font-semibold text-zinc-600">Print Name / Nickname</th>
                           <th className="pb-2 font-semibold text-zinc-600 w-24">Number</th>
                           <th className="pb-2 font-semibold text-zinc-600 w-24">Size</th>
                           <th className="pb-2 text-right"></th>
@@ -900,6 +1000,19 @@ export default function JobCreateForm() {
                             <td className="py-2 pr-2">
                               <input
                                 type="text"
+                                value={row.print_name}
+                                placeholder="e.g. FROSTY"
+                                onChange={(e) => {
+                                  const newRoster = [...roster];
+                                  newRoster[idx].print_name = e.target.value;
+                                  setRoster(newRoster);
+                                }}
+                                className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1 text-xs focus:outline-none focus:border-taupe"
+                              />
+                            </td>
+                            <td className="py-2 pr-2">
+                              <input
+                                type="text"
                                 value={row.number}
                                 placeholder="e.g. 12"
                                 onChange={(e) => {
@@ -916,31 +1029,14 @@ export default function JobCreateForm() {
                                 onChange={(e) => {
                                   const newRoster = [...roster];
                                   newRoster[idx].size = e.target.value;
-                                  if (e.target.value !== 'Custom') {
-                                    newRoster[idx].custom_details = '';
-                                  }
                                   setRoster(newRoster);
                                 }}
                                 className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1 text-xs focus:outline-none"
                               >
-                                {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL', 'Custom'].map(sz => (
+                                {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map(sz => (
                                   <option key={sz} value={sz}>{sz}</option>
                                 ))}
                               </select>
-                              {row.size === 'Custom' && (
-                                <input
-                                  type="text"
-                                  required
-                                  value={row.custom_details || ''}
-                                  placeholder="e.g. Chest: 36, L: 28"
-                                  onChange={(e) => {
-                                    const newRoster = [...roster];
-                                    newRoster[idx].custom_details = e.target.value;
-                                    setRoster(newRoster);
-                                  }}
-                                  className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1 text-[10px] mt-1 focus:outline-none focus:border-taupe placeholder:text-[9px]"
-                                />
-                              )}
                             </td>
                             <td className="py-2 text-right">
                               {roster.length > 1 && (
@@ -957,6 +1053,9 @@ export default function JobCreateForm() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="flex items-center justify-between border-t border-[#EBE6E0] pt-2 text-xs text-[#827A73] font-semibold">
+                    <span>Total Items: {roster.length}</span>
                   </div>
                 </div>
               )}
@@ -1008,11 +1107,10 @@ export default function JobCreateForm() {
               )}
             </div>
 
-            {/* Shipping / Delivery / Pickup — only for online orders */}
-            {formData.order_type === 'online' && (
-              <div className="bg-blue-50/40 border border-blue-100 rounded-xl p-4 space-y-4 mt-2">
+            {/* Shipping / Delivery / Pickup Selector */}
+            <div className="bg-[#FAF6F3]/50 border border-[#EBE6E0]/60 rounded-xl p-4 space-y-4 mt-4">
                 <div>
-                  <span className="block text-sm font-semibold text-blue-800 mb-2">
+                  <span className="block text-xs font-semibold text-[#827A73] mb-2 uppercase tracking-wider">
                     Fulfillment Method
                   </span>
                   <div className="grid grid-cols-3 gap-3">
@@ -1048,10 +1146,10 @@ export default function JobCreateForm() {
                             );
                             setFulfillmentProvider('');
                           }}
-                          className={`flex flex-col items-center justify-center p-3 rounded-lg border text-center transition-all ${
+                          className={`flex flex-col items-center justify-center p-3 rounded-lg border text-center transition-all cursor-pointer ${
                             isSelected
-                              ? 'border-blue-500 bg-blue-100/50 text-blue-700 font-semibold shadow-sm'
-                              : 'border-blue-200/40 bg-white/70 text-blue-600 hover:border-blue-300'
+                              ? 'border-taupe bg-[#FAF6F3] text-taupe font-semibold shadow-sm'
+                              : 'border-[#EBE6E0] bg-white text-[#524A44] hover:border-taupe/30'
                           }`}
                         >
                           <Icon size={16} className="mb-1" />
@@ -1070,7 +1168,7 @@ export default function JobCreateForm() {
                     <div>
                       <label
                         htmlFor="fulfillment_provider"
-                        className="block text-xs font-semibold text-blue-800 mb-1"
+                        className="block text-xs font-semibold text-[#827A73] mb-1"
                       >
                         Service Provider / Courier
                       </label>
@@ -1078,7 +1176,7 @@ export default function JobCreateForm() {
                         id="fulfillment_provider"
                         value={fulfillmentProvider}
                         onChange={(e) => setFulfillmentProvider(e.target.value)}
-                        className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400"
+                        className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
                       >
                         <option value="">— Select provider —</option>
                         {getFilteredCouriers().map((c) => (
@@ -1093,7 +1191,7 @@ export default function JobCreateForm() {
                     <div>
                       <label
                         htmlFor="tracking_number"
-                        className="block text-xs font-semibold text-blue-800 mb-1"
+                        className="block text-xs font-semibold text-[#827A73] mb-1"
                       >
                         {fulfillmentType === 'shipping'
                           ? 'Tracking Number'
@@ -1109,14 +1207,14 @@ export default function JobCreateForm() {
                             ? 'e.g. JT-123456'
                             : 'e.g. Grab link or phone'
                         }
-                        className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400"
+                        className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
                       />
                     </div>
                   </div>
                 )}
 
                 {fulfillmentType === 'pickup' ? (
-                  <div className="bg-blue-100/30 border border-blue-200/50 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+                  <div className="bg-[#FAF6F3]/60 border border-[#EBE6E0]/60 rounded-lg p-3 text-xs text-[#827A73] flex items-center gap-2">
                     <Store size={16} className="shrink-0" />
                     <span>
                       Customer will pick up the garments in-store. (Shop address will be used)
@@ -1126,7 +1224,7 @@ export default function JobCreateForm() {
                   <div>
                     <label
                       htmlFor="shipping_address"
-                      className="block text-xs font-semibold text-blue-800 mb-1"
+                      className="block text-xs font-semibold text-[#827A73] mb-1"
                     >
                       {fulfillmentType === 'shipping'
                         ? 'Shipping Address'
@@ -1140,12 +1238,11 @@ export default function JobCreateForm() {
                         setFormData({ ...formData, shipping_address: e.target.value })
                       }
                       placeholder="Enter complete delivery details..."
-                      className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400 focus:ring-1 focus:ring-blue-400"
+                      className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
                     />
                   </div>
                 )}
               </div>
-            )}
           </div>
 
           {/* Section 4: Timeline & Financial Summary */}

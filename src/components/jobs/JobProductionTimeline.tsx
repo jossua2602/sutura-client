@@ -20,7 +20,7 @@ export default function JobProductionTimeline({
 }: JobProductionTimelineProps) {
   let STAGES: Array<{ key: string; label: string; emoji: string }> = [];
   
-  if (job.order_type === 'online') {
+  if (job.intake_channel === 'online' || job.fulfillment_type === 'shipping' || job.fulfillment_type === 'delivery') {
     let dispatchedLabel = 'Shipped';
     let dispatchedEmoji = '🚚';
     if (fulfillmentType === 'pickup') {
@@ -129,10 +129,10 @@ export default function JobProductionTimeline({
             <option value="cutting">Cutting</option>
             <option value="sewing">Sewing</option>
             <option value="fitting">Fitting</option>
-            {job.order_type === 'walk_in' && (
+            {(job.intake_channel === 'walk_in' && job.fulfillment_type === 'pickup') && (
               <option value="ready_for_pickup">Ready for Pickup</option>
             )}
-            {job.order_type === 'online' && (
+            {(job.intake_channel === 'online' || job.fulfillment_type === 'shipping' || job.fulfillment_type === 'delivery') && (
               <>
                 <option value="packed">Packed</option>
                 <option value="handed_to_courier">

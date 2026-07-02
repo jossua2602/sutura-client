@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
-import { Loader2, Plus, X, Upload, Image as ImageIcon, GripVertical, Type, Hash, ChevronDown, ToggleLeft, CheckSquare } from 'lucide-react';
-import { Service, ServiceField, SERVICE_CATEGORIES } from './serviceHelpers';
+import { Loader2, Plus, X, Upload, Image as ImageIcon } from 'lucide-react';
+import { Service, SERVICE_CATEGORIES } from './serviceHelpers';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -13,26 +13,6 @@ interface ServiceFormModalProps {
   readonly isSubmitting: boolean;
   readonly error: string;
   readonly editingService: Service | null;
-}
-
-const FIELD_TYPES: { value: ServiceField['type']; label: string; icon: React.ReactNode; description: string }[] = [
-  { value: 'text',     label: 'Short Text',       icon: <Type size={13} />,        description: 'Free-form text answer' },
-  { value: 'number',   label: 'Number',            icon: <Hash size={13} />,        description: 'Numeric input' },
-  { value: 'select',   label: 'Dropdown',          icon: <ChevronDown size={13} />, description: 'Pick one from a list' },
-  { value: 'radio',    label: 'Single Choice',     icon: <ToggleLeft size={13} />,  description: 'Radio button selection' },
-  { value: 'checkbox', label: 'Multi-Select',      icon: <CheckSquare size={13} />, description: 'Multiple selections' },
-];
-
-const hasOptions = (type: string) => ['select', 'radio', 'checkbox'].includes(type);
-
-// ── Helpers for immutable field updates ──────────────────────────────────────
-function updateField<K extends keyof ServiceField>(
-  fields: ServiceField[],
-  idx: number,
-  key: K,
-  value: ServiceField[K]
-): ServiceField[] {
-  return fields.map((f, i) => (i === idx ? { ...f, [key]: value } : f));
 }
 
 export default function ServiceFormModal({
@@ -48,16 +28,15 @@ export default function ServiceFormModal({
     name: '',
     description: '',
     category: '',
-    base_price: '',
-    estimated_days: '',
   });
-  const [customFields, setCustomFields] = useState<ServiceField[]>([]);
   const [customCategory, setCustomCategory] = useState('');
   const [isActive, setIsActive] = useState(true);
   const [imageUrl, setImageUrl] = useState<string | null>(null);
   const [uploadingImage, setUploadingImage] = useState(false);
-  // Per-field: track the raw options string separately so typing is smooth
-  const [optionInputs, setOptionInputs] = useState<Record<string, string>>({});
+  
+  const [tags, setTags] = useState<string[]>([]);
+  const [tagInput, setTagInput] = useState('');
+
   const { shop } = useAuthStore();
 
   const isOtherCategory = formData.category === 'Other / Custom Category';
@@ -74,29 +53,18 @@ export default function ServiceFormModal({
           name: editingService.name,
           description: editingService.description || '',
           category: dropdownValue,
-          base_price: editingService.base_price.toString(),
-          estimated_days: editingService.estimated_days.toString(),
         });
         setCustomCategory(customValue);
-
-        const fields = editingService.custom_fields || [];
-        setCustomFields(fields);
-        // Pre-populate option inputs
-        const initInputs: Record<string, string> = {};
-        fields.forEach(f => {
-          if (f.options?.length) initInputs[f.id] = f.options.join(', ');
-        });
-        setOptionInputs(initInputs);
-
+        setTags(editingService.tags || []);
         setIsActive(editingService.is_active !== false);
         setImageUrl(editingService.image_url || null);
       });
     } else {
       Promise.resolve().then(() => {
-        setFormData({ name: '', description: '', category: '', base_price: '', estimated_days: '' });
+        setFormData({ name: '', description: '', category: '' });
         setCustomCategory('');
-        setCustomFields([]);
-        setOptionInputs({});
+        setTags([]);
+        setTagInput('');
         setIsActive(true);
         setImageUrl(null);
       });
@@ -121,44 +89,19 @@ export default function ServiceFormModal({
     }
   };
 
-  const addField = () => {
-    const newField: ServiceField = {
-      id: Math.random().toString(36).substring(2, 11),
-      label: '',
-      type: 'text',
-      required: false,
-      options: [],
-    };
-    setCustomFields(prev => [...prev, newField]);
-  };
-
-  const removeField = (id: string) => {
-    setCustomFields(prev => prev.filter(f => f.id !== id));
-    setOptionInputs(prev => { const next = { ...prev }; delete next[id]; return next; });
-  };
-
-  const handleFieldLabel = (idx: number, value: string) => {
-    setCustomFields(prev => updateField(prev, idx, 'label', value));
-  };
-
-  const handleFieldType = (idx: number, value: ServiceField['type']) => {
-    setCustomFields(prev => updateField(prev, idx, 'type', value));
-    // Clear options when switching to non-option type
-    if (!hasOptions(value)) {
-      const fieldId = customFields[idx]?.id;
-      setCustomFields(prev => updateField(prev, idx, 'options', []));
-      if (fieldId) setOptionInputs(prev => { const next = { ...prev }; delete next[fieldId]; return next; });
+  const handleTagKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      const newTag = tagInput.trim();
+      if (newTag && !tags.includes(newTag)) {
+        setTags([...tags, newTag]);
+        setTagInput('');
+      }
     }
   };
 
-  const handleFieldRequired = (idx: number, value: boolean) => {
-    setCustomFields(prev => updateField(prev, idx, 'required', value));
-  };
-
-  const handleOptionsInput = (idx: number, fieldId: string, raw: string) => {
-    setOptionInputs(prev => ({ ...prev, [fieldId]: raw }));
-    const parsed = raw.split(',').map(s => s.trim()).filter(Boolean);
-    setCustomFields(prev => updateField(prev, idx, 'options', parsed));
+  const removeTag = (tagToRemove: string) => {
+    setTags(tags.filter(tag => tag !== tagToRemove));
   };
 
   const handleSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
@@ -166,345 +109,182 @@ export default function ServiceFormModal({
     const resolvedCategory = isOtherCategory ? customCategory.trim() : formData.category;
     if (isOtherCategory && !customCategory.trim()) return;
 
-    // Validate all fields have labels
-    const hasEmptyLabels = customFields.some(f => !f.label.trim());
-    if (hasEmptyLabels) return;
-
     const payload = {
       name: formData.name,
       description: formData.description,
       category: resolvedCategory,
-      estimated_days: Number.parseInt(formData.estimated_days, 10),
-      base_price: Number.parseFloat(formData.base_price),
-      custom_fields: customFields,
+      tags: tags,
       is_active: isActive,
       image_url: imageUrl,
+      // Pass null for fields we removed from the UI to satisfy the backend if needed
+      estimated_days: null,
+      base_price: null,
+      custom_fields: null,
     };
     onSubmit(payload);
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} title={editingId ? 'Edit Service' : 'Add New Service'} maxWidth="max-w-2xl">
-      <form onSubmit={handleSubmit} className="space-y-5">
-
-        {/* Error banner */}
+    <Modal isOpen={isOpen} onClose={onClose} title={editingId ? 'Edit Service Catalog' : 'Add Service Catalog'} maxWidth="max-w-2xl">
+      <form onSubmit={handleSubmit} className="space-y-6">
         {error && (
-          <div className="bg-[#B26959]/10 border border-[#B26959]/40 text-[#B26959] px-4 py-3 rounded-xl text-sm">
+          <div className="p-3 text-sm text-red-500 bg-red-50 border border-red-100 rounded-md">
             {error}
           </div>
         )}
 
-        {/* ── Image Upload ─────────────────────────────── */}
-        <div>
-          <span className="block text-sm font-medium text-[#524A44] mb-2">Service Image</span>
-          {imageUrl ? (
-            <div className="relative w-full h-44 rounded-xl overflow-hidden border border-[#EBE6E0] group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={imageUrl} alt="Service" className="w-full h-full object-cover" />
-              <div className="absolute inset-0 bg-black/30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-3">
-                <label className="cursor-pointer bg-white/90 hover:bg-white text-[#2D2A26] px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
-                  <Upload size={12} /> Change
-                  <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-                </label>
-                <button type="button" onClick={() => setImageUrl(null)}
-                  className="bg-white/90 hover:bg-white text-[#B26959] px-3 py-1.5 rounded-lg text-xs font-medium flex items-center gap-1.5">
-                  <X size={12} /> Remove
-                </button>
-              </div>
-            </div>
-          ) : (
-            <label className={`flex flex-col items-center justify-center gap-2 w-full h-36 border-2 border-dashed rounded-xl cursor-pointer transition-colors ${
-              uploadingImage ? 'border-[#9A8073] bg-[#FAF6F3]' : 'border-[#EBE6E0] hover:border-[#9A8073] hover:bg-[#FAF6F3]'
-            }`}>
-              {uploadingImage
-                ? <><Loader2 size={20} className="animate-spin text-[#9A8073]" /><span className="text-xs text-[#9A8073]">Uploading...</span></>
-                : <><ImageIcon size={22} className="text-[#C5BDBA]" /><span className="text-xs text-[#A8A19A]">Click to upload a service image</span><span className="text-[10px] text-[#C5BDBA]">PNG, JPG, WEBP up to 5MB</span></>
-              }
-              <input type="file" accept="image/*" className="hidden" onChange={handleImageUpload} disabled={uploadingImage} />
-            </label>
-          )}
-        </div>
-
-        {/* ── Service Name ──────────────────────────────── */}
-        <div>
-          <label htmlFor="service-name" className="block text-sm font-medium text-[#524A44] mb-1.5">
-            Service Name <span className="text-[#B26959]">*</span>
-          </label>
-          <input
-            id="service-name"
-            type="text"
-            required
-            value={formData.name}
-            onChange={e => setFormData({ ...formData, name: e.target.value })}
-            className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl px-4 py-2.5 text-[#2D2A26] text-sm focus:outline-none focus:border-[#9A8073] focus:ring-2 focus:ring-[#9A8073]/10 transition-colors"
-            placeholder="e.g. Wedding Dress Tailoring"
-          />
-        </div>
-
-        {/* ── Category ─────────────────────────────────── */}
-        <div>
-          <label htmlFor="service-category" className="block text-sm font-medium text-[#524A44] mb-1.5">Category</label>
-          <select
-            id="service-category"
-            value={formData.category}
-            onChange={e => {
-              setFormData({ ...formData, category: e.target.value });
-              if (e.target.value !== 'Other / Custom Category') setCustomCategory('');
-            }}
-            className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl px-4 py-2.5 text-[#2D2A26] text-sm focus:outline-none focus:border-[#9A8073] transition-colors"
-          >
-            <option value="">— Select a category —</option>
-            {SERVICE_CATEGORIES.map(group => (
-              <optgroup key={group.group} label={group.group}>
-                {group.items.map(item => <option key={item} value={item}>{item}</option>)}
-              </optgroup>
-            ))}
-          </select>
-
-          {isOtherCategory && (
-            <div className="mt-2">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Title Name *
+              </label>
               <input
-                id="custom-category"
                 type="text"
                 required
-                value={customCategory}
-                onChange={e => setCustomCategory(e.target.value)}
-                className="w-full bg-white border border-[#9A8073]/40 rounded-xl px-4 py-2.5 text-[#2D2A26] text-sm focus:outline-none focus:border-[#9A8073] focus:ring-2 focus:ring-[#9A8073]/10 placeholder:text-[#A8A19A]"
-                placeholder="e.g. Gown Alteration, Embroidery, Repair"
-                autoFocus
+                value={formData.name}
+                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                placeholder="e.g. Alterations & Repairs"
               />
-              <p className="text-[10px] text-[#A8A19A] mt-1 pl-1">This exact text will be saved as the category name.</p>
+              <p className="text-xs text-gray-500 mt-1">This acts as the main category for the services below.</p>
             </div>
-          )}
-        </div>
 
-        {/* ── Base Price + Duration ─────────────────────── */}
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <label htmlFor="base-price" className="block text-sm font-medium text-[#524A44] mb-1.5">
-              Base Price (₱) <span className="text-[#B26959]">*</span>
-            </label>
-            <input
-              id="base-price"
-              type="number"
-              required
-              min="0"
-              step="0.01"
-              value={formData.base_price}
-              onChange={e => setFormData({ ...formData, base_price: e.target.value })}
-              className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl px-4 py-2.5 text-[#2D2A26] text-sm focus:outline-none focus:border-[#9A8073] focus:ring-2 focus:ring-[#9A8073]/10 transition-colors"
-              placeholder="0.00"
-            />
-          </div>
-          <div>
-            <label htmlFor="est-duration" className="block text-sm font-medium text-[#524A44] mb-1.5">
-              Est. Duration (Days) <span className="text-[#B26959]">*</span>
-            </label>
-            <input
-              id="est-duration"
-              type="number"
-              required
-              min="1"
-              value={formData.estimated_days}
-              onChange={e => setFormData({ ...formData, estimated_days: e.target.value })}
-              className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl px-4 py-2.5 text-[#2D2A26] text-sm focus:outline-none focus:border-[#9A8073] focus:ring-2 focus:ring-[#9A8073]/10 transition-colors"
-              placeholder="7"
-            />
-          </div>
-        </div>
-
-        {/* ── Description ───────────────────────────────── */}
-        <div>
-          <label htmlFor="service-desc" className="block text-sm font-medium text-[#524A44] mb-1.5">Description</label>
-          <textarea
-            id="service-desc"
-            value={formData.description}
-            onChange={e => setFormData({ ...formData, description: e.target.value })}
-            className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl px-4 py-2.5 text-[#2D2A26] text-sm focus:outline-none focus:border-[#9A8073] focus:ring-2 focus:ring-[#9A8073]/10 h-20 resize-none transition-colors"
-            placeholder="Describe what's included in this service..."
-          />
-        </div>
-
-        {/* ── Active toggle ─────────────────────────────── */}
-        <div className="flex items-center gap-3 select-none group">
-          <div className="relative">
-            <input
-              type="checkbox"
-              id="service-status"
-              checked={isActive}
-              onChange={e => setIsActive(e.target.checked)}
-              className="sr-only"
-            />
-            <div className={`w-10 h-6 rounded-full transition-colors ${isActive ? 'bg-[#9A8073]' : 'bg-[#D1C7BD]'}`} />
-            <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full shadow transition-transform ${isActive ? 'translate-x-4' : 'translate-x-0'}`} />
-          </div>
-          <label htmlFor="service-status" className="cursor-pointer">
-            <span className="block text-sm font-medium text-[#524A44]">Service is Active</span>
-            <span className="block text-[11px] text-[#A8A19A]">Visible to customers for booking</span>
-          </label>
-        </div>
-
-
-        {/* ── Custom Order Specifications ───────────────── */}
-        <div className="border-t border-[#EBE6E0] pt-5">
-          <div className="flex items-start justify-between mb-4">
             <div>
-              <h3 className="text-sm font-semibold text-[#2D2A26]">Custom Order Specifications</h3>
-              <p className="text-xs text-[#A8A19A] mt-0.5">
-                Ask customers for extra details when booking this service (e.g. name on jersey, measurements, color preference).
-              </p>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Services (Tags) *
+              </label>
+              <div className="flex flex-wrap gap-2 mb-2">
+                {tags.map((tag, idx) => (
+                  <span key={idx} className="flex items-center gap-1 px-3 py-1 bg-black text-white text-sm rounded-full">
+                    {tag}
+                    <button type="button" onClick={() => removeTag(tag)} className="hover:text-gray-300 focus:outline-none">
+                      <X size={14} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+              <input
+                type="text"
+                value={tagInput}
+                onChange={(e) => setTagInput(e.target.value)}
+                onKeyDown={handleTagKeyDown}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                placeholder="Type a service and press Enter..."
+              />
+              <p className="text-xs text-gray-500 mt-1">Add specific services that belong to this title.</p>
             </div>
-            <button
-              type="button"
-              onClick={addField}
-              className="flex items-center gap-1.5 bg-[#F0EAE3] hover:bg-[#EBE6E0] text-[#9A8073] hover:text-[#2D2A26] px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors shrink-0 ml-4"
-            >
-              <Plus size={13} /> Add Field
-            </button>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Category
+              </label>
+              <select
+                value={formData.category}
+                onChange={(e) => setFormData(prev => ({ ...prev, category: e.target.value }))}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+              >
+                <option value="">Select a category</option>
+                {SERVICE_CATEGORIES.map(group => (
+                  <optgroup key={group.group} label={group.group}>
+                    {group.items.map(item => (
+                      <option key={item} value={item}>{item}</option>
+                    ))}
+                  </optgroup>
+                ))}
+                <option value="Other / Custom Category">Other / Custom Category</option>
+              </select>
+            </div>
+
+            {isOtherCategory && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Custom Category Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={customCategory}
+                  onChange={(e) => setCustomCategory(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black"
+                  placeholder="Enter custom category"
+                />
+              </div>
+            )}
           </div>
 
-          {customFields.length === 0 && (
-            <div className="text-center py-8 bg-[#FAF6F3] rounded-xl border border-dashed border-[#EBE6E0]">
-              <p className="text-xs text-[#C5BDBA] font-medium">No custom fields yet.</p>
-              <p className="text-[11px] text-[#C5BDBA] mt-0.5">Click &quot;Add Field&quot; to collect extra info from customers.</p>
+          <div className="space-y-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <textarea
+                value={formData.description}
+                onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                rows={3}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-black resize-none"
+                placeholder="Describe this group of services..."
+              />
             </div>
-          )}
 
-          {customFields.length > 0 && (
-            <div className="space-y-3">
-              {customFields.map((field, idx) => (
-                <div
-                  key={field.id}
-                  className="bg-white border border-[#EBE6E0] rounded-2xl p-4 shadow-sm space-y-3 relative"
-                >
-                  {/* Header row */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2 text-[#A8A19A]">
-                      <GripVertical size={14} className="cursor-grab" />
-                      <span className="text-[11px] font-bold uppercase tracking-wider text-[#C5BDBA]">
-                        Field {idx + 1}
-                      </span>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Service Group Image
+              </label>
+              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-gray-300 border-dashed rounded-lg relative overflow-hidden group">
+                <div className="space-y-1 text-center relative z-10">
+                  {uploadingImage ? (
+                    <Loader2 className="mx-auto h-8 w-8 text-gray-400 animate-spin" />
+                  ) : imageUrl ? (
+                    <div className="flex flex-col items-center">
+                      <ImageIcon className="mx-auto h-8 w-8 text-green-500 mb-2" />
+                      <span className="text-sm text-green-600 font-medium">Image uploaded</span>
+                      <button type="button" onClick={() => setImageUrl(null)} className="mt-2 text-xs text-red-500 hover:text-red-700 font-medium focus:outline-none">Remove image</button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => removeField(field.id)}
-                      className="p-1 rounded-lg text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 transition-colors"
-                      title="Remove field"
-                    >
-                      <X size={15} />
-                    </button>
-                  </div>
-
-                  {/* Field Label */}
-                  <div>
-                    <label
-                      htmlFor={`field-label-${field.id}`}
-                      className="block text-xs font-semibold text-[#524A44] mb-1"
-                    >
-                      Field Label <span className="text-[#B26959]">*</span>
-                    </label>
-                    <input
-                      id={`field-label-${field.id}`}
-                      type="text"
-                      required
-                      value={field.label}
-                      onChange={e => handleFieldLabel(idx, e.target.value)}
-                      className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-2 focus:ring-[#9A8073]/10 transition-colors placeholder:text-[#C5BDBA]"
-                      placeholder="e.g. Name on Jersey, Chest Size, Color Preference"
-                    />
-                  </div>
-
-                  {/* Field Type — button group */}
-                  <div>
-                    <p className="text-xs font-semibold text-[#524A44] mb-2">Field Type</p>
-                    <div className="flex flex-wrap gap-2">
-                      {FIELD_TYPES.map(ft => (
-                        <button
-                          key={ft.value}
-                          type="button"
-                          onClick={() => handleFieldType(idx, ft.value)}
-                          title={ft.description}
-                          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
-                            field.type === ft.value
-                              ? 'bg-[#9A8073] text-white border-[#9A8073] shadow-sm'
-                              : 'bg-[#FAF6F3] text-[#827A73] border-[#EBE6E0] hover:border-[#9A8073] hover:text-[#9A8073]'
-                          }`}
-                        >
-                          {ft.icon}
-                          {ft.label}
-                        </button>
-                      ))}
-                    </div>
-                    <p className="text-[10px] text-[#A8A19A] mt-1.5">
-                      {FIELD_TYPES.find(ft => ft.value === field.type)?.description}
-                    </p>
-                  </div>
-
-                  {/* Options input — only for select/radio/checkbox */}
-                  {hasOptions(field.type) && (
-                    <div>
-                      <label
-                        htmlFor={`field-options-${field.id}`}
-                        className="block text-xs font-semibold text-[#524A44] mb-1"
-                      >
-                        Options <span className="text-[#B26959]">*</span>
-                        <span className="font-normal text-[#A8A19A] ml-1">(comma-separated)</span>
-                      </label>
-                      <input
-                        id={`field-options-${field.id}`}
-                        type="text"
-                        required={hasOptions(field.type)}
-                        value={optionInputs[field.id] ?? (field.options?.join(', ') || '')}
-                        onChange={e => handleOptionsInput(idx, field.id, e.target.value)}
-                        className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-2 focus:ring-[#9A8073]/10 transition-colors placeholder:text-[#C5BDBA]"
-                        placeholder="e.g. S, M, L, XL  or  Red, Blue, Green"
-                      />
-                      {field.options && field.options.length > 0 && (
-                        <div className="flex flex-wrap gap-1.5 mt-2">
-                          {field.options.map(opt => (
-                            <span key={opt} className="inline-flex items-center px-2 py-0.5 bg-[#F0EAE3] text-[#9A8073] rounded-full text-[11px] font-medium">
-                              {opt}
-                            </span>
-                          ))}
-                        </div>
-                      )}
-                    </div>
+                  ) : (
+                    <>
+                      <Upload className="mx-auto h-8 w-8 text-gray-400" />
+                      <div className="flex text-sm text-gray-600 justify-center">
+                        <label htmlFor="service-image" className="relative cursor-pointer bg-white rounded-md font-medium text-black hover:underline focus-within:outline-none">
+                          <span>Upload a file</span>
+                          <input id="service-image" name="service-image" type="file" className="sr-only" accept="image/*" onChange={handleImageUpload} disabled={uploadingImage} />
+                        </label>
+                      </div>
+                      <p className="text-xs text-gray-500">PNG, JPG up to 2MB</p>
+                    </>
                   )}
-
-                  {/* Required toggle */}
-                  <label className="flex items-center gap-2.5 cursor-pointer select-none">
-                    <input
-                      type="checkbox"
-                      id={`req-${field.id}`}
-                      checked={field.required}
-                      onChange={e => handleFieldRequired(idx, e.target.checked)}
-                      className="h-3.5 w-3.5 rounded border-[#EBE6E0] accent-[#9A8073] cursor-pointer"
-                    />
-                    <span className="text-xs text-[#524A44] font-medium">Required field</span>
-                    <span className="text-[10px] text-[#A8A19A]">(customer must fill this in)</span>
-                  </label>
                 </div>
-              ))}
+                {imageUrl && (
+                  <img src={imageUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-10 transition-opacity" />
+                )}
+              </div>
             </div>
-          )}
+
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="is_active"
+                checked={isActive}
+                onChange={(e) => setIsActive(e.target.checked)}
+                className="w-4 h-4 text-black border-gray-300 rounded focus:ring-black"
+              />
+              <label htmlFor="is_active" className="text-sm text-gray-700">
+                Active & Visible to Customers
+              </label>
+            </div>
+          </div>
         </div>
 
-        {/* ── Actions ──────────────────────────────────── */}
-        <div className="pt-4 flex justify-end gap-3 border-t border-[#EBE6E0]">
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-5 py-2.5 rounded-xl text-sm font-medium text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors"
-          >
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 border rounded-lg transition-colors focus:outline-none">
             Cancel
           </button>
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            className="bg-[#9A8073] hover:bg-[#8a7065] text-white px-6 py-2.5 rounded-xl text-sm font-semibold transition-colors flex items-center gap-2 disabled:opacity-50"
-          >
-            {isSubmitting && <Loader2 size={15} className="animate-spin" />}
-            {editingId ? 'Save Changes' : 'Save Service'}
+          <button type="submit" disabled={isSubmitting || tags.length === 0} className="px-4 py-2 text-sm font-medium text-white bg-black rounded-lg hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 transition-colors focus:outline-none">
+            {isSubmitting ? (
+              <><Loader2 size={16} className="animate-spin" /> {editingId ? 'Saving...' : 'Adding...'}</>
+            ) : (
+              <>{editingId ? 'Save Changes' : 'Add Service Catalog'}</>
+            )}
           </button>
         </div>
       </form>

@@ -44,7 +44,7 @@ interface AppointmentActionModalsProps {
   readonly onConfirmReview: (aptId: number) => Promise<void>;
   readonly onRejectReview: (aptId: number) => Promise<void>;
   readonly onRescheduleSubmit: (aptId: number, date: string, time: string, notes: string) => Promise<void>;
-  readonly onCompleteSubmit: (aptId: number, notes: string, jobOrderId: string, measurementAction: 'none' | 'record') => Promise<void>;
+  readonly onCompleteSubmit: (aptId: number, notes: string, jobOrderId: string, measurementAction: 'none' | 'record', outcome: string) => Promise<void>;
   readonly onCancelConfirm: (aptId: number) => Promise<void>;
   readonly onCreateJob: (apt: Appointment) => void;
 }
@@ -62,8 +62,8 @@ export default function AppointmentActionModals({
 
   // Local Form States
   const [rescheduleForm, setRescheduleForm] = useState({ scheduled_date: '', scheduled_time: '', notes: '' });
-  const [completeForm, setCompleteForm] = useState<{ notes: string; job_order_id: string; measurement_action: 'none' | 'record' }>({
-    notes: '', job_order_id: '', measurement_action: 'none'
+  const [completeForm, setCompleteForm] = useState<{ notes: string; job_order_id: string; measurement_action: 'none' | 'record'; outcome: string }>({
+    notes: '', job_order_id: '', measurement_action: 'none', outcome: 'completed'
   });
 
   // Sync Reschedule Form defaults when modal opens
@@ -83,7 +83,7 @@ export default function AppointmentActionModals({
   useEffect(() => {
     if (completeApt) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setCompleteForm({ notes: '', job_order_id: '', measurement_action: 'none' });
+      setCompleteForm({ notes: '', job_order_id: '', measurement_action: 'none', outcome: 'completed' });
     }
   }, [completeApt]);
 
@@ -105,7 +105,8 @@ export default function AppointmentActionModals({
       completeApt.id,
       completeForm.notes,
       completeForm.job_order_id,
-      completeForm.measurement_action
+      completeForm.measurement_action,
+      completeForm.outcome
     );
   };
 
@@ -328,6 +329,23 @@ export default function AppointmentActionModals({
               </div>
             )}
 
+            {/* Appointment Outcome Selector */}
+            <div>
+              <label htmlFor="complete_outcome" className="block text-sm font-medium text-[#524A44] mb-1">Appointment Outcome</label>
+              <select
+                id="complete_outcome"
+                required
+                value={completeForm.outcome}
+                onChange={e => setCompleteForm(f => ({ ...f, outcome: e.target.value }))}
+                className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
+                <option value="completed">Completed Successfully</option>
+                <option value="rescheduled">Rescheduled to Future Date</option>
+                <option value="no_show">No Show / Client Didn't Arrive</option>
+                <option value="converted_to_job">Converted to New Job Order</option>
+                <option value="cancelled">Cancelled</option>
+              </select>
+            </div>
+
             {/* Completion notes */}
             <div>
               <label htmlFor="complete_notes" className="block text-sm font-medium text-[#524A44] mb-1">Completion Notes (Optional)</label>
@@ -411,6 +429,30 @@ export default function AppointmentActionModals({
                     <a href={`/dashboard/jobs/${viewApt.job_order.id}`} className="text-[#6B7FA8] hover:underline" target="_blank" rel="noopener noreferrer">
                       #{viewApt.job_order.order_number || viewApt.job_order.id}
                     </a>
+                  </p>
+                </div>
+              )}
+              {viewApt.priority && (
+                <div>
+                  <p className="text-xs text-[#A8A19A] font-semibold uppercase tracking-wider">Priority</p>
+                  <p className={`font-bold mt-0.5 capitalize text-xs ${
+                    viewApt.priority === 'rush' ? 'text-rose-600' : viewApt.priority === 'urgent' ? 'text-amber-600' : 'text-zinc-600'
+                  }`}>
+                    {viewApt.priority}
+                  </p>
+                </div>
+              )}
+              {viewApt.garment_category && (
+                <div>
+                  <p className="text-xs text-[#A8A19A] font-semibold uppercase tracking-wider">Garment Category</p>
+                  <p className="text-[#2D2A26] font-semibold mt-0.5 capitalize">{viewApt.garment_category}</p>
+                </div>
+              )}
+              {viewApt.outcome && (
+                <div className="col-span-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl p-3">
+                  <p className="text-[10px] text-[#A8A19A] font-bold uppercase tracking-wider">Appointment Outcome</p>
+                  <p className="text-emerald-700 font-bold mt-0.5 text-xs capitalize flex items-center gap-1">
+                    <Check size={12} /> {viewApt.outcome.replace(/_/g, ' ')}
                   </p>
                 </div>
               )}

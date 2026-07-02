@@ -5,9 +5,12 @@ import api from '@/lib/axios';
 import { Plus, X, Copy, Edit2, Trash2, Loader2 } from 'lucide-react';
 import { MeasurementProfile, MetricRow } from './customerTypes';
 import { COMMON_METRICS } from './customerHelpers';
+import MeasurementFormModal from '@/components/measurements/MeasurementFormModal';
+import { emptyForm } from '@/components/measurements/measurementHelpers';
 
 interface CustomerMeasurementsTabProps {
   readonly customerId: number;
+  readonly customerName: string;
   readonly shopId: number;
   readonly measurements: MeasurementProfile[];
   readonly onReload: () => Promise<void>;
@@ -15,6 +18,7 @@ interface CustomerMeasurementsTabProps {
 
 export default function CustomerMeasurementsTab({
   customerId,
+  customerName,
   shopId,
   measurements,
   onReload,
@@ -23,10 +27,22 @@ export default function CustomerMeasurementsTab({
   const [editingProfileId, setEditingProfileId] = useState<number | null>(null);
   const [profileName, setProfileName] = useState('');
   const [metricRows, setMetricRows] = useState<MetricRow[]>([
-    { key: 'Chest', value: '' },
-    { key: 'Waist', value: '' },
-    { key: 'Hips', value: '' },
+    { key: '', value: '' },
   ]);
+
+  // Body Measurements Modal States
+  const [isBodyModalOpen, setIsBodyModalOpen] = useState(false);
+  const [editingBodyProfileId, setEditingBodyProfileId] = useState<number | null>(null);
+  const [bodyForm, setBodyForm] = useState(emptyForm());
+  const [bodyError, setBodyError] = useState('');
+  const [isBodySubmitting, setIsBodySubmitting] = useState(false);
+
+  const isBodyMeasurementProfile = (metrics: Record<string, any>) => {
+    const standardKeys = ['bust', 'chest', 'shoulder_width', 'neck', 'sleeve_length', 'back_length', 'waist', 'hips', 'inseam', 'thigh'];
+    const keys = Object.keys(metrics || {});
+    if (keys.length === 0) return false;
+    return keys.every(k => standardKeys.includes(k.toLowerCase().replace(/\s+/g, '_')));
+  };
   const [savingMeasurement, setSavingMeasurement] = useState(false);
   const [isDeletingMeasurementId, setIsDeletingMeasurementId] = useState<number | null>(null);
   const [selectedVersionIds, setSelectedVersionIds] = useState<Record<string, number>>({});
@@ -34,12 +50,45 @@ export default function CustomerMeasurementsTab({
   const handleStartAddMeasurement = () => {
     setProfileName('');
     setMetricRows([
-      { key: 'Chest', value: '' },
-      { key: 'Waist', value: '' },
-      { key: 'Hips', value: '' },
+      { key: '', value: '' },
     ]);
     setEditingProfileId(null);
     setIsAddingProfile(true);
+  };
+
+  const handleBodySubmit = async (e: React.SyntheticEvent) => {
+    e.preventDefault();
+    setIsBodySubmitting(true);
+    setBodyError('');
+
+    // Strip empty metrics
+    const cleanMetrics: Record<string, string> = {};
+    for (const [k, v] of Object.entries(bodyForm.metrics)) {
+      if (v !== undefined && v !== null && String(v).trim() !== '') {
+        cleanMetrics[k] = String(v).trim();
+      }
+    }
+
+    const payload = {
+      customer_id: customerId,
+      profile_name: bodyForm.profile_name,
+      metrics: cleanMetrics,
+      notes: bodyForm.notes || null,
+    };
+
+    try {
+      if (editingBodyProfileId) {
+        await api.put(`/shops/${shopId}/measurements/${editingBodyProfileId}`, payload);
+      } else {
+        await api.post(`/shops/${shopId}/measurements`, payload);
+      }
+      setIsBodyModalOpen(false);
+      await onReload();
+    } catch (err: any) {
+      setBodyError(err.response?.data?.message || 'Failed to save body measurements.');
+    } finally {
+      setIsBodySubmitting(false);
+    }
   };
 
   const handleStartEditMeasurement = (m: MeasurementProfile) => {
@@ -250,12 +299,39 @@ export default function CustomerMeasurementsTab({
               <h2 className="text-base font-bold text-[#2D2A26]">Garment Fit Profile</h2>
               <p className="text-xs text-[#827A73] mt-0.5">Store different versions of body dimensions for this client.</p>
             </div>
-            <button 
-              onClick={handleStartAddMeasurement}
-              className="flex items-center gap-1.5 bg-taupe hover:bg-taupe/90 text-white px-3.5 py-2 rounded-lg font-medium text-xs transition-colors cursor-pointer"
-            >
-              <Plus size={14} /> Add Specs Profile
-            </button>
+            <div className="flex gap-2">
+              <button 
+                onClick={() => {
+                  setEditingBodyProfileId(null);
+                  setBodyForm({
+                    customer_id: customerId.toString(),
+                    profile_name: 'Body Dimensions',
+                    notes: '',
+                    metrics: {
+                      bust: '', chest: '', shoulder_width: '', neck: '',
+                      sleeve_length: '', back_length: '', waist: '', hips: '',
+                      inseam: '', thigh: ''
+                    }
+                  });
+                  setBodyError('');
+                  setIsBodyModalOpen(true);
+                }}
+                className="flex items-center gap-1.5 bg-[#2D2A26] hover:bg-black text-white px-3 py-2 rounded-lg font-semibold text-xs transition-colors cursor-pointer"
+              >
+                <Plus size={13} /> 🧍 Add Body Measurements
+              </button>
+              <button 
+                onClick={() => {
+                  setProfileName('');
+                  setMetricRows([{ key: '', value: '' }]);
+                  setEditingProfileId(null);
+                  setIsAddingProfile(true);
+                }}
+                className="flex items-center gap-1.5 bg-taupe hover:bg-taupe/90 text-white px-3.5 py-2 rounded-lg font-medium text-xs transition-colors cursor-pointer"
+              >
+                <Plus size={14} /> 🛠️ Add Custom Specs
+              </button>
+            </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -267,6 +343,7 @@ export default function CustomerMeasurementsTab({
               const selectedId = selectedVersionIds[rKey];
               const activeMeas = versions.find(v => v.id === selectedId) || versions.at(-1)!;
               const activeIndex = versions.indexOf(activeMeas);
+              const isBody = isBodyMeasurementProfile(activeMeas.metrics || {});
               
               return (
                 <div key={profileName} className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm space-y-4 hover:border-taupe/40 transition-colors relative">
@@ -274,6 +351,13 @@ export default function CustomerMeasurementsTab({
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2 flex-wrap">
                         <h3 className="font-bold text-[#2D2A26] truncate">{profileName}</h3>
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider ${
+                          isBody
+                            ? 'bg-blue-50 text-blue-700 border border-blue-200'
+                            : 'bg-taupe/10 text-taupe'
+                        }`}>
+                          {isBody ? '🧍 Body Dimensions' : '🛠️ Custom Specs'}
+                        </span>
                         <span className="text-[10px] text-[#A8A19A] whitespace-nowrap">
                           Version {activeIndex + 1} of {versions.length}
                         </span>
@@ -305,7 +389,27 @@ export default function CustomerMeasurementsTab({
                         <Copy size={13} />
                       </button>
                       <button 
-                        onClick={() => handleStartEditMeasurement(activeMeas)}
+                        onClick={() => {
+                          if (isBody) {
+                            const stringMetrics: Record<string, string> = {};
+                            if (activeMeas.metrics) {
+                              for (const [k, v] of Object.entries(activeMeas.metrics)) {
+                                stringMetrics[k] = v !== undefined && v !== null ? String(v) : '';
+                              }
+                            }
+                            setEditingBodyProfileId(activeMeas.id);
+                            setBodyError('');
+                            setBodyForm({
+                              customer_id: customerId.toString(),
+                              profile_name: activeMeas.profile_name,
+                              notes: activeMeas.notes || '',
+                              metrics: stringMetrics as any
+                            });
+                            setIsBodyModalOpen(true);
+                          } else {
+                            handleStartEditMeasurement(activeMeas);
+                          }
+                        }}
                         className="p-1 rounded text-[#827A73] hover:bg-[#FAF6F3] hover:text-[#2D2A26] border border-transparent hover:border-[#EBE6E0] transition-all cursor-pointer"
                         title="Edit measurements"
                       >
@@ -318,7 +422,7 @@ export default function CustomerMeasurementsTab({
                         title="Delete profile"
                       >
                         {isDeletingMeasurementId === activeMeas.id ? (
-                          <Loader2 size={13} className="animate-spin" />
+                           <Loader2 size={13} className="animate-spin" />
                         ) : (
                           <Trash2 size={13} />
                         )}
@@ -339,10 +443,29 @@ export default function CustomerMeasurementsTab({
             })}
             {measurements.length === 0 && (
               <div className="bg-[#FAF6F3]/50 border border-[#EBE6E0] border-dashed rounded-xl p-12 text-center text-sm text-[#A8A19A] md:col-span-2">
-                No measurements specified for this client. Create a specs profile to track sleeve, waist, and chest sizing.
+                No measurements specified for this client. Create a body measurement profile or specs checklist to track sizing.
               </div>
             )}
           </div>
+
+          <MeasurementFormModal
+            isOpen={isBodyModalOpen}
+            onClose={() => setIsBodyModalOpen(false)}
+            editingId={editingBodyProfileId}
+            form={bodyForm}
+            setForm={setForm => {
+              // React.Dispatch support
+              if (typeof setForm === 'function') {
+                setBodyForm(prev => setForm(prev));
+              } else {
+                setBodyForm(setForm);
+              }
+            }}
+            customers={[{ id: customerId, name: customerName }]}
+            error={bodyError}
+            isSubmitting={isBodySubmitting}
+            onSubmit={handleBodySubmit}
+          />
         </div>
       )}
     </div>

@@ -24,13 +24,16 @@ export interface Appointment {
   job_order_id?: number | null;
   job_order?: { id: number; order_number: string } | null;
   answers?: Record<string, string | number | boolean> | null;
+  outcome?: 'completed' | 'rescheduled' | 'no_show' | 'converted_to_job' | 'cancelled' | null;
+  priority?: 'normal' | 'urgent' | 'rush';
+  garment_category?: 'barong' | 'gown' | 'suit' | 'filipiniana' | 'uniform' | null;
 }
 
 export interface ServiceData  { id: number; name: string }
 export interface CustomerData { id: number; name: string }
 export interface BranchData   { id: number; name: string }
 export interface StaffData    { id: number; user_id: number; user?: { id: number; name: string } }
-export interface JobOrderData { id: number; title?: string; order_number?: string; status?: string; customer?: { name: string } }
+export interface JobOrderData { id: number; customer_id?: number; title?: string; order_number?: string; status?: string; customer?: { name: string } }
 
 export const TYPE_CONFIG: Record<AppointmentType, {
   label: string; icon: React.ReactNode; bg: string; border: string;

@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Home, Star, CreditCard, Receipt, MapPin } from 'lucide-react';
+import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Home, Star, CreditCard, Receipt, MapPin, Store, Eye, Sparkles } from 'lucide-react';
 import api from '@/lib/axios';
 import NotificationBell from '@/components/NotificationBell';
 import BrandLogo from '@/components/BrandLogo';
@@ -47,7 +47,7 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
           if (res.data.success) {
             const { user, shop, staff_profile } = res.data.data;
             let activeShop = shop;
-            if ((user.roles[0]?.name === 'staff' || user.roles[0]?.name === 'branch_manager') && staff_profile?.shop) {
+            if ((user?.roles?.[0]?.name === 'staff' || user?.roles?.[0]?.name === 'branch_manager') && staff_profile?.shop) {
               activeShop = staff_profile.shop;
             }
             setAuth(user, token, activeShop, staff_profile);
@@ -91,7 +91,7 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
 
   const NAV_GROUPS = [
     {
-      title: 'Command Center',
+      title: 'Main Operations',
       items: [
         { name: 'Home',          path: '/dashboard',             icon: Home },
         { name: 'Appointments',  path: '/dashboard/appointments',icon: Calendar },
@@ -111,6 +111,7 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
       items: [
         { name: 'Design Catalog',path: '/dashboard/catalog',     icon: ShoppingBag },
         { name: 'Services',      path: '/dashboard/services',    icon: Package },
+        { name: 'Specializations',path: '/dashboard/specializations',icon: Scissors },
         { name: 'Reviews',       path: '/dashboard/reviews',     icon: Star },
       ]
     },
@@ -121,14 +122,12 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
         { name: 'Insights',      path: '/dashboard/reports',     icon: LayoutDashboard },
       ]
     },
-    {
+    ...(isShopOwner ? [{
       title: 'Configuration',
       items: [
-        { name: 'Shop Settings', path: '/dashboard/settings',    icon: Settings },
-        { name: 'Billing & Plans',path: '/dashboard/billing',   icon: Receipt },
-        ...(isShopOwner ? [{ name: 'Branches', path: '/dashboard/branches', icon: Building2 }] : []),
+        { name: 'Branches', path: '/dashboard/branches', icon: Building2 },
       ]
-    }
+    }] : [])
   ];
 
   const getNavItemClass = (path: string) => {
@@ -145,7 +144,16 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
       {/* Top Navigation Bar */}
       <header className="print:hidden h-[64px] bg-white border-b border-[#EBE6E0] flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-4">
-          <BrandLogo />
+          <Link href="/dashboard" className="flex items-center">
+            <BrandLogo />
+          </Link>
+          <Link 
+            href="/dashboard/billing" 
+            className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-linear-to-r from-[#9A8073] to-[#8A7063] text-white rounded-full text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-sm"
+          >
+            <Sparkles size={10} />
+            Premium Plan Activated
+          </Link>
           {shop?.id && branches.length > 0 && (
             <div className="relative hidden md:block animate-fade-in" ref={branchRef}>
               <button 
@@ -254,14 +262,18 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
               <div className="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] py-2 z-50">
                 <div className="px-4 py-3 border-b border-[#EBE6E0] mb-2">
                   <p className="text-sm font-semibold text-[#2D2A26] truncate">{user?.name}</p>
-                  <p className="text-xs text-[#827A73] truncate">{user?.roles[0]?.name?.replace('_', ' ') || 'Shop Owner'}</p>
+                  <p className="text-xs text-[#827A73] truncate">{user?.roles?.[0]?.name?.replace('_', ' ') || 'Shop Owner'}</p>
                 </div>
                 
                 <Link href="/dashboard/profile" className="flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors" onClick={() => setIsProfileOpen(false)}>
-                  <User size={16} /> My Profile
+                  <Eye size={16} /> My Storefront
+                </Link>
+
+                <Link href="/dashboard/billing" className="flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors" onClick={() => setIsProfileOpen(false)}>
+                  <Receipt size={16} /> Billing & Plans
                 </Link>
                 <Link href="/dashboard/account-settings" className="flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors" onClick={() => setIsProfileOpen(false)}>
-                  <Settings size={16} /> Account Settings
+                  <UserCog size={16} /> Account Settings
                 </Link>
                 <div className="h-px bg-[#EBE6E0] my-1"></div>
                 <button 

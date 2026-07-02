@@ -1,14 +1,15 @@
 export interface RosterItem {
   name: string;
+  print_name?: string;
   number?: string | number;
   size: string;
-  custom_details?: string;
 }
 
 export interface Job {
   id: number;
   order_number: string;
-  order_type: string;
+  intake_channel: string;
+  fulfillment_type: string;
   status: string;
   payment_status: string;
   balance: number | string;

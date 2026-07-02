@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
 import { Loader2, AlertCircle } from 'lucide-react';
+import { useBranch } from '@/context/BranchContext';
+import { useAuthStore } from '@/store/useAuthStore';
 import {
   Appointment, CustomerData, ServiceData, BranchData, StaffData, AppointmentType,
   APPOINTMENT_TYPES, TYPE_CONFIG, TYPES_REQUIRING_SERVICE, JobOrderData
@@ -26,12 +28,15 @@ const defaultForm = {
   customer_id: '', appointment_type: 'consultation' as AppointmentType,
   service_id: '', job_order_id: '', shop_branch_id: '', scheduled_date: '', scheduled_time: '',
   duration_minutes: '60', assigned_staff_id: '', notes: '',
+  priority: 'normal', garment_category: '',
 };
 
 export default function AppointmentCreateModal({
   isOpen, onClose, editingApt, customers = [], services = [], branches = [], staff = [], jobOrders = [], todayStr, minTimeFor, onSubmit, isSubmitting, error
 }: AppointmentCreateModalProps) {
   const [formData, setFormData] = useState(defaultForm);
+  const { selectedBranchId } = useBranch();
+  const { staffProfile } = useAuthStore();
 
   useEffect(() => {
     if (editingApt) {
@@ -50,14 +55,17 @@ export default function AppointmentCreateModal({
         duration_minutes: (editingApt.duration_minutes || 60).toString(),
         assigned_staff_id: editingApt.assigned_staff_id?.toString() || '',
         notes: editingApt.notes || '',
+        priority: editingApt.priority || 'normal',
+        garment_category: editingApt.garment_category || '',
       });
     } else {
+      const defaultBranchId = selectedBranchId?.toString() || '';
       setFormData({
         ...defaultForm,
-        shop_branch_id: branches.length === 1 ? branches[0].id.toString() : ''
+        shop_branch_id: defaultBranchId || (branches.length === 1 ? branches[0].id.toString() : '')
       });
     }
-  }, [editingApt, isOpen, customers, services, branches]);
+  }, [editingApt, isOpen, customers, services, branches, selectedBranchId]);
 
   const handleSubmit = (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -71,6 +79,8 @@ export default function AppointmentCreateModal({
       notes: formData.notes || null,
       shop_branch_id: formData.shop_branch_id || null,
       assigned_staff_id: formData.assigned_staff_id || null,
+      priority: formData.priority,
+      garment_category: formData.garment_category || null,
     };
     onSubmit(payload);
   };
@@ -93,8 +103,8 @@ export default function AppointmentCreateModal({
         {/* Appointment Type */}
         <div>
           <span className="block text-sm font-medium text-[#524A44] mb-1">Appointment Type <span className="text-rose-500">*</span></span>
-          <div className="grid grid-cols-5 gap-2">
-            {APPOINTMENT_TYPES.map(t => {
+          <div className="grid grid-cols-4 gap-2">
+            {APPOINTMENT_TYPES.filter(t => t !== 'pickup').map(t => {
               const tc = TYPE_CONFIG[t];
               return (
                 <button
@@ -112,49 +122,235 @@ export default function AppointmentCreateModal({
               );
             })}
           </div>
-          {TYPES_REQUIRING_SERVICE.has(formData.appointment_type) && (
-            <p className="text-[11px] text-amber-600 mt-1.5 flex items-center gap-1">
-              <AlertCircle size={11} /> Service selection is required for {formData.appointment_type} appointments.
-            </p>
-          )}
         </div>
+        {/* CONDITIONAL BLOCK */}
 
-        {/* Service */}
+          {/* Consultation Flow */}
+          {formData.appointment_type === 'consultation' && (
+            <div>
+              <label htmlFor="service_id" className="block text-sm font-medium text-[#524A44] mb-1">
+                Service (Optional)
+              </label>
+              <select
+                id="service_id"
+                value={formData.service_id}
+                onChange={e => setFormData({ ...formData, service_id: e.target.value })}
+                className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
+                <option value="">No specific service (General Consultation)</option>
+                {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+            </div>
+          )}
+
+          {/* Measurement Flow */}
+          {formData.appointment_type === 'measurement' && (
+            <div>
+              <label htmlFor="service_id" className="block text-sm font-medium text-[#524A44] mb-1">
+                Service <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="service_id"
+                required
+                value={formData.service_id}
+                onChange={e => setFormData({ ...formData, service_id: e.target.value })}
+                className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
+                <option value="" disabled>Select target service (e.g. Suit, Gown, Barong)...</option>
+                {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+              </select>
+              <p className="text-[11px] text-[#827A73] mt-1">
+                💡 Required to determine the correct body measurement template.
+              </p>
+            </div>
+          )}
+
+          {/* Fitting Flow */}
+          {formData.appointment_type === 'fitting' && (
+            <div>
+              <label htmlFor="job_order_id" className="block text-sm font-medium text-[#524A44] mb-1">
+                Link to Job Order <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="job_order_id"
+                required
+                disabled={!formData.customer_id}
+                value={formData.job_order_id}
+                onChange={e => setFormData({ ...formData, job_order_id: e.target.value })}
+                className="w-full bg-[#FAF6F3] disabled:opacity-60 disabled:cursor-not-allowed border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
+                {!formData.customer_id ? (
+                  <option value="">Select a customer first...</option>
+                ) : (
+                  <>
+                    <option value="" disabled>Choose active job order...</option>
+                    {jobOrders
+                      .filter(job => {
+                        const targetCustomer = customers.find(c => c.id.toString() === formData.customer_id);
+                        if (!targetCustomer) return false;
+
+                        if (job.customer_id !== undefined && job.customer_id !== null) {
+                          if (job.customer_id !== targetCustomer.id) return false;
+                        } else {
+                          if (job.customer?.name !== targetCustomer.name) return false;
+                        }
+                        
+                        const status = job.status || '';
+                        if (status === 'cancelled' || status === 'completed') return false;
+                        return true;
+                      })
+                      .map(j => (
+                        <option key={j.id} value={j.id}>
+                          {j.order_number || `Order #${j.id}`} (Status: {(j.status || '').toUpperCase()})
+                        </option>
+                      ))}
+                  </>
+                )}
+              </select>
+              <p className="text-[11px] text-[#827A73] mt-1.5 font-medium">
+                💡 Fittings must link to an active production job order. Completed or cancelled orders are hidden.
+              </p>
+
+              {/* Auto Suggestions Chips */}
+              {(() => {
+                const targetCustomer = customers.find(c => c.id.toString() === formData.customer_id);
+                if (!targetCustomer) return null;
+
+                const activeJobs = jobOrders.filter(job => {
+                  if (job.customer_id !== undefined && job.customer_id !== null) {
+                    if (job.customer_id !== targetCustomer.id) return false;
+                  } else {
+                    if (job.customer?.name !== targetCustomer.name) return false;
+                  }
+                  const status = job.status || '';
+                  return status !== 'cancelled' && status !== 'completed';
+                });
+
+                if (activeJobs.length === 0) return null;
+
+                return (
+                  <div className="mt-3 space-y-1.5 bg-[#FAF6F3]/50 border border-[#EBE6E0]/60 p-2.5 rounded-lg">
+                    <span className="text-[10px] uppercase tracking-wider font-bold text-[#827A73] block">
+                      ⭐ Auto-suggested Active Jobs:
+                    </span>
+                    <div className="flex flex-wrap gap-1.5">
+                      {activeJobs.map(job => (
+                        <button
+                          type="button"
+                          key={job.id}
+                          onClick={() => setFormData({ ...formData, job_order_id: job.id.toString() })}
+                          className={`px-2.5 py-1 text-xs rounded-lg border transition-all cursor-pointer text-left ${
+                            formData.job_order_id === job.id.toString()
+                              ? 'bg-taupe text-white border-taupe font-medium'
+                              : 'bg-white hover:bg-[#FAF6F3] border-[#EBE6E0] text-[#524A44]'
+                          }`}
+                        >
+                          {job.order_number || `Order #${job.id}`}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          )}
+
+          {/* Alteration Flow */}
+          {formData.appointment_type === 'alteration' && (
+            <div className="space-y-3">
+              <div>
+                <label htmlFor="job_order_id" className="block text-sm font-medium text-[#524A44] mb-1">
+                  Link to Job Order (Optional)
+                </label>
+                <select
+                  id="job_order_id"
+                  disabled={!formData.customer_id}
+                  value={formData.job_order_id}
+                  onChange={e => setFormData({ ...formData, job_order_id: e.target.value })}
+                  className="w-full bg-[#FAF6F3] disabled:opacity-60 disabled:cursor-not-allowed border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
+                  {!formData.customer_id ? (
+                    <option value="">Select a customer first...</option>
+                  ) : (
+                    <>
+                      <option value="">No specific job order (Standalone Alteration)</option>
+                      {jobOrders
+                        .filter(job => {
+                          const targetCustomer = customers.find(c => c.id.toString() === formData.customer_id);
+                          if (!targetCustomer) return false;
+
+                          if (job.customer_id !== undefined && job.customer_id !== null) {
+                            if (job.customer_id !== targetCustomer.id) return false;
+                          } else {
+                            if (job.customer?.name !== targetCustomer.name) return false;
+                          }
+                          
+                          return job.status !== 'cancelled';
+                        })
+                        .map(j => (
+                          <option key={j.id} value={j.id}>
+                            {j.order_number || `Order #${j.id}`} (Status: {(j.status || '').toUpperCase()})
+                          </option>
+                        ))}
+                    </>
+                  )}
+                </select>
+              </div>
+              <div>
+                <label htmlFor="service_id" className="block text-sm font-medium text-[#524A44] mb-1">
+                  Service {!formData.job_order_id && <span className="text-rose-500">*</span>}
+                </label>
+                <select
+                  id="service_id"
+                  value={formData.service_id}
+                  required={!formData.job_order_id}
+                  onChange={e => setFormData({ ...formData, service_id: e.target.value })}
+                  className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
+                  <option value="">Select service to alter...</option>
+                  {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+        {/* Garment Category Selector */}
         <div>
-          <label htmlFor="service_id" className="block text-sm font-medium text-[#524A44] mb-1">
-            Service {TYPES_REQUIRING_SERVICE.has(formData.appointment_type) && !formData.job_order_id && <span className="text-rose-500">*</span>}
+          <label htmlFor="garment_category" className="block text-sm font-medium text-[#524A44] mb-1">
+            Garment Category (Optional)
           </label>
           <select
-            id="service_id"
-            value={formData.service_id}
-            required={TYPES_REQUIRING_SERVICE.has(formData.appointment_type) && !formData.job_order_id}
-            onChange={e => setFormData({ ...formData, service_id: e.target.value })}
+            id="garment_category"
+            value={formData.garment_category}
+            onChange={e => setFormData({ ...formData, garment_category: e.target.value })}
             className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
-            <option value="">No specific service</option>
-            {services.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
+            <option value="">No specific category / Mixed</option>
+            <option value="barong">Barong Tagalog</option>
+            <option value="gown">Gown / Bridal / Debut</option>
+            <option value="suit">Bespoke Suit / Tuxedo</option>
+            <option value="filipiniana">Filipiniana</option>
+            <option value="uniform">Uniform / Sublimation Jersey</option>
           </select>
         </div>
 
-        {/* Linked Job Order */}
-        {(formData.appointment_type === 'fitting' || formData.appointment_type === 'alteration' || formData.appointment_type === 'pickup') && (
-          <div>
-            <label htmlFor="job_order_id" className="block text-sm font-medium text-[#524A44] mb-1">
-              Link to Job Order {formData.appointment_type === 'fitting' && <span className="text-rose-500">*</span>}
-            </label>
-            <select
-              id="job_order_id"
-              value={formData.job_order_id}
-              required={formData.appointment_type === 'fitting'}
-              onChange={e => setFormData({ ...formData, job_order_id: e.target.value })}
-              className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
-              <option value="">No specific job order</option>
-              {jobOrders
-                .filter(job => !formData.customer_id || job.customer?.name === customers.find(c => c.id.toString() === formData.customer_id)?.name)
-                .map(j => <option key={j.id} value={j.id}>{j.order_number || `Order #${j.id}`} - {j.status}</option>)}
-            </select>
-            <p className="text-[11px] text-[#A8A19A] mt-1">Select a customer first to see their active job orders.</p>
+        {/* Priority Selector */}
+        <div>
+          <span className="block text-sm font-medium text-[#524A44] mb-1">Priority</span>
+          <div className="grid grid-cols-3 gap-2">
+            {[
+              { id: 'normal', label: 'Normal', activeBg: 'bg-zinc-100 border-[#2D2A26] text-[#2D2A26]' },
+              { id: 'urgent', label: 'Urgent', activeBg: 'bg-amber-50 border-amber-500 text-amber-900 ring-2 ring-amber-500/20' },
+              { id: 'rush', label: 'Rush', activeBg: 'bg-rose-50 border-[#B26959] text-[#B26959] ring-2 ring-[#B26959]/20' }
+            ].map(p => (
+              <button
+                type="button" key={p.id}
+                onClick={() => setFormData({ ...formData, priority: p.id })}
+                className={`py-2 px-3 rounded-lg border text-xs font-semibold text-center transition-all cursor-pointer ${
+                  formData.priority === p.id
+                    ? p.activeBg
+                    : 'bg-white border-[#EBE6E0] text-[#524A44] hover:border-[#9A8073]/40'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
           </div>
-        )}
+        </div>
 
         {/* Date & Time */}
         <div className="grid grid-cols-2 gap-4">

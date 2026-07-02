@@ -300,12 +300,20 @@ export default function AppointmentCalendarView({
                     <div>
                       <div className="flex items-start justify-between gap-1">
                         <div className="min-w-0">
-                          <p className={`text-xs font-bold truncate ${tc.text} ${isClosed ? 'line-through opacity-60' : ''}`}>
-                            {event.customer?.name}
+                          <p className={`text-xs font-bold truncate ${tc.text} ${isClosed ? 'line-through opacity-60' : ''} flex items-center gap-1`}>
+                            <span>{event.customer?.name}</span>
+                            {event.priority && event.priority !== 'normal' && (
+                              <span className={`px-1 rounded-[3px] text-[8px] font-black uppercase tracking-wide border leading-none shrink-0 ${
+                                event.priority === 'rush' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                              }`}>
+                                {event.priority}
+                              </span>
+                            )}
                           </p>
                           <p className="text-[10px] text-[#827A73] truncate">
                             {TYPE_CONFIG[event.appointment_type].label}
                             {event.service ? ` · ${event.service.name}` : ''}
+                            {event.garment_category ? ` [${event.garment_category.toUpperCase()}]` : ''}
                             {event.assigned_staff ? ` · ${event.assigned_staff.name}` : ''}
                           </p>
                         </div>

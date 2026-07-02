@@ -15,6 +15,7 @@ export interface MeasurementProfile {
   profile_name: string;
   metrics: Record<string, number | string>;
   customer: { id: number; name: string };
+  notes?: string | null;
   created_at?: string;
   updated_at?: string;
 }
@@ -22,7 +23,8 @@ export interface MeasurementProfile {
 export interface JobOrder {
   id: number;
   order_number: string;
-  order_type: 'walk_in' | 'online';
+  intake_channel: 'walk_in' | 'online';
+  fulfillment_type: 'pickup' | 'shipping';
   status: string;
   payment_status: string;
   total_amount: string | number;

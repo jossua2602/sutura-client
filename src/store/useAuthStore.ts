@@ -1,9 +1,8 @@
 import { create } from 'zustand';
 
-export interface UserSocialLinks {
-  instagram?: string;
-  youtube?: string;
-  website?: string;
+export interface UserSocialLink {
+  label: string;
+  url: string;
 }
 
 export interface UserExperience {
@@ -28,7 +27,7 @@ export interface User {
   roles: { id: number; name: string }[];
   bio?: string;
   skills?: string[];
-  social_links?: UserSocialLinks;
+  social_links?: UserSocialLink[];
   experience?: UserExperience[];
   education?: UserEducation[];
   creations_gallery?: string[];
@@ -40,8 +39,41 @@ export interface Shop {
   slug: string;
   status: string;
   business_type?: string;
+  description?: string;
+  address?: string;
+  landmark?: string;
   city?: string;
   province?: string;
+  phone?: string;
+  email?: string;
+  logo_path?: string;
+  operating_hours?: Record<string, unknown>;
+  active_special_hours?: {
+    id: number;
+    title: string;
+    start_date: string;
+    end_date: string;
+    is_closed: boolean;
+    special_open_time: string | null;
+    special_close_time: string | null;
+    announcement_message: string | null;
+  } | null;
+  special_hours?: Array<{
+    id: number;
+    title: string;
+    start_date: string;
+    end_date: string;
+    is_closed: boolean;
+    special_open_time: string | null;
+    special_close_time: string | null;
+    announcement_message: string | null;
+  }>;
+  social_links?: {
+    facebook?: string;
+    instagram?: string;
+    tiktok?: string;
+    website?: string;
+  };
 }
 
 export interface StaffProfile {

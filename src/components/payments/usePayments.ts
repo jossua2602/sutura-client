@@ -33,7 +33,7 @@ export interface JobBalanceItem {
 export interface CatalogOrderItem {
   id: number;
   customer: { id: number; name: string } | null;
-  catalog_item: { title: string } | null;
+  catalog_item: { name: string } | null;
   total_amount: number;
   payment_status: string;
   payment_method: string;
@@ -59,7 +59,7 @@ interface OrderReceiptSource {
   payment_method?: string;
   payment_status: string;
   customer?: { name?: string; email?: string } | null;
-  catalog_item?: { title?: string } | null;
+  catalog_item?: { name?: string } | null;
   payment_reference?: string;
   payment_receipt_path?: string;
   total_amount: string | number;
@@ -139,7 +139,7 @@ export function usePayments() {
               id: ord.id, type: 'catalog_order',
               customer_name: ord.customer?.name || 'Guest',
               customer_email: ord.customer?.email || '',
-              itemName: ord.catalog_item?.title || 'Catalog Purchase',
+              itemName: ord.catalog_item?.name || 'Catalog Purchase',
               payment_method: ord.payment_method,
               payment_reference: ord.payment_reference || 'N/A',
               payment_receipt_path: ord.payment_receipt_path || '',

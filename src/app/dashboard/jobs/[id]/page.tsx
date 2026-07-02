@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowLeft, Loader2, Save, Trash2, ShoppingBag, Store, Printer } from 'lucide-react';
+import React from 'react';
+import { ArrowLeft, Loader2, Save, Trash2, ShoppingBag, Store, Printer, Truck } from 'lucide-react';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import JobProductionTimeline from '@/components/jobs/JobProductionTimeline';
@@ -10,7 +11,10 @@ import JobFinancialsCard from '@/components/jobs/JobFinancialsCard';
 import { useJobDetail } from '@/components/jobs/useJobDetail';
 import { RosterItem } from '@/components/jobs/jobTypes';
 
-export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ id: string }> }>) {
+export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
+  const unwrappedParams = React.use(params);
+  const id = unwrappedParams.id;
+
   const {
     shop,
     router,
@@ -46,7 +50,7 @@ export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ 
     handleUpdateStaff,
     handleChargePayment,
     handleDelete,
-  } = useJobDetail(params.id);
+  } = useJobDetail(id);
 
   if (loading) {
     return (
@@ -76,13 +80,22 @@ export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ 
             <div>
               <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight flex items-center gap-2">
                 {job.order_number}
-                {job.order_type === 'online' ? (
+                {job.intake_channel === 'online' ? (
                   <span className="inline-flex items-center gap-1 text-xs font-semibold bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full">
                     <ShoppingBag size={11} /> Online
                   </span>
                 ) : (
                   <span className="inline-flex items-center gap-1 text-xs font-semibold bg-[#F0EAE3] text-[#827A73] px-2 py-0.5 rounded-full">
                     <Store size={11} /> Walk-in
+                  </span>
+                )}
+                {job.fulfillment_type === 'shipping' ? (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold bg-indigo-50 text-indigo-700 px-2 py-0.5 rounded-full border border-indigo-200">
+                    <Truck size={11} /> Shipping
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1 text-xs font-semibold bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full border border-emerald-200">
+                    <Store size={11} /> Pickup
                   </span>
                 )}
                 {job.is_rush && (
@@ -164,15 +177,15 @@ export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ 
             </div>
 
             {/* Custom Specifications Card */}
-            {job.custom_order_data && Object.keys(job.custom_order_data).some(k => k !== 'roster') ? (
+            {job.custom_order_data && Object.keys(job.custom_order_data).some(k => k !== 'roster' && k !== 'team_roster') ? (
               <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
                 <h2 className="text-lg font-medium text-[#2D2A26] mb-4">📋 Custom Specifications</h2>
                 <div className="grid grid-cols-2 gap-4 text-sm">
                   {Object.entries(job.custom_order_data)
-                    .filter(([label]) => label !== 'roster')
+                    .filter(([label]) => label !== 'roster' && label !== 'team_roster')
                     .map(([label, value]) => (
                       <div key={label}>
-                        <span className="text-[#A8A19A] block mb-1">{label}</span>
+                        <span className="text-[#A8A19A] block mb-1 capitalize">{label.replaceAll('_', ' ')}</span>
                         <span className="text-[#524A44] font-medium">{typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : '—'}</span>
                       </div>
                     ))}
@@ -182,8 +195,8 @@ export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ 
 
             {/* Team Roster / Size Sheet Table Card */}
             {(() => {
-              const roster = job.custom_order_data?.roster as RosterItem[] | undefined;
-              if (!roster || roster.length === 0) return null;
+              const teamRoster = (job.custom_order_data?.team_roster || job.custom_order_data?.roster) as RosterItem[] | undefined;
+              if (!teamRoster || teamRoster.length === 0) return null;
               return (
                 <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
                   <h2 className="text-lg font-medium text-[#2D2A26] mb-4">👕 Team Roster & Size Sheet</h2>
@@ -191,26 +204,30 @@ export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ 
                     <table className="w-full text-left text-xs divide-y divide-zinc-200">
                       <thead>
                         <tr>
+                          <th className="pb-2 font-semibold text-zinc-600 w-12">#</th>
                           <th className="pb-2 font-semibold text-zinc-600">Player/Employee Name</th>
+                          <th className="pb-2 font-semibold text-zinc-600">Print Name / Nickname</th>
                           <th className="pb-2 font-semibold text-zinc-600 w-24">Number</th>
                           <th className="pb-2 font-semibold text-zinc-600 w-24">Size</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-zinc-150">
-                        {roster.map((row, idx: number) => (
-                          <tr key={`${row.name}-${idx}`}>
-                            <td className="py-2.5 font-medium text-zinc-800">{row.name}</td>
+                        {teamRoster.map((row, idx: number) => (
+                          <tr key={`${row.name}-${row.number}-${idx}`}>
+                            <td className="py-2.5 text-zinc-500 font-mono">{idx + 1}</td>
+                            <td className="py-2.5 font-medium text-zinc-800">{row.name || '—'}</td>
+                            <td className="py-2.5 text-zinc-700">{row.print_name || '—'}</td>
                             <td className="py-2.5 font-mono text-zinc-600 font-bold">{row.number || '—'}</td>
                             <td className="py-2.5 text-zinc-700">
                               <span className="px-2 py-0.5 bg-zinc-100 rounded text-[10px] font-bold">{row.size}</span>
-                              {row.size === 'Custom' && row.custom_details && (
-                                <span className="ml-2 text-zinc-500 font-normal italic">({row.custom_details})</span>
-                              )}
                             </td>
                           </tr>
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                  <div className="text-right text-xs text-[#827A73] font-medium mt-4">
+                    Total Items: {teamRoster.length}
                   </div>
                 </div>
               );
@@ -261,20 +278,18 @@ export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ 
               fulfillmentType={fulfillmentType}
             />
 
-            {/* Fulfillment Details Card (Online orders only) */}
-            {job.order_type === 'online' && (
-              <JobFulfillmentCard
-                fulfillmentType={fulfillmentType}
-                setFulfillmentType={setFulfillmentType}
-                fulfillmentProvider={fulfillmentProvider}
-                setFulfillmentProvider={setFulfillmentProvider}
-                courierTracking={courierTracking}
-                setCourierTracking={setCourierTracking}
-                shippingAddress={shippingAddress}
-                setShippingAddress={setShippingAddress}
-                supportedCouriers={supportedCouriers}
-              />
-            )}
+            {/* Fulfillment Details Card */}
+            <JobFulfillmentCard
+              fulfillmentType={fulfillmentType}
+              setFulfillmentType={setFulfillmentType}
+              fulfillmentProvider={fulfillmentProvider}
+              setFulfillmentProvider={setFulfillmentProvider}
+              courierTracking={courierTracking}
+              setCourierTracking={setCourierTracking}
+              shippingAddress={shippingAddress}
+              setShippingAddress={setShippingAddress}
+              supportedCouriers={supportedCouriers}
+            />
 
             {/* Multi-Stage Staff Assignment Card */}
             <JobStaffAssignmentCard
@@ -342,14 +357,15 @@ export default function JobDetailPage({ params }: Readonly<{ params: Readonly<{ 
           <div className="space-y-2">
             <h2 className="font-bold uppercase tracking-widest text-xs border-b border-black pb-1 mb-3">Customer Information</h2>
             <p className="text-base"><strong>Name:</strong> {job.customer?.name || 'Unspecified'}</p>
-            {job.order_type === 'online' && job.shipping_address && (
+            {job.fulfillment_type === 'shipping' && job.shipping_address && (
               <p><strong>Address:</strong> {job.shipping_address}</p>
             )}
           </div>
           <div className="space-y-2">
             <h2 className="font-bold uppercase tracking-widest text-xs border-b border-black pb-1 mb-3">Job Details</h2>
             <p className="text-base"><strong>Service:</strong> {job.service?.name}</p>
-            <p className="text-base"><strong>Type:</strong> {job.order_type.replace('_', ' ').toUpperCase()}</p>
+            <p className="text-base"><strong>Intake Channel:</strong> {job.intake_channel.replace('_', ' ').toUpperCase()}</p>
+            <p className="text-base"><strong>Fulfillment Type:</strong> {job.fulfillment_type.toUpperCase()}</p>
             <p className="text-base"><strong>Status:</strong> {job.status.replaceAll('_', ' ').toUpperCase()}</p>
             {job.due_date && <p className="text-base"><strong>Due Date:</strong> {new Date(job.due_date).toLocaleDateString()}</p>}
           </div>

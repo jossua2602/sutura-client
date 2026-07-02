@@ -126,7 +126,7 @@ export function useJobs() {
   }
 
   const filteredJobs = jobs.filter(j => {
-    const matchType = tab === 'all' || j.order_type === tab;
+    const matchType = tab === 'all' || j.intake_channel === tab;
     const matchSearch = !search
       || j.order_number?.toLowerCase().includes(search.toLowerCase())
       || j.customer?.name?.toLowerCase().includes(search.toLowerCase());
@@ -138,8 +138,8 @@ export function useJobs() {
     return acc;
   }, {} as Record<string, Job[]>);
 
-  const walkInCount = jobs.filter(j => j.order_type === 'walk_in').length;
-  const onlineCount = jobs.filter(j => j.order_type === 'online').length;
+  const walkInCount = jobs.filter(j => j.intake_channel === 'walk_in').length;
+  const onlineCount = jobs.filter(j => j.intake_channel === 'online').length;
   const pendingReviewCount = jobs.filter(j => j.status === 'pending').length;
 
   return {

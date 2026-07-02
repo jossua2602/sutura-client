@@ -5,9 +5,10 @@ import api from '@/lib/axios';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useAuthStore } from '@/store/useAuthStore';
-import { MapPin, Star, Phone, Mail, Loader2, Clock, ExternalLink, Tag, Image as ImageIcon } from 'lucide-react';
+import { MapPin, Star, Phone, Mail, Loader2, Clock, ExternalLink, Tag, Image as ImageIcon, AlertCircle, ShoppingBag, Map, Building2, Megaphone, Calendar } from 'lucide-react';
 import { useSearchParams } from 'next/navigation';
 import Modal from '@/components/Modal';
+import ServiceDetailModal from '@/components/profile/ServiceDetailModal';
 
 interface ShopBranch {
   id: number;
@@ -29,6 +30,13 @@ interface PublicService {
   estimated_days: number;
   is_active: boolean;
   image_url?: string | null;
+  custom_fields?: {
+    name: string;
+    label: string;
+    type: 'short_text' | 'number' | 'dropdown' | 'single_choice' | 'multi_select';
+    required?: boolean;
+    options?: string[];
+  }[];
 }
 
 interface ShopProfile {
@@ -56,6 +64,27 @@ interface ShopProfile {
     email: string;
     profile_picture?: string | null;
   };
+  active_special_hours?: {
+    id: number;
+    title: string;
+    start_date: string;
+    end_date: string;
+    is_closed: boolean;
+    special_open_time: string | null;
+    special_close_time: string | null;
+    announcement_message: string | null;
+  } | null;
+  operating_hours?: Record<string, { is_open: boolean; open: string; close: string }>;
+  special_hours?: Array<{
+    id: number;
+    title: string;
+    start_date: string;
+    end_date: string;
+    is_closed: boolean;
+    special_open_time: string | null;
+    special_close_time: string | null;
+    announcement_message: string | null;
+  }>;
 }
 
 interface PublicShopProfilePageProps {
@@ -78,6 +107,22 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
   const [ratingValue, setRatingValue] = useState(5);
   const [ratingComment, setRatingComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedService, setSelectedService] = useState<PublicService | null>(null);
+  const [activeTab, setActiveTab] = useState<'services' | 'hours' | 'locations'>('services');
+
+  const getMessengerUrl = (facebookUrl?: string) => {
+    if (!facebookUrl) return 'https://m.me/suturatailoring';
+    try {
+      const url = new URL(facebookUrl);
+      const pathname = url.pathname.replace(/^\/|\/$/g, '');
+      if (pathname && !pathname.includes('/') && pathname !== 'profile.php') {
+        return `https://m.me/${pathname}`;
+      }
+    } catch {
+      // Ignore URL parse error
+    }
+    return 'https://m.me/suturatailoring';
+  };
 
   const activeBranch = shop?.branches?.find(b => b.id.toString() === selectedBranchId);
 
@@ -161,12 +206,30 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
             <Link href={`/shop/${params.shop_id}/catalog`} className="text-[#827A73] hover:text-black font-medium text-sm flex items-center transition-colors">
               View Catalog
             </Link>
-            <Link href={`/shop/${params.shop_id}/book`} className="bg-black text-[#2D2A26] hover:bg-[#F0EAE3] px-6 py-2 rounded-full font-medium transition-colors text-sm">
-              Book Appointment
-            </Link>
+            {shop.active_special_hours?.is_closed ? (
+              <span className="bg-[#B26959]/10 text-[#B26959] border border-[#B26959]/20 px-4 py-2 rounded-full font-semibold text-xs uppercase tracking-wider flex items-center justify-center">
+                Closed
+              </span>
+            ) : (
+              <Link href={`/shop/${params.shop_id}/book`} className="bg-black hover:bg-zinc-800 text-white px-6 py-2 rounded-full font-medium transition-colors text-sm">
+                Book Appointment
+              </Link>
+            )}
           </div>
         </div>
       </nav>
+
+      {shop.active_special_hours?.announcement_message && (
+        <div className="bg-amber-50 border-b border-amber-200 text-amber-900 py-3.5 px-6 animate-in fade-in slide-in-from-top-2 duration-200">
+          <div className="max-w-5xl mx-auto flex items-center gap-3">
+            <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+            <div className="text-sm font-medium">
+              <span className="font-bold mr-1">{shop.active_special_hours.title}:</span>
+              {shop.active_special_hours.announcement_message}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Hero Profile Section */}
       <div className="max-w-5xl mx-auto px-6 py-16 md:py-24 grid grid-cols-1 md:grid-cols-3 gap-12">
@@ -256,6 +319,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
             </div>
           )}
 
+
           {/* Shop Owner Info */}
           {shop.owner && (
             <div className="mt-8 border-t border-zinc-200 pt-6">
@@ -263,6 +327,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
               <div className="flex items-center gap-3 bg-[#FAF6F3] border border-[#EBE6E0] rounded-2xl p-4">
                 <div className="w-12 h-12 rounded-full overflow-hidden bg-[#9A8073] flex items-center justify-center text-white font-semibold text-lg shrink-0">
                   {shop.owner.profile_picture ? (
+                    /* eslint-disable-next-line @next/next/no-img-element */
                     <img src={shop.owner.profile_picture} alt={shop.owner.name} className="w-full h-full object-cover" />
                   ) : (
                     shop.owner.name.charAt(0)
@@ -292,10 +357,18 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
               <span className="text-sm font-medium">{shop.reviews_count} {shop.reviews_count === 1 ? 'Review' : 'Reviews'}</span>
               <button 
                 onClick={() => setIsRatingModalOpen(true)}
-                className="ml-2 text-xs bg-white hover:bg-[#F0EAE3] text-yellow-700 px-3 py-1 rounded-full font-medium transition-colors border border-yellow-200"
+                className="ml-2 text-xs bg-white hover:bg-[#F0EAE3] text-yellow-700 px-3 py-1 rounded-full font-medium transition-colors border border-yellow-200 cursor-pointer"
               >
                 Rate Shop
               </button>
+              <a
+                href={getMessengerUrl(shop.social_links?.facebook)}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="ml-2 text-xs bg-[#2D2A26] hover:bg-[#9A8073] text-white px-3.5 py-1.5 rounded-full font-medium transition-colors border border-transparent flex items-center gap-1.5 shadow-xs"
+              >
+                💬 Chat Shop
+              </a>
             </div>
 
             <p className="text-lg text-[#827A73] leading-relaxed font-serif">
@@ -309,166 +382,329 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
               <h3 className="font-semibold text-lg text-zinc-900 mb-2 group-hover:text-[#886E62] transition-colors">Catalog Showcase &rarr;</h3>
               <p className="text-sm text-[#A8A19A]">Explore our expertly curated collection of premium garments.</p>
             </Link>
-            <Link href={`/shop/${params.shop_id}/book`} className="group p-6 bg-white shadow-sm text-[#2D2A26] rounded-2xl hover:bg-[#F0EAE3] hover:shadow-lg transition-all border border-[#EBE6E0]">
-              <h3 className="font-semibold text-lg mb-2 text-indigo-300">Book Appointment &rarr;</h3>
-              <p className="text-sm text-[#827A73]">Schedule a bespoke fitting or consultation session.</p>
-            </Link>
+            {shop.active_special_hours?.is_closed ? (
+              <div className="group p-6 bg-[#B26959]/5 border border-[#B26959]/20 rounded-2xl cursor-not-allowed">
+                <h3 className="font-semibold text-lg mb-2 text-[#B26959]">Temporarily Closed</h3>
+                <p className="text-sm text-[#B26959]/80">Online booking is temporarily disabled. Check announcement banner for details.</p>
+              </div>
+            ) : (
+              <Link href={`/shop/${params.shop_id}/book`} className="group p-6 bg-white shadow-sm text-[#2D2A26] rounded-2xl hover:bg-[#F0EAE3] hover:shadow-lg transition-all border border-[#EBE6E0]">
+                <h3 className="font-semibold text-lg mb-2 text-indigo-300">Book Appointment &rarr;</h3>
+                <p className="text-sm text-[#827A73]">Schedule a bespoke fitting or consultation session.</p>
+              </Link>
+            )}
           </div>
         </div>
       </div>
 
-      {/* ── Services Section ─────────────────────────────────── */}
-      {services.length > 0 && (
-        <div className="bg-[#FAF6F3] py-16 border-t border-zinc-200">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="mb-10">
-              <h2 className="text-2xl font-serif font-bold text-zinc-900">Our Services</h2>
-              <p className="text-[#827A73] text-sm mt-1">Browse our tailoring offerings and estimated turnaround times.</p>
-            </div>
+      {/* ── Tabs Section ─────────────────────────────────── */}
+      <div className="border-t border-zinc-200 bg-white sticky top-16 z-40">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="flex gap-8 overflow-x-auto hide-scrollbar">
+            <button
+              onClick={() => setActiveTab('services')}
+              className={`flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'services'
+                  ? 'border-[#2D2A26] text-[#2D2A26]'
+                  : 'border-transparent text-[#827A73] hover:text-[#524A44]'
+              }`}
+            >
+              <ShoppingBag size={16} />
+              Services & Pricing
+            </button>
+            <button
+              onClick={() => setActiveTab('hours')}
+              className={`flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                activeTab === 'hours'
+                  ? 'border-[#2D2A26] text-[#2D2A26]'
+                  : 'border-transparent text-[#827A73] hover:text-[#524A44]'
+              }`}
+            >
+              <Clock size={16} />
+              Store Hours & Announcements
+            </button>
+            {shop.branches && shop.branches.length > 0 && (
+              <button
+                onClick={() => setActiveTab('locations')}
+                className={`flex items-center gap-2 py-4 text-sm font-medium border-b-2 transition-colors whitespace-nowrap ${
+                  activeTab === 'locations'
+                    ? 'border-[#2D2A26] text-[#2D2A26]'
+                    : 'border-transparent text-[#827A73] hover:text-[#524A44]'
+                }`}
+              >
+                <Map size={16} />
+                Locations
+              </button>
+            )}
+          </div>
+        </div>
+      </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-5">
-              {services.map(service => (
-                <div
-                  key={service.id}
-                  className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm hover:border-[#9A8073]/40 hover:shadow-md transition-all duration-200 group flex flex-col"
-                >
-                  {/* Image */}
-                  <div className="h-40 bg-[#F0EAE3] border-b border-[#EBE6E0] overflow-hidden shrink-0">
-                    {service.image_url ? (
-                      <img
-                        src={service.image_url}
-                        alt={service.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                      />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#C5BDBA]">
-                        <ImageIcon size={28} />
-                        <span className="text-[11px]">No image</span>
+      <div className="bg-[#FAF6F3] min-h-[400px] py-12">
+        <div className="max-w-5xl mx-auto px-6">
+          
+          {/* TAB: SERVICES */}
+          {activeTab === 'services' && (
+            <div>
+              <div className="mb-8 flex items-center justify-between">
+                <div>
+                  <h2 className="text-2xl font-serif font-bold text-zinc-900">Our Services</h2>
+                  <p className="text-[#827A73] text-sm mt-1">Browse our tailoring offerings and estimated turnaround times.</p>
+                </div>
+                {services.length > 0 && (
+                  <Link href={`/shop/${params.shop_id}/catalog`} className="text-sm font-semibold text-[#9A8073] hover:underline flex items-center gap-1">
+                    View Catalog &rarr;
+                  </Link>
+                )}
+              </div>
+
+              {services.length === 0 ? (
+                <div className="text-center py-16 bg-white rounded-2xl border border-zinc-200">
+                  <p className="text-[#827A73]">No services listed yet.</p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-5">
+                  {services.map(service => (
+                    <div
+                      key={service.id}
+                      onClick={() => setSelectedService(service)}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') setSelectedService(service); }}
+                      role="button"
+                      tabIndex={0}
+                      className="bg-white border border-[#EBE6E0] rounded-2xl overflow-hidden shadow-sm hover:border-[#9A8073]/40 hover:shadow-md transition-all duration-200 group flex flex-col cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#9A8073]"
+                    >
+                      {/* Image */}
+                      <div className="h-40 bg-[#F0EAE3] border-b border-[#EBE6E0] overflow-hidden shrink-0">
+                        {service.image_url ? (
+                          /* eslint-disable-next-line @next/next/no-img-element */
+                          <img
+                            src={service.image_url}
+                            alt={service.name}
+                            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                          />
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-[#C5BDBA]">
+                            <ImageIcon size={28} />
+                            <span className="text-[11px]">No image</span>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
 
-                  {/* Card body */}
-                  <div className="p-4 space-y-3 flex flex-col flex-1">
-                    <div>
-                      <h3 className="font-semibold text-[#2D2A26] text-sm leading-tight line-clamp-1">{service.name}</h3>
-                      {service.category && (
-                        <div className="flex items-center gap-1 mt-1">
-                          <Tag size={10} className="text-[#A8A19A]" />
-                          <span className="text-[11px] text-[#A8A19A] truncate">{service.category}</span>
+                      {/* Card body */}
+                      <div className="p-4 space-y-3 flex flex-col flex-1">
+                        <div>
+                          <h3 className="font-semibold text-[#2D2A26] text-sm leading-tight line-clamp-1">{service.name}</h3>
+                          {service.category && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <Tag size={10} className="text-[#A8A19A]" />
+                              <span className="text-[11px] text-[#A8A19A] truncate">{service.category}</span>
+                            </div>
+                          )}
                         </div>
-                      )}
-                    </div>
 
-                    {service.description && (
-                      <p className="text-[11px] text-[#827A73] line-clamp-2 leading-relaxed">{service.description}</p>
-                    )}
+                        {service.description && (
+                          <p className="text-[11px] text-[#827A73] line-clamp-2 leading-relaxed">{service.description}</p>
+                        )}
 
-                    {/* Price + duration */}
-                    <div className="flex items-center justify-between pt-1 border-t border-[#EBE6E0]">
-                      <span className="text-base font-bold text-[#2D2A26]">
-                        ₱{Number.parseFloat(service.base_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                      </span>
-                      <div className="flex items-center gap-1 text-[11px] text-[#A8A19A]">
-                        <Clock size={11} />
-                        {service.estimated_days}d
+                        {/* Price + duration */}
+                        <div className="flex items-center justify-between pt-1 border-t border-[#EBE6E0]">
+                          <span className="text-sm font-bold text-[#2D2A26]">
+                            {service.base_price !== null && service.base_price !== undefined ? (
+                              `₱${Number.parseFloat(service.base_price.toString()).toLocaleString(undefined, { minimumFractionDigits: 2 })}`
+                            ) : (
+                              'Custom Quote'
+                            )}
+                          </span>
+                          <div className="flex items-center gap-1 text-[11px] text-[#A8A19A]">
+                            <Clock size={11} />
+                            {service.estimated_days}d
+                          </div>
+                        </div>
+
+                        {/* CTA */}
+                        <div className="mt-auto pt-1">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedService(service);
+                            }}
+                            className="block w-full text-center bg-[#2D2A26] hover:bg-[#9A8073] text-white py-2 rounded-xl text-xs font-semibold transition-colors focus:outline-none"
+                          >
+                            Inquire / Order Custom →
+                          </button>
+                        </div>
                       </div>
                     </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
 
-                    {/* CTA */}
-                    <div className="mt-auto pt-1">
-                      <Link
-                        href={`/shop/${params.shop_id}/book?service_id=${service.id}`}
-                        className="block w-full text-center bg-[#2D2A26] hover:bg-[#9A8073] text-white py-2 rounded-xl text-xs font-semibold transition-colors"
-                      >
-                        Book Now →
-                      </Link>
-                    </div>
+          {/* TAB: HOURS */}
+          {activeTab === 'hours' && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              {/* Left Col: Announcements */}
+              <div>
+                <h3 className="text-xl font-bold text-[#2D2A26] mb-6 flex items-center gap-2">
+                  <Megaphone size={20} className="text-[#9A8073]" />
+                  Announcements
+                </h3>
+                
+                {shop.special_hours && shop.special_hours.length > 0 ? (
+                  <div className="space-y-4">
+                    {shop.special_hours.map(s => (
+                      <div key={s.id} className="bg-white border border-[#EBE6E0] rounded-2xl p-5 shadow-sm">
+                        <div className="flex items-center justify-between mb-2">
+                          <h5 className="text-sm font-bold text-[#2D2A26]">{s.title}</h5>
+                          {s.is_closed ? (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 bg-red-50 text-red-700 rounded-md border border-red-100">
+                              Closed
+                            </span>
+                          ) : (
+                            <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-1 bg-blue-50 text-blue-700 rounded-md border border-blue-100">
+                              Special Hours
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-xs text-[#827A73] mb-3 font-medium flex items-center">
+                          <Calendar size={12} className="mr-1.5 text-[#9A8073]" />
+                          {new Date(s.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} - {new Date(s.end_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                        </p>
+                        {s.announcement_message && (
+                          <div className="text-sm bg-amber-50/50 border border-amber-100 text-amber-900 px-4 py-3 rounded-xl flex items-start gap-2">
+                            <AlertCircle size={16} className="shrink-0 mt-0.5 text-amber-600" />
+                            <span className="leading-relaxed">{s.announcement_message}</span>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="bg-white rounded-2xl p-6 border border-[#EBE6E0] text-center">
+                    <p className="text-[#827A73] text-sm">No active announcements at this time.</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Col: Operating Hours */}
+              <div>
+                <h3 className="text-xl font-bold text-[#2D2A26] mb-6 flex items-center gap-2">
+                  <Clock size={20} className="text-[#9A8073]" />
+                  Standard Operating Hours
+                </h3>
+                
+                <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm">
+                  <div className="space-y-4">
+                    {['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'].map(day => {
+                      const hours = shop.operating_hours?.[day];
+                      if (!hours) return null;
+                      return (
+                        <div key={day} className="flex justify-between items-center text-sm py-1 border-b border-[#EBE6E0]/50 last:border-0 last:pb-0">
+                          <span className="capitalize text-[#524A44] font-medium">{day}</span>
+                          {hours.is_open ? (
+                            <span className="text-[#2D2A26] font-bold bg-[#FAF6F3] px-3 py-1 rounded-lg">
+                              {hours.open} - {hours.close}
+                            </span>
+                          ) : (
+                            <span className="text-[#B26959] font-bold text-xs uppercase tracking-wider bg-[#B26959]/10 px-3 py-1 rounded-lg">
+                              Closed
+                            </span>
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              ))}
+              </div>
             </div>
-          </div>
-        </div>
-      )}
+          )}
 
-      {/* Our Locations Section */}
-      {shop.branches && shop.branches.length > 0 && (
-        <div className="bg-white py-16 border-t border-zinc-200">
-          <div className="max-w-5xl mx-auto px-6">
-            <div className="mb-10">
-              <h2 className="text-2xl font-serif font-bold text-zinc-900">Our Locations</h2>
-              <p className="text-[#827A73] text-sm mt-1">Visit us at any of our physical tailoring shops.</p>
-            </div>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {shop.branches.map((branch) => {
-                const isSelected = selectedBranchId === branch.id.toString();
-                return (
-                  <div 
-                    key={branch.id} 
-                    className={`border rounded-2xl p-6 transition-all flex flex-col justify-between ${
-                      isSelected 
-                        ? 'border-[#9A8073] bg-[#FAF6F3]/40 shadow-sm ring-1 ring-[#9A8073]/30' 
-                        : 'border-zinc-200 hover:border-zinc-300 hover:shadow-xs'
-                    }`}
-                  >
-                    <div>
-                      <div className="flex items-start justify-between mb-3">
-                        <h3 className="font-semibold text-zinc-900 text-lg">{branch.name}</h3>
-                        {isSelected && (
-                          <span className="text-[10px] font-bold text-[#9A8073] bg-[#F0EAE3] px-2 py-0.5 rounded-full uppercase tracking-wider">
-                            Selected Location
-                          </span>
-                        )}
+          {/* TAB: LOCATIONS */}
+          {activeTab === 'locations' && shop.branches && shop.branches.length > 0 && (
+            <div>
+              <div className="mb-8">
+                <h2 className="text-2xl font-serif font-bold text-zinc-900">Our Locations</h2>
+                <p className="text-[#827A73] text-sm mt-1">Visit us at any of our physical tailoring shops.</p>
+              </div>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {shop.branches.map((branch) => {
+                  const isSelected = selectedBranchId === branch.id.toString();
+                  return (
+                    <div 
+                      key={branch.id} 
+                      className={`bg-white rounded-2xl p-6 transition-all flex flex-col justify-between ${
+                        isSelected 
+                          ? 'border-2 border-[#2D2A26] shadow-md ring-2 ring-white ring-offset-1 ring-offset-[#2D2A26]' 
+                          : 'border border-[#EBE6E0] hover:border-[#9A8073] hover:shadow-md'
+                      }`}
+                    >
+                      <div>
+                        <div className="flex items-start justify-between mb-4">
+                          <h3 className="font-bold text-[#2D2A26] text-xl flex items-center gap-2">
+                            <Building2 className="text-[#9A8073]" size={20} />
+                            {branch.name}
+                          </h3>
+                          {isSelected && (
+                            <span className="text-[10px] font-bold text-white bg-[#2D2A26] px-3 py-1 rounded-full uppercase tracking-wider shadow-sm">
+                              Selected Location
+                            </span>
+                          )}
+                        </div>
+                        
+                        <div className="space-y-3 text-sm text-[#524A44] mb-8 bg-[#FAF6F3] p-4 rounded-xl border border-[#EBE6E0]/50">
+                          <div className="flex items-start gap-3">
+                            <MapPin className="w-4 h-4 text-[#9A8073] shrink-0 mt-0.5" />
+                            <span className="leading-relaxed">{branch.address}, {branch.city}</span>
+                          </div>
+                          {branch.contact_number && (
+                            <div className="flex items-center gap-3">
+                              <Phone className="w-4 h-4 text-[#9A8073] shrink-0" />
+                              <span className="font-medium">{branch.contact_number}</span>
+                            </div>
+                          )}
+                          {branch.operating_hours && (
+                            <div className="flex items-center gap-3">
+                              <Clock className="w-4 h-4 text-[#9A8073] shrink-0" />
+                              <span className="font-medium">{branch.operating_hours}</span>
+                            </div>
+                          )}
+                        </div>
                       </div>
                       
-                      <div className="space-y-2.5 text-sm text-[#827A73] mb-6">
-                        <div className="flex items-start gap-2.5">
-                          <MapPin className="w-4 h-4 text-zinc-900 shrink-0 mt-0.5" />
-                          <span>{branch.address}, {branch.city}</span>
-                        </div>
-                        {branch.contact_number && (
-                          <div className="flex items-center gap-2.5">
-                            <Phone className="w-4 h-4 text-zinc-900 shrink-0" />
-                            <span>{branch.contact_number}</span>
-                          </div>
-                        )}
-                        {branch.operating_hours && (
-                          <div className="flex items-center gap-2.5">
-                            <Clock className="w-4 h-4 text-zinc-900 shrink-0" />
-                            <span>{branch.operating_hours}</span>
-                          </div>
+                      <div className="flex gap-3 mt-auto">
+                        <Link 
+                          href={`/shop/${params.shop_id}/book?branch_id=${branch.id}`}
+                          className={`flex-1 text-center py-2.5 rounded-xl font-semibold text-sm transition-colors ${
+                            isSelected 
+                              ? 'bg-[#2D2A26] text-white hover:bg-black' 
+                              : 'bg-white border-2 border-[#2D2A26] text-[#2D2A26] hover:bg-[#FAF6F3]'
+                          }`}
+                        >
+                          Book Here
+                        </Link>
+                        {branch.latitude && branch.longitude && (
+                          <a 
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${branch.latitude},${branch.longitude}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="px-4 py-2.5 rounded-xl border border-[#EBE6E0] text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors flex items-center justify-center bg-white shadow-sm"
+                            title="Get Directions"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
                         )}
                       </div>
                     </div>
-
-                    <div className="flex items-center gap-3 border-t border-zinc-100 pt-4 mt-auto">
-                      <Link 
-                        href={`/shop/${params.shop_id}/book?branch_id=${branch.id}`}
-                        className="flex-1 text-center bg-black hover:bg-zinc-800 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors"
-                      >
-                        Book at this Branch
-                      </Link>
-                      {branch.latitude && branch.longitude && (
-                        <a 
-                          href={`https://www.google.com/maps/search/?api=1&query=${branch.latitude},${branch.longitude}`}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="px-3.5 py-2.5 bg-zinc-100 hover:bg-zinc-200 text-zinc-900 rounded-xl text-sm transition-colors flex items-center justify-center border border-zinc-200"
-                          title="View on Google Maps"
-                        >
-                          <ExternalLink size={16} />
-                        </a>
-                      )}
-                    </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
             </div>
-          </div>
+          )}
+
         </div>
-      )}
+      </div>
 
       {/* Gallery Section */}
       {shop.gallery_images && shop.gallery_images.length > 0 && (
@@ -536,6 +772,13 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
         </form>
       </Modal>
 
+      <ServiceDetailModal
+        service={selectedService}
+        isOpen={selectedService !== null}
+        onClose={() => setSelectedService(null)}
+        facebookUrl={shop.social_links?.facebook}
+        shopId={shop.id}
+      />
     </div>
   );
 }

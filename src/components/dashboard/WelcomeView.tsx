@@ -23,7 +23,7 @@ export default function WelcomeView() {
       title: "Setup Operating Hours & Coordinates",
       desc: "Open Shop Settings to select your Business Type, set map coordinates (so your branch gets discoverable), define operating hours, and customize rental deposits or fitting policies.",
       icon: Settings,
-      href: "/dashboard/settings"
+      href: "/dashboard/profile"
     },
     {
       step: "Step 4",

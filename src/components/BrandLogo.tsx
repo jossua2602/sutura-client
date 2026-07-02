@@ -1,11 +1,17 @@
 import React from 'react';
+import Image from 'next/image';
 
-export default function BrandLogo({ className = "" }: { readonly className?: string }) {
+export default function BrandLogo({ className = "", iconOnly = false }: { readonly className?: string, readonly iconOnly?: boolean }) {
   return (
     <div className={`flex items-center justify-center ${className}`}>
-      <span className="font-heading text-4xl text-foreground tracking-tight lowercase">
-        sutura
-      </span>
+      <Image 
+        src="/sutura_logo_no_text.png" 
+        alt="SUTURA Logo" 
+        width={iconOnly ? 32 : 64} 
+        height={iconOnly ? 32 : 64} 
+        className="object-contain"
+        priority
+      />
     </div>
   );
 }

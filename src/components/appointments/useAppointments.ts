@@ -184,16 +184,17 @@ export function useAppointments() {
     }
   };
 
-  const handleCompleteSubmit = async (aptId: number, notes: string, jobOrderId: string, measurementAction: 'none' | 'record') => {
+  const handleCompleteSubmit = async (aptId: number, notes: string, jobOrderId: string, measurementAction: 'none' | 'record', outcome: string) => {
     if (!shop) return;
     setIsSubmitting(true);
     try {
       await api.post(`/shops/${shop.id}/appointments/${aptId}/complete`, {
         notes:        notes || undefined,
         job_order_id: jobOrderId || undefined,
+        outcome:      outcome,
       });
       setAppointments(prev =>
-        prev.map(a => a.id === aptId ? { ...a, status: 'completed' } : a)
+        prev.map(a => a.id === aptId ? { ...a, status: 'completed', outcome: outcome as any } : a)
       );
       setShowCompleteModal(false);
 

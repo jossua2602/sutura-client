@@ -8,9 +8,10 @@ import { useToast } from '@/context/ToastContext';
 
 import { Service, Specialization } from '@/components/services/serviceHelpers';
 import ServiceFormModal from '@/components/services/ServiceFormModal';
-import ServicePricingModal from '@/components/services/ServicePricingModal';
 import ServiceDeleteModal from '@/components/services/ServiceDeleteModal';
 import ServiceListView from '@/components/services/ServiceListView';
+import SettingsServicesPricing from '@/components/settings/SettingsServicesPricing';
+import { Sparkles } from 'lucide-react';
 
 export default function ServicesPage() {
   const { shop, user } = useAuthStore();
@@ -23,15 +24,13 @@ export default function ServicesPage() {
   // Modals state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
-  const [isPricingModalOpen, setIsPricingModalOpen] = useState(false);
-
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [pricingService, setPricingService] = useState<Service | null>(null);
 
   const [actionLoadingId, setActionLoadingId] = useState<number | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
+  const [showAutoPopulate, setShowAutoPopulate] = useState(false);
 
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
 
@@ -71,7 +70,7 @@ export default function ServicesPage() {
         name: `${service.name} (Copy)`,
         description: service.description || '',
         category: service.category,
-        base_price: Number.parseFloat(service.base_price),
+        base_price: service.base_price ? Number.parseFloat(service.base_price.toString()) : null,
         estimated_days: service.estimated_days,
         custom_fields: service.custom_fields || [],
         is_active: service.is_active
@@ -151,11 +150,6 @@ export default function ServicesPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleManagePricingClick = (service: Service) => {
-    setPricingService(service);
-    setIsPricingModalOpen(true);
-  };
-
   const categoriesList = ['All', ...Array.from(new Set(services.map(s => s.category).filter(Boolean)))];
 
   const filtered = services.filter(s => {
@@ -173,18 +167,31 @@ export default function ServicesPage() {
           <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Services Catalog</h1>
           <p className="text-[#827A73] text-sm mt-1">Manage your tailoring offerings and turnaround times.</p>
         </div>
-        <button 
-          onClick={() => {
-            setEditingId(null);
-            setError('');
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          <Plus size={18} />
-          Add Service
-        </button>
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setShowAutoPopulate(!showAutoPopulate)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showAutoPopulate ? 'bg-[#EBE6E0] text-[#2D2A26]' : 'bg-[#FAF6F3] border border-[#EBE6E0] text-[#524A44] hover:bg-[#F0EAE3]'}`}
+          >
+            <Sparkles size={18} className={showAutoPopulate ? 'text-taupe' : ''} />
+            Auto-Populate
+          </button>
+          <button 
+            onClick={() => {
+              setEditingId(null);
+              setError('');
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            <Plus size={18} />
+            Add Service
+          </button>
+        </div>
       </div>
+
+      {showAutoPopulate && (
+        <SettingsServicesPricing />
+      )}
 
       <ServiceListView
         filteredServices={filtered}
@@ -196,7 +203,6 @@ export default function ServicesPage() {
         allCategories={categoriesList}
         actionLoadingId={actionLoadingId}
         onDuplicate={handleDuplicateClick}
-        onManagePricing={handleManagePricingClick}
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
         onBulkDelete={handleBulkDelete}
@@ -225,19 +231,6 @@ export default function ServicesPage() {
         onConfirm={confirmDelete}
         isSubmitting={isSubmitting}
       />
-
-      {shop && (
-        <ServicePricingModal
-          isOpen={isPricingModalOpen}
-          onClose={() => {
-            setIsPricingModalOpen(false);
-            setPricingService(null);
-          }}
-          shopId={shop.id}
-          service={pricingService}
-          specializations={specializations}
-        />
-      )}
     </div>
   );
 }

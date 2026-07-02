@@ -278,7 +278,7 @@ export default function PaymentQueuePage() {
         {catalogOrders.map(ord => (
           <div key={ord.id} className="grid grid-cols-12 px-5 py-3.5 items-center hover:bg-[#FAF6F3] transition-colors">
             <div className="col-span-4">
-              <p className="text-sm font-semibold text-[#2D2A26] truncate">{ord.catalog_item?.title || 'Catalog Item'}</p>
+              <p className="text-sm font-semibold text-[#2D2A26] truncate">{ord.catalog_item?.name || 'Catalog Item'}</p>
               <p className="text-[10px] text-[#A8A19A]">{new Date(ord.created_at).toLocaleDateString('en-PH')}</p>
             </div>
             <div className="col-span-3">

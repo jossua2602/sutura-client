@@ -15,7 +15,7 @@ const DEFAULT_HOURS = {
   sunday: { is_open: false, open: '09:00', close: '18:00' },
 };
 
-export type SettingsTab = 'identity' | 'hours' | 'policies' | 'gallery' | 'specializations';
+export type SettingsTab = 'business_type' | 'basic_info' | 'social_links' | 'booking_flow' | 'map_coordinates';
 
 export function useSettings() {
   const { shop, setAuth, user, token, staffProfile } = useAuthStore();
@@ -24,7 +24,36 @@ export function useSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
-  const [activeTab, setActiveTab] = useState<SettingsTab>('identity');
+
+  // Initialize tab from URL search parameters if valid
+  const getInitialTab = (): SettingsTab => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') as SettingsTab;
+      const validTabs: SettingsTab[] = ['business_type', 'basic_info', 'social_links', 'booking_flow', 'map_coordinates'];
+      if (validTabs.includes(tab)) return tab;
+    }
+    return 'basic_info';
+  };
+
+  const [activeTab, setActiveTab] = useState<SettingsTab>(getInitialTab());
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const handleLocationChange = () => {
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab') as SettingsTab;
+        const validTabs: SettingsTab[] = ['business_type', 'basic_info', 'social_links', 'booking_flow', 'map_coordinates'];
+        if (validTabs.includes(tab)) {
+          setActiveTab(tab);
+        }
+      };
+      
+      handleLocationChange();
+      window.addEventListener('popstate', handleLocationChange);
+      return () => window.removeEventListener('popstate', handleLocationChange);
+    }
+  }, []);
 
   const savedDataRef = useRef<ShopSettingsData | null>(null);
 
@@ -47,7 +76,7 @@ export function useSettings() {
   }, [shop]);
 
   useEffect(() => {
-    if (activeTab === 'specializations') fetchSpecializations();
+    if ((activeTab as string) === 'specializations') fetchSpecializations();
   }, [activeTab, fetchSpecializations]);
 
   const handleSpecSubmit = async (e: React.SyntheticEvent) => {
@@ -109,13 +138,7 @@ export function useSettings() {
     booking_questions: [] as string[],
     latitude: '',
     longitude: '',
-    social_links: {
-      facebook: '',
-      instagram: '',
-      tiktok: '',
-      youtube: '',
-      website: '',
-    },
+    social_links: [] as { label: string; url: string }[],
     gallery_images: [] as string[],
     business_type: 'tailoring_shop',
     operating_hours: DEFAULT_HOURS as Record<string, { is_open: boolean; open: string; close: string }>,
@@ -162,7 +185,11 @@ export function useSettings() {
             booking_questions: Array.isArray(s.booking_questions) ? s.booking_questions : [],
             latitude: s.latitude || '',
             longitude: s.longitude || '',
-            social_links: s.social_links || { facebook: '', instagram: '', tiktok: '', youtube: '', website: '' },
+            social_links: Array.isArray(s.social_links)
+              ? s.social_links
+              : (s.social_links && typeof s.social_links === 'object'
+                ? Object.entries(s.social_links).map(([k, v]) => ({ label: k.charAt(0).toUpperCase() + k.slice(1), url: v as string }))
+                : []),
             gallery_images: Array.isArray(s.gallery_images) ? s.gallery_images : [],
             business_type: s.business_type || 'tailoring_shop',
             operating_hours: s.operating_hours || DEFAULT_HOURS,
@@ -199,11 +226,8 @@ export function useSettings() {
     setFormDataWithDirty(prev => ({ ...prev, business_type: value }));
   };
 
-  const handleSocialChange = (platform: string, value: string) => {
-    setFormDataWithDirty(prev => ({
-      ...prev,
-      social_links: { ...prev.social_links, [platform]: value },
-    }));
+  const handleSocialChange = (newLinks: { label: string; url: string }[]) => {
+    setFormDataWithDirty(prev => ({ ...prev, social_links: newLinks }));
   };
 
   const handleHoursChange = (day: string, field: 'is_open' | 'open' | 'close', value: string | boolean) => {

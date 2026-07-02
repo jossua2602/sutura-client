@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -20,7 +20,10 @@ interface CatalogState {
   images: ImageItem[];
 }
 
-export default function EditCatalogItemPage({ params }: Readonly<{ params: { id: string } }>) {
+export default function EditCatalogItemPage({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
+  const unwrappedParams = React.use(params);
+  const id = unwrappedParams.id;
+
   const { shop, user } = useAuthStore();
   const router = useRouter();
   const toast = useToast();
@@ -29,11 +32,11 @@ export default function EditCatalogItemPage({ params }: Readonly<{ params: { id:
   const [initialData, setInitialData] = useState<CatalogState | undefined>(undefined);
 
   useEffect(() => {
-    if (shop?.id && params.id) {
+    if (shop?.id && id) {
       api
         .get(`/shops/${shop.id}/catalog`)
         .then(res => {
-          const item = res.data.data.find((i: { id: number }) => i.id.toString() === params.id);
+          const item = res.data.data.find((i: { id: number }) => i.id.toString() === id);
           if (item) {
             const state = mapCatalogItemToState(item);
             setInitialData(state);
@@ -47,13 +50,13 @@ export default function EditCatalogItemPage({ params }: Readonly<{ params: { id:
     } else if (user?.id && !shop?.id) {
       setTimeout(() => setLoading(false), 0);
     }
-  }, [shop?.id, user?.id, params.id]);
+  }, [shop?.id, user?.id, id]);
 
   const handleSave = async (payload: ReturnType<typeof buildSavePayload>) => {
     if (!shop?.id) return;
     setSaving(true);
     try {
-      await api.put(`/shops/${shop.id}/catalog/${params.id}`, payload);
+      await api.put(`/shops/${shop.id}/catalog/${id}`, payload);
       router.push('/dashboard/catalog');
     } catch (err: unknown) {
       console.error(err);

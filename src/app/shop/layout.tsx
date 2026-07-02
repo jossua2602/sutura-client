@@ -1,14 +1,16 @@
-export default function PublicShopLayout({ children }: { children: React.ReactNode }) {
+import BrandLogo from '@/components/BrandLogo';
+
+export default function PublicShopLayout({ children }: { readonly children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-zinc-200">
       <header className="border-b border-zinc-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <div className="text-2xl font-serif font-semibold tracking-tight">SUTURA</div>
+          <BrandLogo />
           <nav className="hidden md:flex gap-8 text-sm font-medium text-[#A8A19A]">
-            <a href="#" className="hover:text-zinc-900 transition-colors">Catalog</a>
-            <a href="#" className="hover:text-zinc-900 transition-colors">Book Appointment</a>
-            <a href="#" className="hover:text-zinc-900 transition-colors">Our Process</a>
-            <a href="#" className="hover:text-zinc-900 transition-colors">Contact</a>
+            <button className="hover:text-zinc-900 transition-colors font-medium">Catalog</button>
+            <button className="hover:text-zinc-900 transition-colors font-medium">Book Appointment</button>
+            <button className="hover:text-zinc-900 transition-colors font-medium">Our Process</button>
+            <button className="hover:text-zinc-900 transition-colors font-medium">Contact</button>
           </nav>
         </div>
       </header>

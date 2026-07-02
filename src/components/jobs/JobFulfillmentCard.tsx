@@ -61,7 +61,7 @@ export default function JobFulfillmentCard({
   };
 
   return (
-    <div className="bg-blue-50/60 border border-blue-100 rounded-2xl p-6 space-y-4">
+    <div className="bg-[#FAF6F3]/50 border border-[#EBE6E0]/60 rounded-2xl p-6 space-y-4">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           {(() => {
@@ -69,8 +69,8 @@ export default function JobFulfillmentCard({
             if (fulfillmentType === 'delivery') FulfillIcon = Navigation;
             else if (fulfillmentType === 'pickup') FulfillIcon = Store;
             return fulfillmentType === 'delivery'
-              ? <FulfillIcon className="w-5 h-5 text-blue-600 animate-pulse" />
-              : <FulfillIcon className="w-5 h-5 text-blue-600" />;
+              ? <FulfillIcon className="w-5 h-5 text-taupe animate-pulse" />
+              : <FulfillIcon className="w-5 h-5 text-taupe" />;
           })()}
           <h2 className="text-lg font-medium text-[#2D2A26]">Fulfillment Details</h2>
         </div>
@@ -79,18 +79,18 @@ export default function JobFulfillmentCard({
             href={courierTracking}
             target="_blank"
             rel="noopener noreferrer"
-            className="flex items-center gap-1 text-xs text-blue-600 font-semibold hover:underline"
+            className="flex items-center gap-1 text-xs text-taupe font-semibold hover:underline"
           >
             Track Delivery <ExternalLink size={12} />
           </a>
         )}
       </div>
-      <p className="text-xs text-blue-700 bg-blue-100/60 px-3 py-2 rounded-lg">
+      <p className="text-xs text-[#827A73] bg-[#FAF6F3] border border-[#EBE6E0]/60 px-3 py-2 rounded-lg">
         Update fulfillment method, service provider, and tracking details. Customers see this info.
       </p>
 
       <div>
-        <span className="block text-sm font-medium text-blue-800 mb-2">Fulfillment Method</span>
+        <span className="block text-xs font-semibold text-[#827A73] mb-2 uppercase tracking-wider">Fulfillment Method</span>
         <div className="grid grid-cols-3 gap-2">
           {[
             { id: 'shipping', label: 'Shipping', icon: Truck },
@@ -107,10 +107,10 @@ export default function JobFulfillmentCard({
                   setFulfillmentType(method.id as 'shipping' | 'delivery' | 'pickup');
                   setFulfillmentProvider('');
                 }}
-                className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-center transition-all ${
+                className={`flex flex-col items-center justify-center p-2.5 rounded-lg border text-center transition-all cursor-pointer ${
                   isSelected
-                    ? 'border-blue-500 bg-blue-100/50 text-blue-700 font-semibold shadow-sm'
-                    : 'border-blue-200/40 bg-white/70 text-blue-600 hover:border-blue-300'
+                    ? 'border-taupe bg-[#FAF6F3] text-taupe font-semibold shadow-sm'
+                    : 'border-[#EBE6E0] bg-white text-[#524A44] hover:border-taupe/30'
                 }`}
               >
                 <Icon size={14} className="mb-0.5" />
@@ -124,14 +124,14 @@ export default function JobFulfillmentCard({
       {fulfillmentType !== 'pickup' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="courier-delivery-service" className="block text-xs font-semibold text-blue-800 mb-1">
+            <label htmlFor="courier-delivery-service" className="block text-xs font-semibold text-[#827A73] mb-1">
               Service Provider / Courier
             </label>
             <select
               id="courier-delivery-service"
               value={fulfillmentProvider}
               onChange={e => setFulfillmentProvider(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 bg-white border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
             >
               <option value="">— Select provider —</option>
               {getFilteredCouriers().map(c => (
@@ -141,7 +141,7 @@ export default function JobFulfillmentCard({
             </select>
           </div>
           <div>
-            <label htmlFor="tracking-number" className="block text-xs font-semibold text-blue-800 mb-1">
+            <label htmlFor="tracking-number" className="block text-xs font-semibold text-[#827A73] mb-1">
               {fulfillmentType === 'shipping' ? 'Tracking Number' : 'Booking Link / Rider Contact'}
             </label>
             <input
@@ -150,20 +150,20 @@ export default function JobFulfillmentCard({
               placeholder={fulfillmentType === 'shipping' ? 'e.g. J&T-12345678' : 'e.g. Grab Link / Contact'}
               value={courierTracking}
               onChange={e => setCourierTracking(e.target.value)}
-              className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400"
+              className="w-full px-3 py-2 bg-white border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
             />
           </div>
         </div>
       )}
 
       {fulfillmentType === 'pickup' ? (
-        <div className="bg-blue-100/30 border border-blue-200/50 rounded-lg p-3 text-xs text-blue-700 flex items-center gap-2">
+        <div className="bg-[#FAF6F3]/60 border border-[#EBE6E0]/60 rounded-lg p-3 text-xs text-[#827A73] flex items-center gap-2">
           <Store size={14} className="shrink-0" />
           <span>Customer will pick up garments in-store. (Shop address will be used)</span>
         </div>
       ) : (
         <div>
-          <label htmlFor="shipping-address" className="block text-xs font-semibold text-blue-800 mb-1">
+          <label htmlFor="shipping-address" className="block text-xs font-semibold text-[#827A73] mb-1">
             {fulfillmentType === 'shipping' ? 'Shipping Address' : 'Delivery Address'}
           </label>
           <input
@@ -172,7 +172,7 @@ export default function JobFulfillmentCard({
             placeholder="Customer's address details..."
             value={shippingAddress}
             onChange={e => setShippingAddress(e.target.value)}
-            className="w-full px-3 py-2 bg-white border border-blue-200 rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400"
+            className="w-full px-3 py-2 bg-white border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
           />
         </div>
       )}

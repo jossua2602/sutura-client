@@ -1,8 +1,7 @@
 'use client';
 
-import { Loader2, Save, Lock, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Save, Lock, Eye, EyeOff, Plus, Trash2 } from 'lucide-react';
 import { useAccountSettings } from '@/components/account-settings/useAccountSettings';
-import BranchesTab from '@/components/branches/BranchesTab';
 
 const getPasswordStrengthColor = (password: string, level: number): string => {
   if (password.length < level * 2) return 'bg-[#EBE6E0]';
@@ -12,8 +11,8 @@ const getPasswordStrengthColor = (password: string, level: number): string => {
 };
 
 interface PersonalTabProps {
-  readonly personalForm: { name: string; phone: string };
-  readonly setPersonalForm: React.Dispatch<React.SetStateAction<{ name: string; phone: string }>>;
+  readonly personalForm: { name: string; phone: string; social_links: { label: string; url: string }[] };
+  readonly setPersonalForm: React.Dispatch<React.SetStateAction<{ name: string; phone: string; social_links: { label: string; url: string }[] }>>;
   readonly personalErrors: { name?: string; phone?: string };
   readonly setPersonalErrors: React.Dispatch<React.SetStateAction<{ name?: string; phone?: string }>>;
   readonly handlePersonalSubmit: (e: React.SyntheticEvent) => void;
@@ -94,7 +93,77 @@ function PersonalTab({
           </div>
         </div>
 
-        <div className="pt-2 border-t border-[#EBE6E0] flex justify-end">
+        {/* Social Links */}
+        <div className="pt-6 border-t border-[#EBE6E0]">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h3 className="text-sm font-semibold text-[#2D2A26]">Social & Portfolio Links</h3>
+              <p className="text-xs text-[#A8A19A]">These links are displayed on your store profile.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setPersonalForm({
+                  ...personalForm,
+                  social_links: [...(personalForm.social_links || []), { label: '', url: '' }]
+                });
+              }}
+              className="flex items-center gap-1.5 text-xs font-semibold text-[#9A8073] hover:text-[#7A6458] transition-colors"
+            >
+              <Plus size={14} /> Add Link
+            </button>
+          </div>
+          <div className="space-y-4">
+            {personalForm.social_links && personalForm.social_links.length > 0 ? (
+              personalForm.social_links.map((link, index) => (
+                // eslint-disable-next-line react/no-array-index-key
+                <div key={index} className="flex gap-3 items-start">
+                  <div className="flex-1 space-y-1.5">
+                    <input
+                      type="text"
+                      value={link.label}
+                      onChange={e => {
+                        const newLinks = [...personalForm.social_links];
+                        newLinks[index].label = e.target.value;
+                        setPersonalForm({ ...personalForm, social_links: newLinks });
+                      }}
+                      className="w-full px-4 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl text-[#2D2A26] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#9A8073]/20 focus:border-[#9A8073]"
+                      placeholder="Label (e.g. Facebook, Portfolio)"
+                    />
+                  </div>
+                  <div className="flex-2 space-y-1.5">
+                    <input
+                      type="url"
+                      value={link.url}
+                      onChange={e => {
+                        const newLinks = [...personalForm.social_links];
+                        newLinks[index].url = e.target.value;
+                        setPersonalForm({ ...personalForm, social_links: newLinks });
+                      }}
+                      className="w-full px-4 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl text-[#2D2A26] text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-[#9A8073]/20 focus:border-[#9A8073]"
+                      placeholder="https://"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newLinks = [...personalForm.social_links];
+                      newLinks.splice(index, 1);
+                      setPersonalForm({ ...personalForm, social_links: newLinks });
+                    }}
+                    className="p-2.5 mt-0.5 text-[#B26959] hover:bg-[#B26959]/10 rounded-lg transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </div>
+              ))
+            ) : (
+              <p className="text-xs text-[#A8A19A] italic">No social links added yet. Click &quot;Add Link&quot; to get started.</p>
+            )}
+          </div>
+        </div>
+
+        <div className="pt-4 border-t border-[#EBE6E0] flex justify-end mt-6">
           <button
             type="submit"
             disabled={loadingPersonal}
@@ -299,8 +368,6 @@ export default function AccountSettingsPage() {
     setShowConfirm,
     loadingPersonal,
     loadingPassword,
-    isShopOwner,
-    shop,
     handlePersonalSubmit,
     handlePasswordSubmit,
   } = useAccountSettings();
@@ -311,7 +378,7 @@ export default function AccountSettingsPage() {
       <div>
         <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Account Settings</h1>
         <p className="text-[#827A73] text-sm mt-1">
-          Manage your personal details, security preferences{isShopOwner ? ', and shop branches' : ''}.
+          Manage your personal details and security preferences.
         </p>
       </div>
 
@@ -382,10 +449,6 @@ export default function AccountSettingsPage() {
         />
       )}
 
-      {/* Tab: Branches */}
-      {activeTab === 'branches' && isShopOwner && (
-        <BranchesTab shopId={shop?.id} />
-      )}
     </div>
   );
 }

@@ -31,12 +31,13 @@ export interface Service {
   name: string;
   description: string;
   category: string;
-  base_price: string;
+  base_price: string | null;
   estimated_days: number;
   is_active: boolean;
   image_url?: string | null;
   custom_fields?: ServiceField[] | null;
   pricing?: ServicePricing[];
+  tags?: string[];
 }
 
 export const SERVICE_CATEGORIES = [

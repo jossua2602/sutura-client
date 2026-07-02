@@ -314,6 +314,7 @@ export default function CustomerProfilePage({ params }: Readonly<{ params: Promi
         {activeTab === 'measurements' && shop && customer && (
           <CustomerMeasurementsTab
             customerId={customer.id}
+            customerName={customer.name}
             shopId={shop.id}
             measurements={measurements}
             onReload={loadData}

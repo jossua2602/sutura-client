@@ -199,20 +199,22 @@ export default function ServicePricingModal({
             </div>
           </div>
 
-          <div>
-            <label htmlFor="pricing-spec" className="block text-xs font-medium text-[#524A44] mb-1">Apparel Specialization (Optional)</label>
-            <select
-              id="pricing-spec"
-              value={pricingFormData.apparel_specialization_id}
-              onChange={e => setPricingFormData({ ...pricingFormData, apparel_specialization_id: e.target.value })}
-              className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-1.5 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
-            >
-              <option value="">— General / No Specialization —</option>
-              {specializations.map(spec => (
-                <option key={spec.id} value={spec.id}>{spec.name}</option>
-              ))}
-            </select>
-          </div>
+          {specializations.length > 0 && (
+            <div>
+              <label htmlFor="pricing-spec" className="block text-xs font-medium text-[#524A44] mb-1">Apparel Specialization (Optional)</label>
+              <select
+                id="pricing-spec"
+                value={pricingFormData.apparel_specialization_id}
+                onChange={e => setPricingFormData({ ...pricingFormData, apparel_specialization_id: e.target.value })}
+                className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-1.5 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
+              >
+                <option value="">— General / No Specialization —</option>
+                {specializations.map(spec => (
+                  <option key={spec.id} value={spec.id}>{spec.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div className="flex justify-end pt-1">
             <button

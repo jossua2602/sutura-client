@@ -1,7 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { User, Calendar, Scissors, Check, X, Loader2 } from 'lucide-react';
-import { Job as JobItem, WALKIN_COLUMNS, getDueStatus, TypeBadge, CourierTag, ColumnIcon } from './jobHelpers';
+import { Job as JobItem, WALKIN_COLUMNS, getDueStatus, TypeBadge, FulfillmentBadge, CourierTag, ColumnIcon } from './jobHelpers';
 
 interface JobKanbanBoardProps {
   readonly groupedJobs: Record<string, JobItem[]>;
@@ -48,9 +48,10 @@ export default function JobKanbanBoard({
                 }`}>
                   <div className="flex justify-between items-start mb-2">
                     <Link href={`/dashboard/jobs/${job.id}`} className="block">
-                      <div className="flex items-center gap-1.5 mb-0.5">
+                      <div className="flex items-center gap-1.5 mb-0.5 flex-wrap">
                         <span className="text-xs font-bold text-[#827A73] hover:underline">{job.order_number || `#${job.id}`}</span>
-                        <TypeBadge type={job.order_type} />
+                        <TypeBadge type={job.intake_channel} />
+                        <FulfillmentBadge type={job.fulfillment_type} />
                       </div>
                     </Link>
                     <select

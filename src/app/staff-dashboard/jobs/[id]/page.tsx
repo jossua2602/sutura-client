@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { ArrowLeft, Loader2, Save } from 'lucide-react';
 import Link from 'next/link';
+import { RosterItem } from '@/components/jobs/jobTypes';
 
 interface Customer {
   id: number | string;
@@ -27,7 +28,7 @@ interface Job {
   customer_id?: number | string;
   customer?: Customer;
   service?: Service;
-  custom_order_data?: Record<string, string>;
+  custom_order_data?: Record<string, unknown>;
   is_rush?: boolean;
   rush_fee?: number | string;
 }
@@ -39,7 +40,10 @@ interface MeasurementData {
   notes?: string;
 }
 
-export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readonly<{ id: string }> }>) {
+export default function StaffJobUpdatePage({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
+  const unwrappedParams = React.use(params);
+  const id = unwrappedParams.id;
+
   const { shop } = useAuthStore();
   const router = useRouter();
   
@@ -52,8 +56,8 @@ export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readon
   const [notes, setNotes] = useState('');
 
   useEffect(() => {
-    if (shop && params.id) {
-      api.get(`/shops/${shop.id}/jobs/${params.id}`)
+    if (shop && id) {
+      api.get(`/shops/${shop.id}/jobs/${id}`)
         .then(res => {
           const data = res.data.data;
           setJob(data);
@@ -78,20 +82,20 @@ export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readon
           setLoading(false);
         });
     }
-  }, [shop, params.id]);
+  }, [shop, id]);
 
   const handleUpdate = async () => {
     if (!shop || !job) return;
     setSaving(true);
     try {
-      await api.put(`/shops/${shop.id}/jobs/${params.id}`, {
+      await api.put(`/shops/${shop.id}/jobs/${id}`, {
         status,
         notes,
         // Preserve financial fields to avoid nullifying them
         payment_status: job.payment_status,
         balance: job.balance,
       });
-      const res = await api.get(`/shops/${shop.id}/jobs/${params.id}`);
+      const res = await api.get(`/shops/${shop.id}/jobs/${id}`);
       setJob(res.data.data);
     } catch (err) {
       console.error('Failed to update', err);
@@ -172,16 +176,16 @@ export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readon
       </div>
 
       {/* Custom Specifications Card */}
-      {job.custom_order_data && Object.keys(job.custom_order_data).filter(k => k !== 'roster').length > 0 ? (
+      {job.custom_order_data && Object.keys(job.custom_order_data).some(k => k !== 'roster' && k !== 'team_roster') ? (
         <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 mb-6">
           <h2 className="text-lg font-medium text-[#2D2A26] mb-4">📋 Custom Specifications</h2>
           <div className="grid grid-cols-2 gap-4 text-sm">
             {Object.entries(job.custom_order_data)
-              .filter(([label]) => label !== 'roster')
+              .filter(([label]) => label !== 'roster' && label !== 'team_roster')
               .map(([label, value]) => (
                 <div key={label}>
-                  <span className="text-[#A8A19A] block mb-1">{label}</span>
-                  <span className="text-[#524A44] font-medium">{String(value || '—')}</span>
+                  <span className="text-[#A8A19A] block mb-1 capitalize">{label.replaceAll('_', ' ')}</span>
+                  <span className="text-[#524A44] font-medium">{typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : '—'}</span>
                 </div>
               ))}
           </div>
@@ -189,36 +193,44 @@ export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readon
       ) : null}
 
       {/* Team Roster / Size Sheet Table Card */}
-      {job.custom_order_data && (job.custom_order_data as any).roster && Array.isArray((job.custom_order_data as any).roster) && (job.custom_order_data as any).roster.length > 0 && (
-        <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 mb-6">
-          <h2 className="text-lg font-medium text-[#2D2A26] mb-4">👕 Team Roster & Size Sheet</h2>
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs divide-y divide-zinc-200">
-              <thead>
-                <tr>
-                  <th className="pb-2 font-semibold text-zinc-600">Player/Employee Name</th>
-                  <th className="pb-2 font-semibold text-zinc-600 w-24">Number</th>
-                  <th className="pb-2 font-semibold text-zinc-600 w-24">Size</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-zinc-150">
-                {(job.custom_order_data as any).roster.map((row: any, idx: number) => (
-                  <tr key={idx}>
-                    <td className="py-2.5 font-medium text-zinc-800">{row.name}</td>
-                    <td className="py-2.5 font-mono text-zinc-600 font-bold">{row.number || '—'}</td>
-                    <td className="py-2.5 text-zinc-700">
-                      <span className="px-2 py-0.5 bg-zinc-100 rounded text-[10px] font-bold">{row.size}</span>
-                      {row.size === 'Custom' && row.custom_details && (
-                        <span className="ml-2 text-zinc-500 font-normal italic">({row.custom_details})</span>
-                      )}
-                    </td>
+      {(() => {
+        const teamRoster = (job.custom_order_data?.team_roster || job.custom_order_data?.roster) as RosterItem[] | undefined;
+        if (!teamRoster || teamRoster.length === 0) return null;
+        return (
+          <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 mb-6">
+            <h2 className="text-lg font-medium text-[#2D2A26] mb-4">👕 Team Roster & Size Sheet</h2>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs divide-y divide-zinc-200">
+                <thead>
+                  <tr>
+                    <th className="pb-2 font-semibold text-zinc-600 w-12">#</th>
+                    <th className="pb-2 font-semibold text-zinc-600">Player/Employee Name</th>
+                    <th className="pb-2 font-semibold text-zinc-600">Print Name / Nickname</th>
+                    <th className="pb-2 font-semibold text-zinc-600 w-24">Number</th>
+                    <th className="pb-2 font-semibold text-zinc-600 w-24">Size</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody className="divide-y divide-zinc-150">
+                  {teamRoster.map((row: RosterItem, idx: number) => (
+                    <tr key={`${row.name}-${row.number}-${idx}`}>
+                      <td className="py-2.5 text-zinc-500 font-mono">{idx + 1}</td>
+                      <td className="py-2.5 font-medium text-zinc-800">{row.name || '—'}</td>
+                      <td className="py-2.5 text-zinc-700">{row.print_name || '—'}</td>
+                      <td className="py-2.5 font-mono text-zinc-600 font-bold">{row.number || '—'}</td>
+                      <td className="py-2.5 text-zinc-700">
+                        <span className="px-2 py-0.5 bg-zinc-100 rounded text-[10px] font-bold">{row.size}</span>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            <div className="text-right text-xs text-[#827A73] font-medium mt-4">
+              Total Items: {teamRoster.length}
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6">
         <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Update Status</h2>
@@ -255,7 +267,7 @@ export default function StaffJobUpdatePage({ params }: Readonly<{ params: Readon
       </div>
 
       {/* Measurements Profile */}
-      {measurements && measurements.profile && (
+      {measurements?.profile && (
         <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6">
           <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Customer Measurements</h2>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

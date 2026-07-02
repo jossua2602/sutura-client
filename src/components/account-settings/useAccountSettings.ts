@@ -4,7 +4,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
 import { User, ShieldCheck, Building2 } from 'lucide-react';
 
-export type Tab = 'personal' | 'security' | 'branches';
+export type Tab = 'personal' | 'security';
 
 export function useAccountSettings() {
   const { user, token, setAuth, shop, staffProfile } = useAuthStore();
@@ -12,9 +12,16 @@ export function useAccountSettings() {
 
   const [activeTab, setActiveTab] = useState<Tab>('personal');
 
+  const initialSocialLinks = Array.isArray(user?.social_links) 
+    ? user.social_links 
+    : (user?.social_links && typeof user.social_links === 'object' 
+        ? Object.entries(user.social_links).map(([k, v]) => ({ label: k.charAt(0).toUpperCase() + k.slice(1), url: v as string }))
+        : []);
+
   const [personalForm, setPersonalForm] = useState({
     name: user?.name || '',
     phone: user?.phone || '',
+    social_links: initialSocialLinks
   });
   const [personalErrors, setPersonalErrors] = useState<{ name?: string; phone?: string }>({});
 
@@ -39,9 +46,16 @@ export function useAccountSettings() {
 
   if (user !== prevUser) {
     setPrevUser(user);
+    const reinitLinks = Array.isArray(user?.social_links) 
+      ? user.social_links 
+      : (user?.social_links && typeof user.social_links === 'object' 
+          ? Object.entries(user.social_links).map(([k, v]) => ({ label: k.charAt(0).toUpperCase() + k.slice(1), url: v as string }))
+          : []);
+
     setPersonalForm({
       name: user?.name || '',
       phone: user?.phone || '',
+      social_links: reinitLinks
     });
   }
 
@@ -87,6 +101,7 @@ export function useAccountSettings() {
       const res = await api.put('/profile/personal', {
         name: personalForm.name,
         phone: personalForm.phone,
+        social_links: personalForm.social_links,
       });
       toast.success('Personal details updated successfully.');
       if (user && token) {
@@ -122,7 +137,6 @@ export function useAccountSettings() {
   const tabs: { id: Tab; label: string; icon: React.ElementType }[] = [
     { id: 'personal', label: 'Personal Info', icon: User },
     { id: 'security', label: 'Security', icon: ShieldCheck },
-    ...(isShopOwner ? [{ id: 'branches' as Tab, label: 'Branches', icon: Building2 }] : []),
   ];
 
   const roleName = user?.roles?.[0]?.name?.replaceAll('_', ' ') || 'Shop Owner';

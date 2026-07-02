@@ -13,13 +13,7 @@ export interface ShopSettingsData {
   booking_questions: string[];
   latitude: string;
   longitude: string;
-  social_links: {
-    facebook: string;
-    instagram: string;
-    tiktok: string;
-    youtube?: string;
-    website?: string;
-  };
+  social_links: { label: string; url: string }[];
   gallery_images: string[];
   business_type: string;
   operating_hours: Record<string, { is_open: boolean; open: string; close: string }>;

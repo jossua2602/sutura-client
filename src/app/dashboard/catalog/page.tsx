@@ -10,6 +10,7 @@ import { CatalogItem } from '@/components/catalog/catalogHelpers';
 import CatalogItemCard from '@/components/catalog/CatalogItemCard';
 import CatalogRatingModal from '@/components/catalog/CatalogRatingModal';
 import CatalogDeleteModal from '@/components/catalog/CatalogDeleteModal';
+import CatalogPreviewModal from '@/components/catalog/CatalogPreviewModal';
 import { useToast } from '@/context/ToastContext';
 
 export default function CatalogPage() {
@@ -17,6 +18,9 @@ export default function CatalogPage() {
   const toast = useToast();
   const [items, setItems] = useState<CatalogItem[]>([]);
   const [loading, setLoading] = useState(true);
+
+  const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
+  const [previewItem, setPreviewItem] = useState<CatalogItem | null>(null);
 
   const [isRatingModalOpen, setIsRatingModalOpen] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState<number | null>(null);
@@ -47,10 +51,15 @@ export default function CatalogPage() {
   }, [fetchItems]);
 
   const handleView = async (id: number) => {
+    const matched = items.find(i => i.id === id);
+    if (matched) {
+      setPreviewItem(matched);
+      setIsPreviewModalOpen(true);
+    }
     if (!shop) return;
     try {
       await api.post(`/shops/${shop.id}/catalog/${id}/view`);
-      fetchItems(); // Refresh counts
+      setItems(prev => prev.map(i => i.id === id ? { ...i, views_count: (i.views_count || 0) + 1 } : i));
     } catch (e) {
       console.error(e);
     }
@@ -179,6 +188,15 @@ export default function CatalogPage() {
         }}
         onConfirm={confirmDelete}
         isSubmitting={isSubmitting}
+      />
+
+      <CatalogPreviewModal
+        isOpen={isPreviewModalOpen}
+        onClose={() => {
+          setIsPreviewModalOpen(false);
+          setPreviewItem(null);
+        }}
+        item={previewItem}
       />
     </div>
   );

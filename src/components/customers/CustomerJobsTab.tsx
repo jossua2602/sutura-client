@@ -32,10 +32,15 @@ export default function CustomerJobsTab({ jobs }: CustomerJobsTabProps) {
               <tr key={job.id} className="hover:bg-[#FAF6F3]/20 transition-colors">
                 <td className="p-4 font-bold text-[#2D2A26]">
                   {job.order_number}
-                  {job.order_type === 'online' ? (
+                  {job.intake_channel === 'online' ? (
                     <span className="ml-2 inline-flex items-center text-[9px] font-semibold bg-blue-50 text-blue-600 px-1.5 py-0.5 rounded border border-blue-100 uppercase">Online</span>
                   ) : (
                     <span className="ml-2 inline-flex items-center text-[9px] font-semibold bg-[#F0EAE3] text-[#827A73] px-1.5 py-0.5 rounded border border-[#EBE6E0] uppercase">Walk-in</span>
+                  )}
+                  {job.fulfillment_type === 'shipping' ? (
+                    <span className="ml-1.5 inline-flex items-center text-[9px] font-semibold bg-indigo-50 text-indigo-700 px-1.5 py-0.5 rounded border border-indigo-100 uppercase">Ship</span>
+                  ) : (
+                    <span className="ml-1.5 inline-flex items-center text-[9px] font-semibold bg-emerald-50 text-emerald-700 px-1.5 py-0.5 rounded border border-emerald-100 uppercase">Pickup</span>
                   )}
                 </td>
                 <td className="p-4 text-[#524A44] font-medium">{job.service?.name}</td>

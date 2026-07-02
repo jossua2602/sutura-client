@@ -3,8 +3,9 @@
 import { useEffect, useState, FormEvent, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
-import { ArrowLeft, ArrowRight, CheckCircle2, Calendar as CalendarIcon, Clock, MessageSquare, Ruler, Shirt, Scissors, Package, AlertCircle } from 'lucide-react';
+import { ArrowLeft, ArrowRight, CheckCircle2, Calendar as CalendarIcon, Clock, MessageSquare, Ruler, Shirt, Scissors, Package, AlertCircle, MapPin } from 'lucide-react';
 import Image from 'next/image';
+import InteractiveCalendar from './InteractiveCalendar';
 
 interface Branch {
   id: number;
@@ -27,6 +28,16 @@ interface ShopSettings {
   operating_hours?: Record<string, { is_open: boolean; open: string; close: string }> | string | null;
   branches?: Branch[];
   services?: Service[];
+  special_hours?: {
+    id: number;
+    title: string;
+    start_date: string;
+    end_date: string;
+    is_closed: boolean;
+    special_open_time: string | null;
+    special_close_time: string | null;
+    announcement_message: string | null;
+  }[];
 }
 
 interface CatalogItemImage {
@@ -72,6 +83,16 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
   const [paymentReceiptUrl, setPaymentReceiptUrl] = useState('');
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
+  // New Catalog Order States
+  const [fulfillmentType, setFulfillmentType] = useState<'pickup' | 'shipping' | 'delivery'>('pickup');
+  const [deliveryAddress, setDeliveryAddress] = useState('');
+  const [rentalEndDate, setRentalEndDate] = useState('');
+
+  const getSpecialHoursForDate = (dateStr: string) => {
+    if (!shopSettings?.special_hours) return null;
+    return shopSettings.special_hours.find(s => dateStr >= s.start_date && dateStr <= s.end_date) || null;
+  };
+
   const handleReceiptUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -101,14 +122,17 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
     { value: 'measurement', label: 'Measurement',  icon: <Ruler size={18} />,        hint: 'Get your body measurements taken' },
     { value: 'fitting',     label: 'Fitting',       icon: <Shirt size={18} />,         hint: 'Try on your garment for fitting' },
     { value: 'alteration',  label: 'Alteration',    icon: <Scissors size={18} />,      hint: 'Adjust an existing garment' },
-    { value: 'pickup',      label: 'Pickup',         icon: <Package size={18} />,       hint: 'Pick up your completed order' },
-  ];;
+  ];
 
   useEffect(() => {
     // Fetch shop settings
     api.get(`/catalog/${params.shop_id}/booking-settings`)
       .then(res => {
-        setShopSettings(res.data.data);
+        const settings = res.data.data;
+        setShopSettings(settings);
+        if (settings?.branches && settings.branches.length === 1) {
+          setSelectedBranchId(settings.branches[0].id.toString());
+        }
         setLoading(false);
       })
       .catch(err => {
@@ -160,6 +184,11 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
         payment_method: paymentMethod,
         payment_reference: paymentMethod !== 'cash' ? paymentReference : null,
         payment_receipt_path: paymentMethod !== 'cash' ? paymentReceiptUrl : null,
+        catalog_item_id: catalogItem ? catalogItem.id : null,
+        fulfillment_type: catalogItem ? fulfillmentType : 'pickup',
+        delivery_address: catalogItem && fulfillmentType !== 'pickup' ? deliveryAddress : null,
+        rental_start_date: catalogItem && catalogItem.listing_type === 'for_rent' ? date : null,
+        rental_end_date: catalogItem && catalogItem.listing_type === 'for_rent' ? rentalEndDate : null,
       });
       setSuccess(true);
     } catch (err) {
@@ -267,73 +296,164 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
           {/* STEP 2: DATE & TIME */}
           {step === 2 && (
             <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4">
-              <h2 className="text-xl font-medium border-b border-[#EBE6E0] pb-4">Appointment Type & Schedule</h2>
+              <h2 className="text-xl font-medium border-b border-[#EBE6E0] pb-4">
+                {catalogItem ? 'Select Schedule & Fulfillment' : 'Appointment Type & Schedule'}
+              </h2>
 
               {/* Appointment Type Selector */}
-              <div className="space-y-2">
-                <label className="text-sm font-medium text-[#524A44] block">What are you coming in for? <span className="text-[#B26959]">*</span></label>
-                <div className="grid grid-cols-1 gap-2">
-                  {BOOKING_TYPES.map(t => (
-                    <button
-                      type="button" key={t.value}
-                      onClick={() => setAppointmentType(t.value)}
-                      className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
-                        appointmentType === t.value
-                          ? 'border-[#9A8073] bg-[#9A8073]/5 ring-2 ring-[#9A8073]/20'
-                          : 'border-[#EBE6E0] bg-white hover:border-[#9A8073]/40'
-                      }`}
-                    >
-                      <span className={`${appointmentType === t.value ? 'text-[#9A8073]' : 'text-[#A8A19A]'}`}>{t.icon}</span>
-                      <div>
-                        <p className={`text-sm font-semibold ${appointmentType === t.value ? 'text-[#2D2A26]' : 'text-[#524A44]'}`}>{t.label}</p>
-                        <p className="text-xs text-[#A8A19A]">{t.hint}</p>
-                      </div>
-                    </button>
-                  ))}
+              {!catalogItem && (
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-[#524A44] block">What are you coming in for? <span className="text-[#B26959]">*</span></label>
+                  <div className="grid grid-cols-1 gap-2">
+                    {BOOKING_TYPES.map(t => (
+                      <button
+                        type="button" key={t.value}
+                        onClick={() => setAppointmentType(t.value)}
+                        className={`flex items-center gap-3 px-4 py-3 rounded-xl border text-left transition-all ${
+                          appointmentType === t.value
+                            ? 'border-[#9A8073] bg-[#9A8073]/5 ring-2 ring-[#9A8073]/20'
+                            : 'border-[#EBE6E0] bg-white hover:border-[#9A8073]/40'
+                        }`}
+                      >
+                        <span className={`${appointmentType === t.value ? 'text-[#9A8073]' : 'text-[#A8A19A]'}`}>{t.icon}</span>
+                        <div>
+                          <p className={`text-sm font-semibold ${appointmentType === t.value ? 'text-[#2D2A26]' : 'text-[#524A44]'}`}>{t.label}</p>
+                          <p className="text-xs text-[#A8A19A]">{t.hint}</p>
+                        </div>
+                      </button>
+                    ))}
+                  </div>
+                  {TYPES_REQUIRING_SERVICE.includes(appointmentType) && (
+                    <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
+                      <AlertCircle size={12} /> Please select a service below — required for {appointmentType} appointments.
+                    </p>
+                  )}
                 </div>
-                {TYPES_REQUIRING_SERVICE.includes(appointmentType) && (
-                  <p className="text-xs text-amber-600 flex items-center gap-1 mt-1">
-                    <AlertCircle size={12} /> Please select a service below — required for {appointmentType} appointments.
-                  </p>
-                )}
-              </div>
+              )}
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="space-y-2">
-                  <label htmlFor="booking-date" className="text-sm font-medium text-[#524A44] flex items-center gap-2">
-                    <CalendarIcon size={16} /> Date
-                  </label>
-                  <input 
-                    id="booking-date"
-                    type="date" 
-                    required
-                    min={new Date().toISOString().split('T')[0]}
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-3 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]"
+                {/* Fulfillment for ready-to-wear / for_sale purchases */}
+                {catalogItem && (catalogItem.listing_type === 'ready_to_wear' || catalogItem.listing_type === 'for_sale') && (
+                  <div className="space-y-2 col-span-1 md:col-span-2 border-b border-[#EBE6E0] pb-4">
+                    <label className="text-sm font-medium text-[#524A44] block">Fulfillment Method <span className="text-[#B26959]">*</span></label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setFulfillmentType('pickup');
+                          setDeliveryAddress('');
+                        }}
+                        className={`px-4 py-3 rounded-xl border text-left transition-all ${
+                          fulfillmentType === 'pickup'
+                            ? 'border-[#9A8073] bg-[#9A8073]/5 ring-2 ring-[#9A8073]/20 font-semibold'
+                            : 'border-[#EBE6E0] bg-white hover:border-[#9A8073]/40'
+                        }`}
+                      >
+                        🏪 Pickup at Shop (Reserve & Collect)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setFulfillmentType('shipping')}
+                        className={`px-4 py-3 rounded-xl border text-left transition-all ${
+                          fulfillmentType === 'shipping' || fulfillmentType === 'delivery'
+                            ? 'border-[#9A8073] bg-[#9A8073]/5 ring-2 ring-[#9A8073]/20 font-semibold'
+                            : 'border-[#EBE6E0] bg-white hover:border-[#9A8073]/40'
+                        }`}
+                      >
+                        🚚 Request Delivery / Shipping
+                      </button>
+                    </div>
+                  </div>
+                )}
+
+                {catalogItem && fulfillmentType !== 'pickup' && (
+                  <div className="space-y-2 col-span-1 md:col-span-2 bg-[#FAF6F3]/50 p-4 border border-[#EBE6E0] rounded-xl animate-in slide-in-from-top-2">
+                    <label htmlFor="shipping-address" className="text-sm font-medium text-[#524A44] block">Shipping Address <span className="text-[#B26959]">*</span></label>
+                    <textarea
+                      id="shipping-address"
+                      required
+                      rows={3}
+                      value={deliveryAddress}
+                      onChange={(e) => setDeliveryAddress(e.target.value)}
+                      placeholder="Enter your complete delivery address (Street, Barangay, City, Province, Zip Code)..."
+                      className="w-full bg-white border border-[#EBE6E0] rounded-lg px-4 py-3 text-[#2D2A26] focus:outline-none focus:border-[#9A8073] text-sm resize-none"
+                    />
+                    <p className="text-[11px] text-[#827A73]">Note: The shop owner will calculate the shipping fee manually and contact you to coordinate delivery.</p>
+                  </div>
+                )}
+
+                <div className="col-span-1 md:col-span-2">
+                  <InteractiveCalendar 
+                    shopId={params.shop_id}
+                    selectedBranchId={selectedBranchId ? String(selectedBranchId) : null}
+                    durationMinutes={appointmentType === 'consultation' ? 30 : 60}
+                    operatingHours={shopSettings?.operating_hours as any}
+                    specialHours={shopSettings?.special_hours as any}
+                    selectedDate={date}
+                    selectedTime={time}
+                    onDateChange={setDate}
+                    onTimeChange={setTime}
+                    isRental={catalogItem?.listing_type === 'for_rent'}
                   />
                 </div>
-                <div className="space-y-2">
-                  <label htmlFor="booking-time" className="text-sm font-medium text-[#524A44] flex items-center gap-2">
-                    <Clock size={16} /> Time
-                  </label>
-                  <input 
-                    id="booking-time"
-                    type="time" 
-                    required
-                    min={(() => {
-                      const todayISO = new Date().toISOString().split('T')[0];
-                      if (date !== todayISO) return '00:00';
-                      const now = new Date();
-                      const rounded = Math.ceil((now.getHours() * 60 + now.getMinutes()) / 15) * 15;
-                      return `${String(Math.floor(rounded / 60) % 24).padStart(2, '0')}:${String(rounded % 60).padStart(2, '0')}`;
-                    })()}
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-3 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]"
-                  />
-                </div>
+
+                {/* Return Date for rentals */}
+                {catalogItem && catalogItem.listing_type === 'for_rent' && (
+                  <div className="space-y-2 col-span-1 md:col-span-2 mt-4">
+                    <label htmlFor="booking-return-date" className="text-sm font-medium text-[#524A44] flex items-center gap-2">
+                      <CalendarIcon size={16} /> Return Date <span className="text-[#B26959]">*</span>
+                    </label>
+                    <input 
+                      id="booking-return-date"
+                      type="date" 
+                      required
+                      min={date || new Date().toISOString().split('T')[0]}
+                      value={rentalEndDate}
+                      onChange={(e) => setRentalEndDate(e.target.value)}
+                      className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-3 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]"
+                    />
+                  </div>
+                )}
               </div>
+
+              {/* Deposit Warning for rentals */}
+              {catalogItem && catalogItem.listing_type === 'for_rent' && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-2.5 text-xs text-[#826A50] animate-in slide-in-from-top-2">
+                  <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-amber-600" />
+                  <div>
+                    <p className="font-bold">Refundable Security Deposit Required</p>
+                    <p className="mt-0.5">A refundable security deposit and a valid government ID are required physically upon collection/pickup at the shop.</p>
+                  </div>
+                </div>
+              )}
+
+              {(() => {
+                if (!date) return null;
+                const special = getSpecialHoursForDate(date);
+                if (!special) return null;
+
+                if (special.is_closed) {
+                  return (
+                    <div className="bg-[#B26959]/10 border border-[#B26959]/20 rounded-xl p-4 flex gap-2.5 text-xs text-[#B26959] animate-in slide-in-from-top-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Temporarily Closed ({special.title})</p>
+                        <p className="mt-0.5">We are fully closed on this date. Please choose a different date for your appointment.</p>
+                      </div>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-2.5 text-xs text-[#826A50] animate-in slide-in-from-top-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">Special Holiday Hours ({special.title})</p>
+                        <p className="mt-0.5">Custom hours for this date: {special.special_open_time} - {special.special_close_time}.</p>
+                      </div>
+                    </div>
+                  );
+                }
+              })()}
 
               {/* Branch Selector (if multi-branch) */}
               {shopSettings?.branches && shopSettings.branches.length > 1 && (
@@ -356,24 +476,79 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
                 </div>
               )}
 
-              {/* Service Selector — Required for measurement/fitting/alteration */}
-              {shopSettings?.services && shopSettings.services.length > 0 && (
+              {/* Branch Location & In-Person Warning Alerts */}
+              {(() => {
+                const currentBranch = shopSettings?.branches?.find(b => b.id.toString() === selectedBranchId) || 
+                                      (shopSettings?.branches?.length === 1 ? shopSettings.branches[0] : null);
+                
+                if (!currentBranch) return null;
+
+                return (
+                  <div className="p-4 bg-amber-50 border border-amber-200 rounded-xl space-y-2 text-xs">
+                    <p className="font-semibold text-amber-800 flex items-center gap-1.5">
+                      <MapPin size={14} className="shrink-0 text-amber-700" />
+                      Physical Store Visit Required
+                    </p>
+                    <p className="text-amber-700 leading-relaxed">
+                      This is an <strong>in-person session</strong>. You must physically visit the selected branch on the scheduled date:
+                    </p>
+                    <div className="bg-white/90 p-2.5 rounded-lg border border-amber-200/50 shadow-xs">
+                      <p className="font-bold text-zinc-800">{currentBranch.name}</p>
+                      {currentBranch.address && <p className="text-zinc-600 mt-0.5">{currentBranch.address}</p>}
+                      {currentBranch.city && <p className="text-zinc-700 font-medium mt-0.5">{currentBranch.city}</p>}
+                    </div>
+                    {appointmentType === 'consultation' ? (
+                      <p className="text-amber-800/80 mt-1.5 leading-normal">
+                        💡 <strong>Located far away?</strong> You can avoid traveling and message us directly using the <strong>"💬 Chat Shop"</strong> button on our homepage to start an online consultation!
+                      </p>
+                    ) : (
+                      <p className="text-amber-800/80 mt-1.5 leading-normal font-semibold">
+                        ⚠️ Warning: If you are located far from this branch (e.g. Luzon to Mindanao), please do not book this session as it cannot be done online.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
+              {/* Service Selector — Required for measurement/alteration, Optional for consultation, Hidden for fitting */}
+              {appointmentType !== 'fitting' && shopSettings?.services && shopSettings.services.length > 0 && (
                 <div className="space-y-2">
                   <label htmlFor="booking-service" className="text-sm font-medium text-[#524A44] block">
-                    Service {TYPES_REQUIRING_SERVICE.includes(appointmentType) ? <span className="text-[#B26959]">*</span> : '(Optional)'}
+                    Service {appointmentType === 'measurement' || appointmentType === 'alteration' ? <span className="text-[#B26959]">*</span> : '(Optional)'}
                   </label>
                   <select
                     id="booking-service"
                     value={selectedServiceId}
-                    required={TYPES_REQUIRING_SERVICE.includes(appointmentType)}
+                    required={appointmentType === 'measurement' || appointmentType === 'alteration'}
                     onChange={(e) => setSelectedServiceId(e.target.value)}
                     className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-3 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]"
                   >
-                    <option value="">{TYPES_REQUIRING_SERVICE.includes(appointmentType) ? 'Select a service...' : 'No specific service (General Consultation)'}</option>
+                    <option value="">{appointmentType === 'measurement' || appointmentType === 'alteration' ? 'Select a service...' : 'No specific service (General Consultation)'}</option>
                     {shopSettings.services.map(s => (
                       <option key={s.id} value={s.id}>{s.name}</option>
                     ))}
                   </select>
+                </div>
+              )}
+
+              {/* Order Reference Input — Required only for Fittings */}
+              {appointmentType === 'fitting' && (
+                <div className="space-y-2">
+                  <label htmlFor="booking-order-reference" className="text-sm font-medium text-[#524A44] block">
+                    Ongoing Order Number or Garment Description <span className="text-[#B26959]">*</span>
+                  </label>
+                  <input
+                    id="booking-order-reference"
+                    type="text"
+                    required
+                    placeholder="e.g., Order #1002 or Blue Wedding Gown"
+                    value={remarks}
+                    onChange={(e) => setRemarks(e.target.value)}
+                    className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-3 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]"
+                  />
+                  <p className="text-[11px] text-[#827A73]">
+                    💡 Tell the designer which ongoing order you are coming in to fit.
+                  </p>
                 </div>
               )}
 
@@ -431,7 +606,14 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
               <div className="pt-6">
                 <button 
                   onClick={() => setStep(3)}
-                  disabled={!date || !time || (!!shopSettings?.branches && shopSettings.branches.length > 1 && !selectedBranchId)}
+                  disabled={
+                    !date || 
+                    !time || 
+                    !!getSpecialHoursForDate(date)?.is_closed || 
+                    (catalogItem?.listing_type === 'for_rent' && !rentalEndDate) ||
+                    (catalogItem && (fulfillmentType === 'shipping' || fulfillmentType === 'delivery') && !deliveryAddress.trim()) ||
+                    (!!shopSettings?.branches && shopSettings.branches.length > 1 && !selectedBranchId)
+                  }
                   className="w-full bg-[#9A8073] hover:bg-[#91756A] text-white font-medium py-3 rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer shadow-sm"
                 >
                   Next Step <ArrowRight size={18} />

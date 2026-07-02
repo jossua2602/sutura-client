@@ -36,7 +36,7 @@ export default function CatalogItemCard({
             <ImageIcon size={32} />
           </div>
         )}
-        <div className="absolute top-3 right-3 px-2.5 py-1 bg-black/70 backdrop-blur-md rounded-lg text-xs font-bold text-[#2D2A26] shadow-sm border border-white/10">
+        <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/95 backdrop-blur-md rounded-lg text-xs font-bold text-[#2D2A26] shadow-sm border border-[#EBE6E0]">
           {formatCatalogPrice(item.price, item.listing_type)}
         </div>
 
@@ -60,70 +60,76 @@ export default function CatalogItemCard({
 
         {/* Hover Overlay */}
         <div className="absolute inset-0 bg-black/80 flex flex-col justify-center items-center opacity-0 group-hover:opacity-100 transition-all duration-300 backdrop-blur-sm p-6 text-center z-10 translate-y-4 group-hover:translate-y-0">
-          <h4 className="text-[#2D2A26] text-xs font-semibold uppercase tracking-wider mb-2 opacity-60">Material</h4>
-          <p className="text-lg font-medium text-[#2D2A26] mb-6">{item.material || 'Premium Fabric'}</p>
+          <h4 className="text-white/60 text-xs font-semibold uppercase tracking-wider mb-2">Material</h4>
+          <p className="text-lg font-medium text-white mb-6">{item.material || 'Premium Fabric'}</p>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-2.5 w-full max-w-[160px]">
             <button
-              onClick={() => onSave(item.id)}
-              title="Toggle Save"
-              className="p-3 bg-[#F0EAE3] hover:bg-[#B26959]/20 hover:text-[#B26959] rounded-full text-white transition-all transform hover:scale-110 shadow-lg cursor-pointer"
+              onClick={(e) => {
+                e.preventDefault();
+                onView(item.id);
+              }}
+              className="w-full py-2 bg-[#FAF6F3] hover:bg-[#FAF6F3]/90 text-[#2D2A26] rounded-xl text-xs font-bold transition-all shadow-md cursor-pointer"
             >
-              <Heart size={20} className={item.saves_count > 0 ? 'fill-current text-[#B26959]' : 'text-[#2D2A26]'} />
+              View Details
             </button>
-            <button
-              onClick={() => onView(item.id)}
-              title="Simulate Click/View"
-              className="p-3 bg-taupe hover:bg-[#9A8073] rounded-full text-white transition-all transform hover:scale-110 shadow-lg cursor-pointer"
+            <Link
+              href={`/dashboard/catalog/${item.id}/edit`}
+              className="w-full py-2 bg-taupe hover:bg-[#9A8073] text-white rounded-xl text-xs font-bold transition-all shadow-md text-center"
             >
-              <Eye size={20} />
-            </button>
-            <button
-              onClick={() => onOpenRating(item.id)}
-              title="Rate Item"
-              className="p-3 bg-[#F0EAE3] hover:bg-[#BCA89F]/20 hover:text-[#BCA89F] rounded-full text-[#2D2A26] transition-all transform hover:scale-110 shadow-lg cursor-pointer"
-            >
-              <Star size={20} className={item.reviews_count > 0 ? 'fill-current text-[#BCA89F]' : ''} />
-            </button>
+              Edit Design
+            </Link>
           </div>
         </div>
       </div>
 
       {/* Details Section */}
-      <div className="p-4 flex flex-col flex-1 bg-linear-to-b from-zinc-900 to-zinc-950">
+      <div className="p-4 flex flex-col flex-1 bg-white border-t border-[#EBE6E0]/60">
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-[10px] font-bold text-[#BCA89F] bg-[#BCA89F]/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+          <span className="text-[10px] font-bold text-[#9A8073] bg-[#9A8073]/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
             {getListingTypeLabel(item.listing_type)}
           </span>
         </div>
         <h3 className="text-sm font-semibold text-[#2D2A26] truncate">{item.name}</h3>
-        <p className="text-xs text-[#A8A19A] mt-1 truncate">{item.material || 'No material specified'}</p>
+        <p className="text-xs text-[#827A73] mt-1 truncate">{item.material || 'No material specified'}</p>
 
-        <div className="mt-auto pt-4 flex flex-col gap-3 border-t border-[#EBE6E0]/80">
+        <div className="mt-auto pt-4 flex flex-col gap-3 border-t border-[#EBE6E0]/85">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-[#BCA89F] bg-[#BCA89F]/10 px-2 py-1 rounded-md">
-              <Star size={14} className="fill-current" />
-              <span className="text-xs font-medium">
-                {item.reviews_avg_rating ? item.reviews_avg_rating : '0'}{' '}
+            <div className="flex items-center gap-1 text-[#BCA89F] bg-[#BCA89F]/10 px-2 py-1 rounded-md">
+              <Star size={12} className="fill-current" />
+              <span className="text-[11px] font-semibold">
+                {item.reviews_avg_rating ? item.reviews_avg_rating : '0.0'}{' '}
                 <span className="text-[#A8A19A] ml-0.5">({item.reviews_count || 0})</span>
               </span>
             </div>
-            <div className="flex items-center gap-3 text-[#827A73] text-xs font-medium">
-              <span className="flex items-center gap-1.5 bg-[#F0EAE3]/50 px-2 py-1 rounded-md">
-                <Eye size={14} /> {item.views_count || 0}
+            <div className="flex items-center gap-2 text-[#827A73] text-[11px] font-medium">
+              <span className="flex items-center gap-1 bg-[#F0EAE3]/50 px-2 py-1 rounded-md">
+                <Eye size={12} /> {item.views_count || 0}
               </span>
-              <span className="flex items-center gap-1.5 bg-[#F0EAE3]/50 px-2 py-1 rounded-md">
-                <Heart size={14} className={item.saves_count > 0 ? 'fill-current text-[#B26959]' : ''} />{' '}
+              <span className="flex items-center gap-1 bg-[#F0EAE3]/50 px-2 py-1 rounded-md">
+                <Heart size={12} className={item.saves_count > 0 ? 'fill-current text-[#B26959]' : ''} />{' '}
                 {item.saves_count || 0}
               </span>
             </div>
           </div>
 
+          {/* Sales Performance Row */}
+          <div className="flex items-center justify-between text-xs text-[#524A44] border-t border-[#EBE6E0]/45 pt-2.5 bg-[#FAF6F3]/50 p-2 rounded-xl">
+            <div className="flex flex-col">
+              <span className="text-[9px] font-bold text-[#827A73] uppercase tracking-wider">Revenue</span>
+              <span className="font-bold text-[#2D2A26] mt-0.5">₱{Number(item.total_revenue || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+            </div>
+            <div className="flex flex-col items-end">
+              <span className="text-[9px] font-bold text-[#827A73] uppercase tracking-wider">Sales</span>
+              <span className="font-semibold text-taupe text-[10px] bg-taupe/10 px-1.5 py-0.5 rounded mt-0.5 uppercase tracking-wider">{item.order_count || 0} Orders</span>
+            </div>
+          </div>
+
           <button
             onClick={() => onView(item.id)}
-            className="w-full mt-1 bg-taupe hover:bg-taupe/90 text-white py-2 rounded-lg text-xs font-semibold tracking-wide transition-colors flex items-center justify-center gap-1.5"
+            className="w-full mt-1 bg-taupe hover:bg-taupe/90 text-white py-2.5 rounded-xl text-xs font-semibold tracking-wide transition-colors flex items-center justify-center gap-1.5 cursor-pointer"
           >
-            {getCatalogActionLabel(item.listing_type)}
+            View Details
           </button>
         </div>
       </div>

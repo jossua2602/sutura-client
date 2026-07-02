@@ -11,6 +11,11 @@ interface ProfileCoverAvatarProps {
   } | null;
   readonly shop: {
     readonly name: string;
+    readonly social_links?: {
+      readonly facebook?: string;
+      readonly instagram?: string;
+      readonly tiktok?: string;
+    } | null;
   } | null;
   readonly isCoverDropdownOpen: boolean;
   readonly setIsCoverDropdownOpen: (open: boolean) => void;
@@ -19,6 +24,20 @@ interface ProfileCoverAvatarProps {
   readonly onViewImage: (url: string) => void;
   readonly onImageUpload: (file: File, type: 'avatar' | 'cover') => Promise<void>;
 }
+
+const getMessengerUrl = (facebookUrl?: string) => {
+  if (!facebookUrl) return 'https://m.me/suturatailoring';
+  try {
+    const url = new URL(facebookUrl);
+    const pathname = url.pathname.replace(/^\/|\/$/g, '');
+    if (pathname && !pathname.includes('/') && pathname !== 'profile.php') {
+      return `https://m.me/${pathname}`;
+    }
+  } catch (e) {
+    // Ignore URL parse error
+  }
+  return 'https://m.me/suturatailoring';
+};
 
 export default function ProfileCoverAvatar({
   user,
@@ -156,10 +175,18 @@ export default function ProfileCoverAvatar({
         </div>
 
         {/* Buttons / Actions */}
-        <div className="flex gap-3 mb-2 justify-center">
+        <div className="flex flex-wrap gap-3 mb-2 justify-center">
           <button className="px-4 py-2.5 bg-[#8C6B5D] hover:bg-[#72564A] text-white rounded-xl text-sm font-medium transition-colors shadow-sm shadow-[#8C6B5D]/10 flex items-center gap-2">
             Professional dashboard
           </button>
+          <a
+            href={getMessengerUrl(shop?.social_links?.facebook)}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="px-4 py-2.5 bg-[#EBE6E0] hover:bg-[#D1C7BD] text-[#2D2A26] rounded-xl text-sm font-medium transition-all flex items-center gap-2"
+          >
+            💬 Chat Shop
+          </a>
           <button className="px-4 py-2.5 bg-[#FAF6F3] hover:bg-[#EBE6E0] text-[#2D2A26] border border-[#EBE6E0] rounded-xl text-sm font-medium transition-all flex items-center gap-2">
             <Edit3 size={16} />
             Edit Profile

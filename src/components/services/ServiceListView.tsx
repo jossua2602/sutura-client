@@ -17,7 +17,6 @@ interface ServiceListViewProps {
   readonly allCategories: string[];
   readonly actionLoadingId: number | null;
   readonly onDuplicate: (service: Service) => Promise<void>;
-  readonly onManagePricing: (service: Service) => void;
   readonly onEdit: (service: Service) => void;
   readonly onDelete: (id: number) => void;
   readonly onBulkDelete?: (ids: number[]) => void;
@@ -33,7 +32,6 @@ export default function ServiceListView({
   allCategories,
   actionLoadingId,
   onDuplicate,
-  onManagePricing,
   onEdit,
   onDelete,
   onBulkDelete,
@@ -249,16 +247,21 @@ export default function ServiceListView({
                     <p className="text-[11px] text-[#827A73] line-clamp-2 leading-relaxed">{service.description}</p>
                   )}
 
-                  {/* Price + duration */}
-                  <div className="flex items-center justify-between pt-1 border-t border-[#EBE6E0]">
-                    <span className="text-base font-bold text-[#2D2A26]">
-                      ₱{Number.parseFloat(service.base_price).toLocaleString(undefined, { minimumFractionDigits: 2 })}
-                    </span>
-                    <div className="flex items-center gap-1 text-[11px] text-[#A8A19A]">
-                      <Clock size={11} />
-                      {service.estimated_days}d
+                  {/* Tags */}
+                  {service.tags && service.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[#EBE6E0] mt-2">
+                      {service.tags.slice(0, 5).map((tag, idx) => (
+                        <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#FAF6F3] text-[#524A44] border border-[#EBE6E0]">
+                          {tag}
+                        </span>
+                      ))}
+                      {service.tags.length > 5 && (
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#EBE6E0] text-[#524A44]">
+                          +{service.tags.length - 5}
+                        </span>
+                      )}
                     </div>
-                  </div>
+                  )}
 
                   {/* Action buttons */}
                   <div className="flex items-center gap-1 pt-1">
@@ -272,13 +275,6 @@ export default function ServiceListView({
                           className="flex-1 flex items-center justify-center gap-1.5 py-1.5 text-[11px] font-medium text-[#524A44] bg-[#FAF6F3] hover:bg-[#F0EAE3] rounded-lg transition-colors"
                         >
                           <Pencil size={12} /> Edit
-                        </button>
-                        <button
-                          onClick={() => onManagePricing(service)}
-                          title="Pricing"
-                          className="flex items-center justify-center p-1.5 text-[#A8A19A] hover:text-[#9A8073] hover:bg-[#FAF6F3] rounded-lg transition-colors"
-                        >
-                          <DollarSign size={14} />
                         </button>
                         <button
                           onClick={() => onDuplicate(service)}

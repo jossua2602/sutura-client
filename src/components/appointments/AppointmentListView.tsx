@@ -63,9 +63,32 @@ export default function AppointmentListView({
             <p className="text-xs text-[#A8A19A]">{apt.customer?.email}</p>
           </td>
           <td className="px-5 py-3.5">
-            <TypeBadge type={apt.appointment_type} />
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <TypeBadge type={apt.appointment_type} />
+              {apt.priority && apt.priority !== 'normal' && (
+                <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide border ${
+                  apt.priority === 'rush' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'
+                }`}>
+                  {apt.priority}
+                </span>
+              )}
+            </div>
             {apt.service && (
-              <p className="text-xs text-[#827A73] mt-1">{apt.service.name}</p>
+              <p className="text-xs text-[#827A73] mt-1.5 flex items-center gap-1.5">
+                <span>{apt.service.name}</span>
+                {apt.garment_category && (
+                  <span className="text-[10px] bg-[#FAF6F3] text-[#9A8073] px-1.5 py-0.5 rounded-md border border-[#EBE6E0] font-bold capitalize">
+                    {apt.garment_category}
+                  </span>
+                )}
+              </p>
+            )}
+            {!apt.service && apt.garment_category && (
+              <p className="text-xs text-[#827A73] mt-1.5 flex items-center gap-1.5">
+                <span className="text-[10px] bg-[#FAF6F3] text-[#9A8073] px-1.5 py-0.5 rounded-md border border-[#EBE6E0] font-bold capitalize">
+                  {apt.garment_category}
+                </span>
+              </p>
             )}
           </td>
           <td className="px-5 py-3.5">

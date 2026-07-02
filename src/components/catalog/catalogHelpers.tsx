@@ -15,6 +15,12 @@ export interface CatalogItem {
   saves_count: number;
   reviews_avg_rating: number | null;
   reviews_count: number;
+  features?: unknown;
+  fit_guide?: unknown;
+  care_instructions?: unknown;
+  external_gallery_url?: string;
+  total_revenue?: number;
+  order_count?: number;
 }
 
 export function formatCatalogPrice(price: string | number, listingType?: string): string {
@@ -74,59 +80,99 @@ export function getListingTypeLabel(listingType?: string): string {
   }
 }
 
-export function parseFeatures(featuresStr?: string): { bullets: BulletItem[]; imageUrl: string } {
+export function parseFeatures(featuresInput?: unknown): { bullets: BulletItem[]; imageUrl: string } {
   let bullets: BulletItem[] = [{ id: 'init', text: '' }];
   let imageUrl = '';
-  if (featuresStr) {
-    try {
-      const parsed = JSON.parse(featuresStr);
-      if (parsed && typeof parsed === 'object' && 'bullets' in parsed) {
-        bullets = (parsed.bullets || ['']).map((b: string, i: number) => ({ id: `feat-${i}`, text: b }));
-        imageUrl = parsed.image_url || '';
-      } else if (Array.isArray(parsed)) {
-        bullets = parsed.map((b: string, i: number) => ({ id: `feat-${i}`, text: b }));
+  if (!featuresInput) return { bullets, imageUrl };
+
+  let parsed: unknown = featuresInput;
+  if (typeof featuresInput === 'string') {
+    const trimmed = featuresInput.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        parsed = JSON.parse(featuresInput);
+      } catch (e) {
+        console.error('Failed to parse features JSON string', e);
       }
-    } catch (e) {
-      console.error('Failed to parse features', e);
+    } else {
+      return { bullets: [{ id: 'feat-0', text: featuresInput }], imageUrl };
+    }
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    const parsedObj = parsed as Record<string, unknown>;
+    if ('bullets' in parsedObj) {
+      const bulletsArr = Array.isArray(parsedObj.bullets) ? parsedObj.bullets : [''];
+      bullets = bulletsArr.map((b: unknown, i: number) => ({ id: `feat-${i}`, text: String(b) }));
+      imageUrl = typeof parsedObj.image_url === 'string' ? parsedObj.image_url : '';
+    } else if (Array.isArray(parsedObj)) {
+      bullets = parsedObj.map((b: unknown, i: number) => ({ id: `feat-${i}`, text: String(b) }));
     }
   }
   return { bullets, imageUrl };
 }
 
-export function parseFitGuide(fitGuideStr?: string): { bullets: BulletItem[]; imageUrl: string } {
+export function parseFitGuide(fitGuideInput?: unknown): { bullets: BulletItem[]; imageUrl: string } {
   let bullets: BulletItem[] = [{ id: 'init', text: '' }];
   let imageUrl = '';
-  if (fitGuideStr) {
-    try {
-      const parsed = JSON.parse(fitGuideStr);
-      if (parsed && typeof parsed === 'object' && 'bullets' in parsed) {
-        bullets = (parsed.bullets || ['']).map((b: string, i: number) => ({ id: `fit-${i}`, text: b }));
-        imageUrl = parsed.image_url || '';
-      } else if (Array.isArray(parsed)) {
-        bullets = parsed.map((b: string, i: number) => ({ id: `fit-${i}`, text: b }));
+  if (!fitGuideInput) return { bullets, imageUrl };
+
+  let parsed: unknown = fitGuideInput;
+  if (typeof fitGuideInput === 'string') {
+    const trimmed = fitGuideInput.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        parsed = JSON.parse(fitGuideInput);
+      } catch (e) {
+        console.error('Failed to parse fit guide JSON string', e);
       }
-    } catch (e) {
-      console.error('Failed to parse fit guide', e);
+    } else {
+      return { bullets: [{ id: 'fit-0', text: fitGuideInput }], imageUrl };
+    }
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    const parsedObj = parsed as Record<string, unknown>;
+    if ('bullets' in parsedObj) {
+      const bulletsArr = Array.isArray(parsedObj.bullets) ? parsedObj.bullets : [''];
+      bullets = bulletsArr.map((b: unknown, i: number) => ({ id: `fit-${i}`, text: String(b) }));
+      imageUrl = typeof parsedObj.image_url === 'string' ? parsedObj.image_url : '';
+    } else if (Array.isArray(parsedObj)) {
+      bullets = parsedObj.map((b: unknown, i: number) => ({ id: `fit-${i}`, text: String(b) }));
     }
   }
   return { bullets, imageUrl };
 }
 
-export function parseCareInstructions(careInstructionsStr?: string): { text: string; imageUrl: string } {
+export function parseCareInstructions(careInstructionsInput?: unknown): { text: string; imageUrl: string } {
   let text = '';
   let imageUrl = '';
-  if (careInstructionsStr) {
-    try {
-      const parsed = JSON.parse(careInstructionsStr);
-      if (parsed && typeof parsed === 'object' && ('text' in parsed || 'image_url' in parsed)) {
-        text = parsed.text || '';
-        imageUrl = parsed.image_url || '';
-      } else {
-        text = careInstructionsStr;
+  if (!careInstructionsInput) return { text, imageUrl };
+
+  let parsed: unknown = careInstructionsInput;
+  if (typeof careInstructionsInput === 'string') {
+    const trimmed = careInstructionsInput.trim();
+    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
+      try {
+        parsed = JSON.parse(careInstructionsInput);
+      } catch (e) {
+        console.error('Failed to parse care instructions JSON string', e);
       }
-    } catch {
-      text = careInstructionsStr;
+    } else {
+      return { text: careInstructionsInput, imageUrl };
     }
+  }
+
+  if (parsed && typeof parsed === 'object') {
+    const parsedObj = parsed as Record<string, unknown>;
+    if ('text' in parsedObj || 'image_url' in parsedObj) {
+      text = typeof parsedObj.text === 'string' ? parsedObj.text : '';
+      imageUrl = typeof parsedObj.image_url === 'string' ? parsedObj.image_url : '';
+    } else {
+      text = JSON.stringify(parsedObj);
+    }
+  } else if (careInstructionsInput !== null && careInstructionsInput !== undefined) {
+    text = typeof careInstructionsInput === 'object' ? JSON.stringify(careInstructionsInput) : String(careInstructionsInput as string | number | boolean);
   }
   return { text, imageUrl };
 }

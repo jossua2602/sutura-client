@@ -74,7 +74,7 @@ export default function OrdersPage() {
   const byStatus = statusFilter === 'all' ? byType : byType.filter(o => o.status === statusFilter);
   const filtered = search
     ? byStatus.filter(o =>
-        (o.catalog_item?.title || '').toLowerCase().includes(search.toLowerCase()) ||
+        (o.catalog_item?.name || '').toLowerCase().includes(search.toLowerCase()) ||
         (o.customer?.name || '').toLowerCase().includes(search.toLowerCase())
       )
     : byStatus;
