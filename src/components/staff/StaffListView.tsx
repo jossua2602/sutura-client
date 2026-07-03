@@ -7,15 +7,17 @@ interface StaffListViewProps {
   readonly loading: boolean;
   readonly onEdit: (member: Staff) => void;
   readonly onDelete: (id: number) => void;
+  readonly onViewHistory: (member: Staff) => void;
 }
 
 interface StaffMemberRowProps {
   readonly member: Staff;
   readonly onEdit: (member: Staff) => void;
   readonly onDelete: (id: number) => void;
+  readonly onViewHistory: (member: Staff) => void;
 }
 
-function StaffMemberRow({ member, onEdit, onDelete }: StaffMemberRowProps) {
+function StaffMemberRow({ member, onEdit, onDelete, onViewHistory }: StaffMemberRowProps) {
   const { label: lastSeenLabel, isOnline } = formatLastSeen(member.user?.last_seen_at);
 
   return (
@@ -126,6 +128,13 @@ function StaffMemberRow({ member, onEdit, onDelete }: StaffMemberRowProps) {
       <td className="px-6 py-4 text-right">
         <div className="flex items-center justify-end gap-2">
           <button
+            onClick={() => onViewHistory(member)}
+            title="Work history"
+            className="text-[#A8A19A] hover:text-[#7A8B76] transition-colors p-1"
+          >
+            <Clock size={16} />
+          </button>
+          <button
             onClick={() => onEdit(member)}
             className="text-[#A8A19A] hover:text-[#2D2A26] transition-colors p-1"
           >
@@ -148,6 +157,7 @@ export default function StaffListView({
   loading,
   onEdit,
   onDelete,
+  onViewHistory,
 }: StaffListViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -215,6 +225,7 @@ export default function StaffListView({
                 member={member}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onViewHistory={onViewHistory}
               />
             ))}
           </tbody>

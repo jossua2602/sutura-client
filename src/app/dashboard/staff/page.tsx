@@ -10,6 +10,7 @@ import { Staff } from '@/components/staff/staffHelpers';
 import StaffFormModal from '@/components/staff/StaffFormModal';
 import StaffDeleteModal from '@/components/staff/StaffDeleteModal';
 import StaffListView from '@/components/staff/StaffListView';
+import StaffHistoryModal from '@/components/staff/StaffHistoryModal';
 
 export default function StaffPage() {
   const { shop, user } = useAuthStore();
@@ -23,6 +24,7 @@ export default function StaffPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [saving, setSaving] = useState(false);
+  const [historyStaff, setHistoryStaff] = useState<Staff | null>(null);
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -230,6 +232,14 @@ export default function StaffPage() {
           loading={loading}
           onEdit={handleEditClick}
           onDelete={handleDeleteClick}
+          onViewHistory={(member) => setHistoryStaff(member)}
+        />
+
+        <StaffHistoryModal
+          staffId={historyStaff?.id ?? null}
+          staffName={historyStaff?.user?.name ?? ''}
+          isOpen={historyStaff !== null}
+          onClose={() => setHistoryStaff(null)}
         />
 
         {/* Add Staff Modal */}

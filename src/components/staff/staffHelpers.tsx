@@ -6,6 +6,7 @@ export interface Staff {
   hired_at: string;
   specialization?: string | string[];
   active_jobs?: number;
+  completed_jobs?: number;
 }
 
 /**
