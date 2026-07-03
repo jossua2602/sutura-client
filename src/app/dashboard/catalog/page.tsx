@@ -6,7 +6,7 @@ import { useAuthStore } from '@/store/useAuthStore';
 import { Plus, Image as ImageIcon } from 'lucide-react';
 import Link from 'next/link';
 
-import { CatalogItem } from '@/components/catalog/catalogHelpers';
+import { CatalogItem, getListingTypeLabel } from '@/components/catalog/catalogHelpers';
 import CatalogItemCard from '@/components/catalog/CatalogItemCard';
 import CatalogRatingModal from '@/components/catalog/CatalogRatingModal';
 import CatalogDeleteModal from '@/components/catalog/CatalogDeleteModal';
@@ -30,6 +30,11 @@ export default function CatalogPage() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const [filterListing, setFilterListing] = useState('');
+  const [filterCategory, setFilterCategory] = useState('');
+  const [filterColor, setFilterColor] = useState('');
+  const [filterSize, setFilterSize] = useState('');
 
   const fetchItems = useCallback(() => {
     if (shop?.id) {
@@ -123,6 +128,21 @@ export default function CatalogPage() {
     return <div className="text-[#A8A19A] py-12 text-center animate-pulse">Loading catalog...</div>;
   }
 
+  const uniq = (arr: (string | undefined | null)[]) =>
+    Array.from(new Set(arr.filter((v): v is string => !!v && v.trim() !== ''))).sort((a, b) => a.localeCompare(b));
+  const listingOptions = uniq(items.map(i => i.listing_type));
+  const categoryOptions = uniq(items.map(i => i.garment_type));
+  const colorOptions = uniq(items.map(i => i.color));
+  const sizeOptions = uniq(items.flatMap(i => (Array.isArray(i.sizes) ? i.sizes : [])));
+  const filteredItems = items.filter(i =>
+    (!filterListing || i.listing_type === filterListing) &&
+    (!filterCategory || i.garment_type === filterCategory) &&
+    (!filterColor || i.color === filterColor) &&
+    (!filterSize || (Array.isArray(i.sizes) && i.sizes.includes(filterSize)))
+  );
+  const hasActiveFilter = !!(filterListing || filterCategory || filterColor || filterSize);
+  const filterSelectClass = 'px-3 py-2 bg-white border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe';
+
   return (
     <div className="space-y-6 pb-12 text-[#2D2A26]">
       <CatalogModuleTabs />
@@ -156,18 +176,55 @@ export default function CatalogPage() {
           </Link>
         </div>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
-          {items.map(item => (
-            <CatalogItemCard
-              key={item.id}
-              item={item}
-              onSave={handleSave}
-              onView={handleView}
-              onOpenRating={openRating}
-              onOpenDelete={openDelete}
-            />
-          ))}
-        </div>
+        <>
+          <div className="flex flex-wrap gap-3 items-center">
+            <span className="text-xs font-semibold text-[#827A73] uppercase tracking-wider">Filter</span>
+            <select value={filterListing} onChange={e => setFilterListing(e.target.value)} className={filterSelectClass}>
+              <option value="">All Types</option>
+              {listingOptions.map(o => <option key={o} value={o}>{getListingTypeLabel(o)}</option>)}
+            </select>
+            <select value={filterCategory} onChange={e => setFilterCategory(e.target.value)} className={filterSelectClass}>
+              <option value="">All Categories</option>
+              {categoryOptions.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+            <select value={filterColor} onChange={e => setFilterColor(e.target.value)} className={filterSelectClass}>
+              <option value="">All Colors</option>
+              {colorOptions.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+            <select value={filterSize} onChange={e => setFilterSize(e.target.value)} className={filterSelectClass}>
+              <option value="">All Sizes</option>
+              {sizeOptions.map(o => <option key={o} value={o}>{o}</option>)}
+            </select>
+            {hasActiveFilter && (
+              <button
+                onClick={() => { setFilterListing(''); setFilterCategory(''); setFilterColor(''); setFilterSize(''); }}
+                className="text-xs font-semibold text-[#B26959] hover:underline"
+              >
+                Clear filters
+              </button>
+            )}
+            <span className="text-xs text-[#A8A19A] ml-auto">{filteredItems.length} of {items.length}</span>
+          </div>
+
+          {filteredItems.length === 0 ? (
+            <div className="bg-white border border-[#EBE6E0] rounded-2xl p-10 text-center text-sm text-[#827A73]">
+              No items match the selected filters.
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+              {filteredItems.map(item => (
+                <CatalogItemCard
+                  key={item.id}
+                  item={item}
+                  onSave={handleSave}
+                  onView={handleView}
+                  onOpenRating={openRating}
+                  onOpenDelete={openDelete}
+                />
+              ))}
+            </div>
+          )}
+        </>
       )}
 
       <CatalogRatingModal
