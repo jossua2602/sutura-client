@@ -80,6 +80,7 @@ function MeasurementsContent() {
     }
     const payload = {
       customer_id: form.customer_id,
+      source: form.source,
       profile_name: form.profile_name,
       metrics: cleanMetrics,
       notes: form.notes || null,

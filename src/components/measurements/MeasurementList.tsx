@@ -83,6 +83,11 @@ export default function MeasurementList({
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="font-semibold text-[#2D2A26] text-sm">{profileName}</p>
+                            {activeRec.source === 'customer' ? (
+                              <span className="text-[10px] bg-blue-50 text-blue-700 border border-blue-200 px-2 py-0.5 rounded-full font-medium">Customer-Side</span>
+                            ) : (
+                              <span className="text-[10px] bg-[#7A8B76]/10 text-[#7A8B76] border border-[#7A8B76]/20 px-2 py-0.5 rounded-full font-medium">Shop Owner</span>
+                            )}
                             <span className="text-[10px] bg-[#9A8073]/10 text-[#9A8073] border border-[#9A8073]/20 px-2 py-0.5 rounded-full font-medium">
                               {filledCount} field{filledCount === 1 ? '' : 's'}
                             </span>

@@ -15,6 +15,7 @@ export interface Metrics {
 export interface MeasurementRecord {
   id: number;
   customer_id: number;
+  source?: string;
   profile_name: string;
   metrics: Metrics;
   notes: string | null;

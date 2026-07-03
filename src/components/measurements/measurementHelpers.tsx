@@ -22,6 +22,7 @@ export const emptyMetrics = (): Metrics =>
 
 export const emptyForm = () => ({
   customer_id: '',
+  source: 'shop_owner',
   profile_name: '',
   metrics: emptyMetrics(),
   notes: '',

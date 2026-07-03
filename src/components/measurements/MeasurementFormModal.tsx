@@ -86,6 +86,19 @@ export default function MeasurementFormModal({
           />
         </div>
 
+        <div>
+          <label htmlFor="measurement-source" className="block text-sm font-medium text-[#524A44] mb-1.5">Record Type</label>
+          <select
+            id="measurement-source"
+            value={form.source}
+            onChange={e => setForm(f => ({ ...f, source: e.target.value }))}
+            className="w-full px-4 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-1 focus:ring-[#9A8073]/30"
+          >
+            <option value="shop_owner">Shop Owner (tailor&apos;s own format)</option>
+            <option value="customer">Customer-Side (encoded from the customer)</option>
+          </select>
+        </div>
+
         {/* Measurement Fields */}
         <div>
           <p className="text-sm font-medium text-[#524A44] mb-3 flex items-center gap-2">
