@@ -8,6 +8,7 @@ import { Search, ShoppingBag, Truck, Package, CheckCircle2, Clock } from 'lucide
 
 import { CatalogOrder } from '@/components/orders/orderHelpers';
 import OrderListItem from '@/components/orders/OrderListItem';
+import CatalogModuleTabs from '@/components/catalog/CatalogModuleTabs';
 
 type TypeFilter = 'walkin' | 'online';
 type StatusFilter = 'all' | 'pending' | 'out_for_delivery' | 'ready' | 'completed';
@@ -102,6 +103,7 @@ export default function OrdersPage() {
 
   return (
     <div className="space-y-6 text-[#2D2A26]">
+      <CatalogModuleTabs />
       {/* Header */}
       <div className="flex items-start justify-between">
         <div>

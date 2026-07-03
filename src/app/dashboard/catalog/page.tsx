@@ -11,6 +11,7 @@ import CatalogItemCard from '@/components/catalog/CatalogItemCard';
 import CatalogRatingModal from '@/components/catalog/CatalogRatingModal';
 import CatalogDeleteModal from '@/components/catalog/CatalogDeleteModal';
 import CatalogPreviewModal from '@/components/catalog/CatalogPreviewModal';
+import CatalogModuleTabs from '@/components/catalog/CatalogModuleTabs';
 import { useToast } from '@/context/ToastContext';
 
 export default function CatalogPage() {
@@ -124,6 +125,7 @@ export default function CatalogPage() {
 
   return (
     <div className="space-y-6 pb-12 text-[#2D2A26]">
+      <CatalogModuleTabs />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Catalog Showcase</h1>

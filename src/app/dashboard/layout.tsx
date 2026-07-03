@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Home, Star, CreditCard, Receipt, MapPin, Store, Eye, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Home, Star, CreditCard, Receipt, MapPin, Store, Eye, Sparkles, Ruler } from 'lucide-react';
 import api from '@/lib/axios';
 import NotificationBell from '@/components/NotificationBell';
 import BrandLogo from '@/components/BrandLogo';
@@ -102,16 +102,24 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
       title: 'Workroom',
       items: [
         { name: 'Custom Jobs',   path: '/dashboard/jobs',        icon: Scissors },
-        { name: 'Ready-to-Wear', path: '/dashboard/orders',      icon: Package },
         { name: 'Customers',     path: '/dashboard/customers',   icon: Users },
+        { name: 'Measurements',  path: '/dashboard/measurements',icon: Ruler },
       ]
     },
     {
+      // Ready-to-Wear is folded into Design Catalog as a tab (see the catalog page);
+      // it is no longer a standalone sidebar item.
       title: 'Showroom',
       items: [
         { name: 'Design Catalog',path: '/dashboard/catalog',     icon: ShoppingBag },
         { name: 'Services',      path: '/dashboard/services',    icon: Package },
         { name: 'Specializations',path: '/dashboard/specializations',icon: Scissors },
+      ]
+    },
+    {
+      title: 'My Storefront',
+      items: [
+        { name: 'Storefront',    path: '/dashboard/profile',     icon: Store },
         { name: 'Reviews',       path: '/dashboard/reviews',     icon: Star },
       ]
     },
@@ -125,7 +133,9 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
     ...(isShopOwner ? [{
       title: 'Configuration',
       items: [
-        { name: 'Branches', path: '/dashboard/branches', icon: Building2 },
+        { name: 'Branches',         path: '/dashboard/branches',        icon: Building2 },
+        { name: 'Billing & Plans',  path: '/dashboard/billing',         icon: Receipt },
+        { name: 'Account Settings', path: '/dashboard/account-settings',icon: Settings },
       ]
     }] : [])
   ];
