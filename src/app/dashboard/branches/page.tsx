@@ -1,14 +1,25 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import dynamic from 'next/dynamic';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Plus } from 'lucide-react';
+import { Plus, Map as MapIcon, LayoutGrid } from 'lucide-react';
 import { ShopBranch, EMPTY_FORM } from '@/components/branches/branchHelpers';
 import BranchFormModal from '@/components/branches/BranchFormModal';
 import BranchDeleteModal from '@/components/branches/BranchDeleteModal';
 import BranchListView from '@/components/branches/BranchListView';
 import { useToast } from '@/context/ToastContext';
+
+// Leaflet touches `window`, so load the map client-only.
+const BranchesMap = dynamic(() => import('@/components/branches/BranchesMap'), {
+  ssr: false,
+  loading: () => (
+    <div className="bg-white border border-[#EBE6E0] rounded-2xl p-10 text-center text-sm text-[#827A73]">
+      Loading map…
+    </div>
+  ),
+});
 
 export default function BranchesPage() {
   const { shop, user } = useAuthStore();
@@ -24,6 +35,7 @@ export default function BranchesPage() {
   const [errorMsg, setErrorMsg] = useState('');
 
   const [formData, setFormData] = useState(EMPTY_FORM);
+  const [viewMode, setViewMode] = useState<'cards' | 'map'>('cards');
 
   const fetchBranches = useCallback(() => {
     if (shop?.id) {
@@ -136,21 +148,41 @@ export default function BranchesPage() {
             map.
           </p>
         </div>
-        <button
-          onClick={openAddModal}
-          className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          <Plus size={18} />
-          Add Branch
-        </button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center bg-[#F0EAE3] rounded-lg p-0.5">
+            <button
+              onClick={() => setViewMode('cards')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'cards' ? 'bg-white text-[#2D2A26] shadow-sm' : 'text-[#827A73]'}`}
+            >
+              <LayoutGrid size={15} /> Cards
+            </button>
+            <button
+              onClick={() => setViewMode('map')}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${viewMode === 'map' ? 'bg-white text-[#2D2A26] shadow-sm' : 'text-[#827A73]'}`}
+            >
+              <MapIcon size={15} /> Map
+            </button>
+          </div>
+          <button
+            onClick={openAddModal}
+            className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            <Plus size={18} />
+            Add Branch
+          </button>
+        </div>
       </div>
 
-      <BranchListView
-        branches={branches}
-        onAddClick={openAddModal}
-        onEdit={handleEditClick}
-        onDelete={handleDeleteClick}
-      />
+      {viewMode === 'map' ? (
+        <BranchesMap branches={branches} />
+      ) : (
+        <BranchListView
+          branches={branches}
+          onAddClick={openAddModal}
+          onEdit={handleEditClick}
+          onDelete={handleDeleteClick}
+        />
+      )}
 
       {/* Add / Edit Modal */}
       <BranchFormModal
