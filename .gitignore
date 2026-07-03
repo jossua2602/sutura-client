@@ -40,6 +40,5 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-# local working docs / build artifacts (keep out of the repo)
-*.docx
+# build artifacts (keep out of the repo)
 /lint_output.txt
