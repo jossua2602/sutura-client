@@ -100,6 +100,7 @@ export default function CatalogForm({
     listing_type: 'made_to_order',
     rental_price: '',
     rental_deposit: '',
+    sizes: '',
     external_gallery_url: '',
   });
 
@@ -313,6 +314,21 @@ export default function CatalogForm({
                     value={formData.rental_deposit}
                     onChange={handleChange}
                     placeholder="e.g. 3000"
+                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="catalog-sizes" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
+                    Available Sizes <span className="text-[#A8A19A] normal-case">— comma separated</span>
+                  </label>
+                  <input
+                    id="catalog-sizes"
+                    type="text"
+                    name="sizes"
+                    value={formData.sizes}
+                    onChange={handleChange}
+                    placeholder="e.g. S, M, L, XL"
                     className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
                   />
                 </div>

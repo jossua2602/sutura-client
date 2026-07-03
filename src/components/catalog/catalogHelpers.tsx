@@ -191,6 +191,7 @@ export function mapCatalogItemToState(item: CatalogItemResponse) {
     listing_type: item.listing_type ?? 'made_to_order',
     rental_price: item.rental_price != null ? String(item.rental_price) : '',
     rental_deposit: item.rental_deposit != null ? String(item.rental_deposit) : '',
+    sizes: Array.isArray(item.sizes) ? item.sizes.join(', ') : '',
     external_gallery_url: item.external_gallery_url ?? '',
   };
 
@@ -301,6 +302,7 @@ export function buildSavePayload(
   return {
     ...formData,
     sale_price: formData.price,
+    sizes: formData.sizes.split(',').map(s => s.trim()).filter(Boolean),
     features: {
       bullets: filteredFeatures,
       image_url: featuresImage,

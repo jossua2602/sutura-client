@@ -43,5 +43,6 @@ export interface CatalogFormData {
   listing_type: string;
   rental_price: string;
   rental_deposit: string;
+  sizes: string;
   external_gallery_url: string;
 }
