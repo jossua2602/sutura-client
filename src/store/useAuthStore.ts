@@ -47,7 +47,7 @@ export interface Shop {
   phone?: string;
   email?: string;
   logo_path?: string;
-  operating_hours?: Record<string, unknown>;
+  operating_hours?: Record<string, { is_open: boolean; open: string; close: string }>;
   active_special_hours?: {
     id: number;
     title: string;

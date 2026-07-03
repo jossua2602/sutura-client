@@ -56,7 +56,7 @@ export default function ServiceDetailModal({
   facebookUrl,
   shopId,
 }: ServiceDetailModalProps) {
-  const [formData, setFormData] = useState<Record<string, unknown>>({});
+  const [formData, setFormData] = useState<Record<string, string | string[]>>({});
 
   if (!isOpen || !service) return null;
 
@@ -65,7 +65,7 @@ export default function ServiceDetailModal({
     ? service.custom_fields
     : [];
 
-  const handleInputChange = (fieldName: string, value: unknown) => {
+  const handleInputChange = (fieldName: string, value: string | string[]) => {
     setFormData(prev => ({
       ...prev,
       [fieldName]: value,
@@ -258,7 +258,7 @@ export default function ServiceDetailModal({
                       {field.type === 'multi_select' && (
                         <div className="bg-[#FAF6F3] border border-[#EBE6E0] rounded-xl p-3 grid grid-cols-2 gap-2">
                           {field.options?.map(opt => {
-                            const isChecked = Array.isArray(formData[field.name]) && formData[field.name].includes(opt);
+                            const isChecked = Array.isArray(formData[field.name]) && (formData[field.name] as string[]).includes(opt);
                             return (
                               <label key={opt} className="flex items-center gap-2 text-xs font-semibold text-[#524A44] cursor-pointer">
                                 <input
