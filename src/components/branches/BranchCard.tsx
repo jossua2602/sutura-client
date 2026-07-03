@@ -59,6 +59,12 @@ export default function BranchCard({ branch, onEdit, onDelete }: Readonly<Branch
               {branch.address}, {branch.city}
             </span>
           </div>
+          {branch.landmark && (
+            <div className="flex items-start gap-2 text-xs text-[#827A73]">
+              <MapPin className="w-3.5 h-3.5 text-[#BCA89F] shrink-0 mt-0.5" />
+              <span>Landmark: {branch.landmark}</span>
+            </div>
+          )}
           {branch.contact_number && (
             <div className="flex items-center gap-2 text-sm text-[#524A44]">
               <Phone className="w-4 h-4 text-[#A8A19A] shrink-0" />

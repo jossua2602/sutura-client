@@ -5,6 +5,7 @@ export interface ShopBranch {
   id: number;
   name: string;
   address: string;
+  landmark?: string | null;
   city: string;
   contact_number: string | null;
   is_main: boolean;
@@ -20,6 +21,7 @@ export interface ShopBranch {
 export const EMPTY_FORM = {
   name: '',
   address: '',
+  landmark: '',
   city: '',
   contact_number: '',
   latitude: '',

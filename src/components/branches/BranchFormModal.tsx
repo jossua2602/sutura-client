@@ -14,6 +14,7 @@ interface BranchFormModalProps {
   readonly formData: {
     name: string;
     address: string;
+    landmark?: string;
     city: string;
     contact_number: string;
     latitude: string;
@@ -25,6 +26,7 @@ interface BranchFormModalProps {
   readonly setFormData: React.Dispatch<React.SetStateAction<{
     name: string;
     address: string;
+    landmark: string;
     city: string;
     contact_number: string;
     latitude: string;
@@ -84,6 +86,21 @@ export default function BranchFormModal({
             placeholder="e.g. 123 JP Laurel Avenue"
             value={formData.address}
             onChange={e => setFormData(prev => ({ ...prev, address: e.target.value }))}
+            className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe text-sm"
+          />
+        </div>
+
+        {/* Landmark */}
+        <div>
+          <label htmlFor="branch-landmark" className="block text-sm font-medium text-[#524A44] mb-1">
+            Landmark <span className="text-[#A8A19A] font-normal">(nearby reference)</span>
+          </label>
+          <input
+            id="branch-landmark"
+            type="text"
+            placeholder="e.g. Beside Jollibee, across the church"
+            value={formData.landmark ?? ''}
+            onChange={e => setFormData(prev => ({ ...prev, landmark: e.target.value }))}
             className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe text-sm"
           />
         </div>

@@ -58,6 +58,7 @@ export default function BranchesPage() {
     setFormData({
       name: branch.name,
       address: branch.address,
+      landmark: branch.landmark || '',
       city: branch.city,
       contact_number: branch.contact_number || '',
       latitude: branch.latitude || '',
