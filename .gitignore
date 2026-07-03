@@ -39,3 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# local working docs / build artifacts (keep out of the repo)
+*.docx
+/lint_output.txt
