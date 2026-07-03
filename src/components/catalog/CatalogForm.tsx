@@ -93,10 +93,13 @@ export default function CatalogForm({
     name: '',
     price: '',
     material: '',
+    color: '',
     description: '',
     care_instructions: '',
     garment_type: '',
     listing_type: 'made_to_order',
+    rental_price: '',
+    rental_deposit: '',
     external_gallery_url: '',
   });
 
@@ -168,8 +171,8 @@ export default function CatalogForm({
     await onSubmit(payload);
   };
 
-  const isPortfolio = formData.listing_type === 'portfolio';
-  const saveDisabled = submitting || !formData.name || (!isPortfolio && !formData.price) || images.every(i => !i.url);
+  const isRentable = formData.listing_type === 'for_rent' || formData.listing_type === 'rent_or_sale';
+  const saveDisabled = submitting || !formData.name || !formData.price || images.every(i => !i.url);
 
   return (
     <form onSubmit={handleFormSubmit} className="bg-[#FAF6F3] min-h-screen text-[#2D2A26] pb-16 font-sans selection:bg-[#EBE6E0]">
@@ -232,19 +235,16 @@ export default function CatalogForm({
 
                 <div>
                   <label htmlFor="catalog-price" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
-                    Price (PHP) {!isPortfolio && <span className="text-rose-500">*</span>}
+                    Sale Price (PHP) <span className="text-rose-500">*</span>
                   </label>
                   <input
                     id="catalog-price"
                     type="number"
                     name="price"
-                    value={isPortfolio ? '' : formData.price}
+                    value={formData.price}
                     onChange={handleChange}
-                    disabled={isPortfolio}
-                    placeholder={isPortfolio ? 'Showcase Only (Price Hidden)' : 'e.g. 24999'}
-                    className={`w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm ${
-                      isPortfolio ? 'bg-[#FAF6F3] text-[#A8A19A] cursor-not-allowed' : ''
-                    }`}
+                    placeholder="e.g. 24999"
+                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
                   />
                 </div>
               </div>
@@ -264,6 +264,19 @@ export default function CatalogForm({
                 </div>
 
                 <div>
+                  <label htmlFor="catalog-color" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">Color</label>
+                  <input
+                    id="catalog-color"
+                    type="text"
+                    name="color"
+                    value={formData.color}
+                    onChange={handleChange}
+                    placeholder="e.g. Ivory, Navy Blue"
+                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                  />
+                </div>
+
+                <div>
                   <label htmlFor="catalog-garment" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">Garment Type</label>
                   <input
                     id="catalog-garment"
@@ -272,6 +285,34 @@ export default function CatalogForm({
                     value={formData.garment_type}
                     onChange={handleChange}
                     placeholder="e.g. Barong, Gown, Suit"
+                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="catalog-rental-price" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
+                    Rental Price (PHP){isRentable ? <span className="text-rose-500"> *</span> : <span className="text-[#A8A19A] normal-case"> — for rentals</span>}
+                  </label>
+                  <input
+                    id="catalog-rental-price"
+                    type="number"
+                    name="rental_price"
+                    value={formData.rental_price}
+                    onChange={handleChange}
+                    placeholder="e.g. 1500"
+                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="catalog-rental-deposit" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">Rental Deposit (PHP)</label>
+                  <input
+                    id="catalog-rental-deposit"
+                    type="number"
+                    name="rental_deposit"
+                    value={formData.rental_deposit}
+                    onChange={handleChange}
+                    placeholder="e.g. 3000"
                     className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
                   />
                 </div>
@@ -292,7 +333,6 @@ export default function CatalogForm({
                     <option value="for_rent">For Rent Only</option>
                     <option value="for_sale">For Sale Only</option>
                     <option value="rent_or_sale">For Rent and Sale</option>
-                    <option value="portfolio">Portfolio (Showcase Only)</option>
                   </select>
                 </div>
 

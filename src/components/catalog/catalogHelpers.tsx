@@ -6,7 +6,13 @@ export interface CatalogItem {
   id: number;
   name: string;
   price: string;
+  sale_price?: string | number | null;
+  rental_price?: string | number | null;
+  rental_deposit?: string | number | null;
   material: string;
+  color?: string;
+  fabric_image_url?: string;
+  sizes?: string[] | null;
   description?: string;
   garment_type?: string;
   listing_type?: string;
@@ -25,10 +31,6 @@ export interface CatalogItem {
 
 export function formatCatalogPrice(price: string | number, listingType?: string): string {
   const numericPrice = Number(price);
-  
-  if (listingType === 'portfolio') {
-    return 'Showcase Only';
-  }
 
   const formattedPrice = Number.isNaN(numericPrice) ? '0' : numericPrice.toLocaleString();
 
@@ -45,8 +47,6 @@ export function formatCatalogPrice(price: string | number, listingType?: string)
 
 export function getCatalogActionLabel(listingType?: string): string {
   switch (listingType) {
-    case 'portfolio':
-      return 'Inquire';
     case 'made_to_order':
       return 'Book / Measure';
     case 'for_rent':
@@ -61,8 +61,6 @@ export function getCatalogActionLabel(listingType?: string): string {
 
 export function getListingTypeLabel(listingType?: string): string {
   switch (listingType) {
-    case 'portfolio':
-      return 'Portfolio Showcase';
     case 'made_to_order':
       return 'Made to Order';
     case 'bulk_order':
@@ -186,10 +184,13 @@ export function mapCatalogItemToState(item: CatalogItemResponse) {
     name: item.name,
     price: item.price.toString(),
     material: item.material ?? '',
+    color: item.color ?? '',
     description: item.description ?? '',
     care_instructions: careText,
     garment_type: item.garment_type ?? '',
     listing_type: item.listing_type ?? 'made_to_order',
+    rental_price: item.rental_price != null ? String(item.rental_price) : '',
+    rental_deposit: item.rental_deposit != null ? String(item.rental_deposit) : '',
     external_gallery_url: item.external_gallery_url ?? '',
   };
 
@@ -299,7 +300,7 @@ export function buildSavePayload(
 
   return {
     ...formData,
-    price: formData.listing_type === 'portfolio' ? '0' : formData.price,
+    sale_price: formData.price,
     features: {
       bullets: filteredFeatures,
       image_url: featuresImage,
