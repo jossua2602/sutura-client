@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { MapPin } from 'lucide-react';
+import { MapPin, Receipt } from 'lucide-react';
 import { CatalogOrder, StatusBadge } from './orderHelpers';
+import OrderReceiptModal from './OrderReceiptModal';
 
 interface OrderListItemProps {
   readonly order: CatalogOrder;
@@ -20,6 +21,7 @@ export default function OrderListItem({
   const [showCourierForm, setShowCourierForm] = useState(false);
   const [courierName, setCourierName] = useState(order.courier_name || '');
   const [courierTracking, setCourierTracking] = useState(order.courier_tracking_number || '');
+  const [showReceipt, setShowReceipt] = useState(false);
 
   return (
     <div className="flex flex-col md:flex-row gap-6 p-4 rounded-xl border border-[#EBE6E0] bg-[#FAFAFA] hover:bg-white transition-colors text-[#2D2A26]">
@@ -96,7 +98,14 @@ export default function OrderListItem({
       {/* Actions */}
       <div className="md:w-1/3 flex flex-col justify-center gap-2 items-end">
         <p className="text-xs text-[#8A7E72] mb-2">{new Date(order.created_at).toLocaleString()}</p>
-        
+
+        <button
+          onClick={() => setShowReceipt(true)}
+          className="w-full sm:w-auto flex items-center justify-center gap-1.5 px-4 py-2 border border-[#D1C7BD] text-[#524A44] text-sm font-medium rounded-lg hover:bg-[#FAF6F3] transition-colors cursor-pointer"
+        >
+          <Receipt className="w-4 h-4" /> Print Receipt
+        </button>
+
         {activeTab === 'online' && order.status === 'pending' && (
           order.catalog_item?.listing_type === 'for_rent' || order.fulfillment_type === 'pickup' ? (
             <button 
@@ -209,6 +218,8 @@ export default function OrderListItem({
           </p>
         )}
       </div>
+
+      {showReceipt && <OrderReceiptModal order={order} onClose={() => setShowReceipt(false)} />}
     </div>
   );
 }
