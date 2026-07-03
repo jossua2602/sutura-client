@@ -3,7 +3,7 @@ import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
 import { useBranch } from '@/context/BranchContext';
-import { Job, Tab, WALKIN_COLUMNS, ONLINE_COLUMNS, ALL_COLUMNS } from './jobHelpers';
+import { Job, Tab, columnsForJobs } from './jobHelpers';
 
 export function useJobs() {
   const { shop, user } = useAuthStore();
@@ -118,13 +118,6 @@ export function useJobs() {
     }
   };
 
-  let activeColumns = ALL_COLUMNS;
-  if (tab === 'online') {
-    activeColumns = ONLINE_COLUMNS;
-  } else if (tab === 'walk_in') {
-    activeColumns = WALKIN_COLUMNS;
-  }
-
   const filteredJobs = jobs.filter(j => {
     const matchType = tab === 'all' || j.intake_channel === tab;
     const matchSearch = !search
@@ -132,6 +125,12 @@ export function useJobs() {
       || j.customer?.name?.toLowerCase().includes(search.toLowerCase());
     return matchType && matchSearch;
   });
+
+  // Stage columns depend on the FULFILLMENT type of the visible jobs (pickup ->
+  // ready_for_pickup; shipping/delivery -> packed/handed_to_courier), not on how
+  // the order came in. Prevents a walk-in Shipping order (or online Pickup order)
+  // from vanishing because its status had no column.
+  const activeColumns = columnsForJobs(filteredJobs);
 
   const groupedJobs = activeColumns.reduce((acc, col) => {
     acc[col.id] = filteredJobs.filter(j => j.status === col.id);

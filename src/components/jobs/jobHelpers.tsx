@@ -2,25 +2,6 @@ import React from 'react';
 import { Truck, Store, ShoppingBag, Navigation, Scissors } from 'lucide-react';
 import { parseCourierName, formatFulfillmentLabel } from '@/lib/fulfillment';
 
-export const WALKIN_COLUMNS = [
-  { id: 'pending',          title: 'Pending',          color: 'bg-[#EBE6E0]/50',   border: 'border-[#D1C7BD]' },
-  { id: 'cutting',          title: 'Cutting',          color: 'bg-amber-50/50',     border: 'border-amber-200/50' },
-  { id: 'sewing',           title: 'Sewing',           color: 'bg-orange-50/50',    border: 'border-orange-200/50' },
-  { id: 'fitting',          title: 'Fitting',          color: 'bg-violet-50/50',    border: 'border-violet-200/50' },
-  { id: 'ready_for_pickup', title: 'Ready for Pickup', color: 'bg-emerald-50/50',   border: 'border-emerald-200/50' },
-  { id: 'completed',        title: 'Completed',        color: 'bg-[#9A8073]/10',    border: 'border-[#9A8073]/30' },
-];
-
-export const ONLINE_COLUMNS = [
-  { id: 'pending',          title: 'Pending',          color: 'bg-[#EBE6E0]/50',   border: 'border-[#D1C7BD]' },
-  { id: 'cutting',          title: 'Cutting',          color: 'bg-amber-50/50',     border: 'border-amber-200/50' },
-  { id: 'sewing',           title: 'Sewing',           color: 'bg-orange-50/50',    border: 'border-orange-200/50' },
-  { id: 'fitting',          title: 'Fitting',          color: 'bg-violet-50/50',    border: 'border-violet-200/50' },
-  { id: 'packed',           title: 'Packed',           color: 'bg-indigo-50/50',    border: 'border-indigo-200/50' },
-  { id: 'handed_to_courier',title: 'Handed Over',      color: 'bg-cyan-50/50',      border: 'border-cyan-200/50' },
-  { id: 'completed',        title: 'Completed',        color: 'bg-[#9A8073]/10',    border: 'border-[#9A8073]/30' },
-];
-
 export const ALL_COLUMNS = [
   { id: 'pending',          title: 'Pending',          color: 'bg-[#EBE6E0]/50',   border: 'border-[#D1C7BD]' },
   { id: 'cutting',          title: 'Cutting',          color: 'bg-amber-50/50',     border: 'border-amber-200/50' },
@@ -32,11 +13,29 @@ export const ALL_COLUMNS = [
   { id: 'completed',        title: 'Completed',        color: 'bg-[#9A8073]/10',    border: 'border-[#9A8073]/30' },
 ];
 
+/**
+ * Kanban stage columns for a set of jobs, driven by their FULFILLMENT type
+ * (pickup -> ready_for_pickup; shipping/delivery -> packed/handed_to_courier),
+ * so a job's status column is never missing regardless of intake_channel.
+ */
+export function columnsForJobs(jobs: readonly Job[]) {
+  const hasPickup = jobs.some(j => j.fulfillment_type === 'pickup');
+  const hasCourier = jobs.some(j => j.fulfillment_type === 'shipping' || j.fulfillment_type === 'delivery');
+  // Empty/unknown board: show every stage so nothing can hide.
+  const showPickup = hasPickup || (!hasPickup && !hasCourier);
+  const showCourier = hasCourier || (!hasPickup && !hasCourier);
+  return ALL_COLUMNS.filter(col => {
+    if (col.id === 'ready_for_pickup') return showPickup;
+    if (col.id === 'packed' || col.id === 'handed_to_courier') return showCourier;
+    return true;
+  });
+}
+
 export interface Job {
   id: number;
   order_number?: string;
   intake_channel: 'walk_in' | 'online';
-  fulfillment_type: 'pickup' | 'shipping';
+  fulfillment_type: 'pickup' | 'shipping' | 'delivery';
   courier_name?: string | null;
   courier_tracking_number?: string | null;
   status: string;
@@ -105,7 +104,7 @@ export function FulfillmentBadge({ type }: { readonly type: string }) {
 }
 
 export function CourierTag({ job }: { readonly job: Job }) {
-  if (job.fulfillment_type !== 'shipping') return null;
+  if (job.fulfillment_type === 'pickup') return null;
   
   const { type, name } = parseCourierName(job.courier_name);
   const displayLabel = formatFulfillmentLabel(type, name);

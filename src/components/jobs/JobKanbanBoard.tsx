@@ -1,11 +1,11 @@
 import React from 'react';
 import Link from 'next/link';
 import { User, Calendar, Scissors, Check, X, Loader2 } from 'lucide-react';
-import { Job as JobItem, WALKIN_COLUMNS, getDueStatus, TypeBadge, FulfillmentBadge, CourierTag, ColumnIcon } from './jobHelpers';
+import { Job as JobItem, columnsForJobs, getDueStatus, TypeBadge, FulfillmentBadge, CourierTag, ColumnIcon } from './jobHelpers';
 
 interface JobKanbanBoardProps {
   readonly groupedJobs: Record<string, JobItem[]>;
-  readonly activeColumns: typeof WALKIN_COLUMNS;
+  readonly activeColumns: ReturnType<typeof columnsForJobs>;
   readonly actionLoadingId: number | null;
   readonly onUpdateStatus: (id: number, status: string) => void;
   readonly onApprove: (id: number) => void;
@@ -59,7 +59,7 @@ export default function JobKanbanBoard({
                       onChange={(e) => onUpdateStatus(job.id, e.target.value)}
                       className="text-[10px] bg-[#F0EAE3] text-[#524A44] border border-[#D1C7BD] rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none cursor-pointer"
                     >
-                      {WALKIN_COLUMNS.map(c => (
+                      {columnsForJobs([job]).map(c => (
                         <option key={c.id} value={c.id}>{c.title}</option>
                       ))}
                       <option value="cancelled">Cancelled</option>
