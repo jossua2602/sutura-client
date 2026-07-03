@@ -131,6 +131,7 @@ function MeasurementsContent() {
     setEditingId(rec.id);
     setForm({
       customer_id: rec.customer_id.toString(),
+      source: rec.source ?? 'shop_owner',
       profile_name: rec.profile_name,
       metrics: { ...emptyMetrics(), ...rec.metrics },
       notes: rec.notes || '',
@@ -143,6 +144,7 @@ function MeasurementsContent() {
     setEditingId(null);
     setForm({
       customer_id: rec.customer_id.toString(),
+      source: rec.source ?? 'shop_owner',
       profile_name: rec.profile_name,
       metrics: { ...emptyMetrics(), ...rec.metrics },
       notes: rec.notes || '',

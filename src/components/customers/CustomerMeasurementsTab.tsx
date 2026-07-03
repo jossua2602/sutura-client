@@ -305,6 +305,7 @@ export default function CustomerMeasurementsTab({
                   setEditingBodyProfileId(null);
                   setBodyForm({
                     customer_id: customerId.toString(),
+                    source: 'shop_owner',
                     profile_name: 'Body Dimensions',
                     notes: '',
                     metrics: {
@@ -401,6 +402,7 @@ export default function CustomerMeasurementsTab({
                             setBodyError('');
                             setBodyForm({
                               customer_id: customerId.toString(),
+                              source: 'shop_owner',
                               profile_name: activeMeas.profile_name,
                               notes: activeMeas.notes || '',
                               metrics: stringMetrics as any
