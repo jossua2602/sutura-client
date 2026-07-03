@@ -65,6 +65,13 @@ export default function AppointmentListView({
           <td className="px-5 py-3.5">
             <div className="flex items-center gap-1.5 flex-wrap">
               <TypeBadge type={apt.appointment_type} />
+              <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                apt.intake_channel === 'online'
+                  ? 'bg-blue-50 text-blue-700 border-blue-200'
+                  : 'bg-[#F0EAE3] text-[#9A8073] border-[#EBE6E0]'
+              }`}>
+                {apt.intake_channel === 'online' ? 'Online' : 'Walk-in'}
+              </span>
               {apt.priority && apt.priority !== 'normal' && (
                 <span className={`px-2 py-0.5 rounded text-[10px] font-extrabold uppercase tracking-wide border ${
                   apt.priority === 'rush' ? 'bg-rose-50 text-rose-700 border-rose-200' : 'bg-amber-50 text-amber-700 border-amber-200'

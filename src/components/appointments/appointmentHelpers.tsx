@@ -11,6 +11,7 @@ export const TYPES_REQUIRING_SERVICE = new Set<AppointmentType>(['measurement', 
 export interface Appointment {
   id: number;
   appointment_type: AppointmentType;
+  intake_channel?: 'walkin' | 'online';
   customer: { name: string; email: string };
   service: { name: string } | null;
   branch: { id: number; name: string } | null;
