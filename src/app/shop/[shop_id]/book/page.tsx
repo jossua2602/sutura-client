@@ -141,7 +141,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Promise<{ shop_id: 
     }
   };
 
-  const TYPES_REQUIRING_SERVICE = ['measurement', 'fitting', 'alteration'];
+  const TYPES_REQUIRING_SERVICE = ['measurement', 'alteration'];
   const BOOKING_TYPES = [
     { value: 'consultation', label: 'Consultation', icon: <MessageSquare size={18} />, hint: 'Discuss your garment idea with the shop' },
     { value: 'measurement', label: 'Measurement',  icon: <Ruler size={18} />,        hint: 'Get your body measurements taken' },
@@ -181,8 +181,9 @@ function BookingWizardContent({ params }: Readonly<{ params: Promise<{ shop_id: 
     e.preventDefault();
     setSubmitting(true);
     
-    // Combine date and time
-    const scheduled_at = `${date}T${time}:00`;
+    // Combine date and time — rentals are a pickup-date reservation, not a
+    // timed appointment slot, so the time picker is hidden and never set for them.
+    const scheduled_at = `${date}T${time || '12:00'}:00`;
 
     // Compile remarks and catalog item context
     let notesPayload = '';
@@ -633,9 +634,9 @@ function BookingWizardContent({ params }: Readonly<{ params: Promise<{ shop_id: 
                 <button 
                   onClick={() => setStep(3)}
                   disabled={
-                    !date || 
-                    !time || 
-                    !!getSpecialHoursForDate(date)?.is_closed || 
+                    !date ||
+                    (catalogItem?.listing_type !== 'for_rent' && !time) ||
+                    !!getSpecialHoursForDate(date)?.is_closed ||
                     (catalogItem?.listing_type === 'for_rent' && !rentalEndDate) ||
                     (catalogItem && (fulfillmentType === 'shipping' || fulfillmentType === 'delivery') && !deliveryAddress.trim()) ||
                     (!!shopSettings?.branches && shopSettings.branches.length > 1 && !selectedBranchId)
