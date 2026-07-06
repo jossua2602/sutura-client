@@ -1,7 +1,8 @@
 'use client';
 
 import Image from 'next/image';
-import { Search, Package, Phone, Mail, Plus, Loader2, Pencil, Trash2, Eye } from 'lucide-react';
+import Link from 'next/link';
+import { Search, Package, Phone, Mail, Plus, Loader2, Pencil, Trash2, Eye, Ruler } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { useCustomers } from '@/components/customers/useCustomers';
 
@@ -41,18 +42,28 @@ export default function CustomersPage() {
           <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Client Book</h1>
           <p className="text-[#827A73] text-sm mt-1">Manage your customer relationships and lifetime value.</p>
         </div>
-        <button 
-          onClick={() => {
-            setEditingId(null);
-            setFormData({ name: '', email: '', phone: '' });
-            setError('');
-            setIsModalOpen(true);
-          }}
-          className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          <Plus size={18} />
-          Add Customer
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/dashboard/measurements"
+            className="flex items-center gap-2 bg-white hover:bg-[#FAF6F3] border border-[#EBE6E0] text-[#524A44] px-4 py-2 rounded-lg font-medium text-sm transition-colors"
+            title="Search and manage measurement profiles across all customers"
+          >
+            <Ruler size={16} />
+            All Measurements
+          </Link>
+          <button
+            onClick={() => {
+              setEditingId(null);
+              setFormData({ name: '', email: '', phone: '' });
+              setError('');
+              setIsModalOpen(true);
+            }}
+            className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            <Plus size={18} />
+            Add Customer
+          </button>
+        </div>
       </div>
 
       {/* Tabs for separating Online and Walk-in clients */}

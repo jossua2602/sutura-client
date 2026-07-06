@@ -4,6 +4,7 @@ export interface CustomerData {
   email: string;
   phone: string;
   profile_picture?: string;
+  suki_tag?: string | null;
   total_spend?: number;
   active_jobs?: number;
   completed_jobs?: number;

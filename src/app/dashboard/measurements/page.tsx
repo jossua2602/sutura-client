@@ -196,10 +196,11 @@ function MeasurementsContent() {
         <div>
           <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight flex items-center gap-2">
             <Ruler size={22} className="text-[#9A8073]" />
-            Measurements
+            All Measurements
           </h1>
           <p className="text-[#827A73] text-sm mt-1">
-            Store and manage reusable customer body measurement profiles linked to job orders.
+            Search measurement profiles across every customer. To add a new profile, open a customer&apos;s own
+            page and use their Measurements tab — it&apos;s faster since the customer is already selected.
           </p>
         </div>
         <button

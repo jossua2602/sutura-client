@@ -34,6 +34,8 @@ export default function StaffPage() {
     specialization: '',
     hired_at: new Date().toISOString().split('T')[0],
     is_active: true,
+    shop_branch_id: '',
+    is_branch_manager: false,
   });
 
   const fetchStaff = useCallback(() => {
@@ -75,15 +77,19 @@ export default function StaffPage() {
         hired_at: string;
         password?: string;
         is_active?: boolean;
+        shop_branch_id: number | null;
+        is_branch_manager: boolean;
       } = {
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
-        specialization: formData.specialization 
+        specialization: formData.specialization
           ? formData.specialization.split(',').map(s => s.trim()).filter(Boolean)
           : [],
         hired_at: formData.hired_at,
+        shop_branch_id: formData.shop_branch_id ? Number.parseInt(formData.shop_branch_id, 10) : null,
+        is_branch_manager: formData.is_branch_manager,
       };
 
       // Only send is_active on edit (new staff are always active)
@@ -112,6 +118,8 @@ export default function StaffPage() {
         specialization: '',
         hired_at: new Date().toISOString().split('T')[0],
         is_active: true,
+        shop_branch_id: '',
+        is_branch_manager: false,
       });
       fetchStaff();
     } catch (err) {
@@ -135,6 +143,8 @@ export default function StaffPage() {
         : (member.specialization || ''),
       hired_at: member.hired_at || new Date().toISOString().split('T')[0],
       is_active: member.is_active,
+      shop_branch_id: member.shop_branch_id ? String(member.shop_branch_id) : '',
+      is_branch_manager: member.is_branch_manager || false,
     });
     setShowModal(true);
   };
@@ -184,6 +194,8 @@ export default function StaffPage() {
               specialization: '',
               hired_at: new Date().toISOString().split('T')[0],
               is_active: true,
+              shop_branch_id: '',
+              is_branch_manager: false,
             });
             setShowModal(true);
           }}

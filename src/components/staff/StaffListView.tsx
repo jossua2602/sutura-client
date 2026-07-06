@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, UserCircle, Wifi, Clock, Pencil, Trash2 } from 'lucide-react';
+import { Search, UserCircle, Wifi, Clock, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
 import { Staff, formatLastSeen } from './staffHelpers';
 
 interface StaffListViewProps {
@@ -42,9 +42,19 @@ function StaffMemberRow({ member, onEdit, onDelete, onViewHistory }: StaffMember
         </div>
       </td>
       <td className="px-6 py-4">
-        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F0EAE3] text-[#524A44]">
-          {member.role?.charAt(0).toUpperCase() + member.role?.slice(1).replace('_', ' ')}
-        </span>
+        <div className="flex flex-col gap-1 items-start">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F0EAE3] text-[#524A44]">
+            {member.role?.charAt(0).toUpperCase() + member.role?.slice(1).replace('_', ' ')}
+          </span>
+          {member.is_branch_manager && (
+            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#9A8073]/10 text-[#9A8073] border border-[#9A8073]/20">
+              Branch Manager
+            </span>
+          )}
+        </div>
+      </td>
+      <td className="px-6 py-4">
+        {member.branch?.name || <span className="text-[#A8A19A] text-xs italic">All branches</span>}
       </td>
       <td className="px-6 py-4">
         {(() => {
@@ -97,6 +107,13 @@ function StaffMemberRow({ member, onEdit, onDelete, onViewHistory }: StaffMember
             </div>
           );
         })()}
+      </td>
+      <td className="px-6 py-4">
+        <div className="flex items-center gap-1.5">
+          <CheckCircle2 size={13} className="text-[#7A8B76]" />
+          <span className="font-semibold text-[#2D2A26]">{member.completed_jobs || 0}</span>
+          <span className="text-[#A8A19A] text-xs">completed</span>
+        </div>
       </td>
       <td className="px-6 py-4">
         {member.is_active ? (
@@ -196,8 +213,10 @@ export default function StaffListView({
             <tr>
               <th className="px-6 py-4 font-medium">Name</th>
               <th className="px-6 py-4 font-medium">Role</th>
+              <th className="px-6 py-4 font-medium">Branch</th>
               <th className="px-6 py-4 font-medium">Specialization</th>
               <th className="px-6 py-4 font-medium">Active Jobs</th>
+              <th className="px-6 py-4 font-medium">Productivity</th>
               <th className="px-6 py-4 font-medium">Status</th>
               <th className="px-6 py-4 font-medium">Last Seen</th>
               <th className="px-6 py-4 font-medium">Hire Date</th>
@@ -207,14 +226,14 @@ export default function StaffListView({
           <tbody className="divide-y divide-zinc-800/50">
             {loading && (
               <tr key="loading-row">
-                <td colSpan={7} className="px-6 py-8 text-center text-[#A8A19A]">
+                <td colSpan={10} className="px-6 py-8 text-center text-[#A8A19A]">
                   Loading staff...
                 </td>
               </tr>
             )}
             {!loading && filteredStaff.length === 0 && (
               <tr>
-                <td colSpan={7} className="px-6 py-8 text-center text-[#A8A19A]">
+                <td colSpan={10} className="px-6 py-8 text-center text-[#A8A19A]">
                   No staff members found.
                 </td>
               </tr>

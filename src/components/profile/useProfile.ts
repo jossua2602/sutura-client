@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore, User } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
+import { SpecialHourData } from './StorefrontSchedules';
 
 export type Tab = 'all' | 'about' | 'gallery' | 'appointments' | 'catalog' | 'services' | 'reviews' | 'hours';
 
@@ -58,14 +59,7 @@ export interface EducationItem {
   year: string;
 }
 
-export interface SpecialHour {
-  id?: number;
-  date: string;
-  is_closed: boolean;
-  open: string;
-  close: string;
-  note?: string;
-}
+export type SpecialHour = SpecialHourData;
 
 export interface PersonalForm {
   name: string;
@@ -98,7 +92,6 @@ export function useProfile() {
   const [recentReviews, setRecentReviews] = useState<Review[]>([]);
   const [catalogItems, setCatalogItems] = useState<CatalogItem[]>([]);
   const [services, setServices] = useState<ServiceItem[]>([]);
-  const [specializations, setSpecializations] = useState<Record<string, unknown>[]>([]);
   const [specialHours, setSpecialHours] = useState<SpecialHour[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
 
@@ -156,9 +149,8 @@ export function useProfile() {
       api.get(`/shops/${shop.id}/services?per_page=6`),
       api.get(`/shops/${shop.id}/staff`),
       api.get(`/shops/${shop.id}/subscription`),
-      api.get(`/shops/${shop.id}/specializations`),
       api.get(`/shops/${shop.id}/special-hours`),
-    ]).then(([analyticsRes, reviewsRes, catalogRes, servicesRes, , subRes, specsRes, specialHoursRes]) => {
+    ]).then(([analyticsRes, reviewsRes, catalogRes, servicesRes, , subRes, specialHoursRes]) => {
       if (analyticsRes.status === 'fulfilled') {
         const d = analyticsRes.value.data.data;
         setStats({
@@ -187,9 +179,6 @@ export function useProfile() {
       }
       if (subRes?.status === 'fulfilled') {
         setSubscription(subRes.value.data.data);
-      }
-      if (specsRes?.status === 'fulfilled') {
-        setSpecializations(specsRes.value.data.data || []);
       }
       if (specialHoursRes?.status === 'fulfilled') {
         setSpecialHours(specialHoursRes.value.data.data || []);
@@ -233,10 +222,10 @@ export function useProfile() {
 
   useEffect(() => {
     let ignore = false;
-    const fetchGallery = async () => {
+    const fetchGallery = async (shopId: number) => {
       setFetchingGallery(true);
       try {
-        const res = await api.get('/shop/settings');
+        const res = await api.get(`/shops/${shopId}`);
         if (!ignore) setShopGallery(res.data.data?.gallery_images || []);
       } catch (err) {
         console.error(err);
@@ -246,23 +235,22 @@ export function useProfile() {
     };
 
     if (shop?.id) {
-      fetchGallery();
+      fetchGallery(shop.id);
     }
     return () => { ignore = true; };
   }, [shop?.id]);
 
   const handleCreationUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0]) return;
+    if (!e.target.files?.[0] || !shop?.id) return;
     const file = e.target.files[0];
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('type', 'gallery');
     setUploadingCreation(true);
     try {
-      const uploadRes = await api.post('/shop/upload', fd, { headers: { 'Content-Type': 'multipart/form-data' } });
-      const uploadedUrl = uploadRes.data.url;
+      const uploadRes = await api.post(`/shops/${shop.id}/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      const uploadedUrl = uploadRes.data.data.url;
       const updatedGallery = [...shopGallery, uploadedUrl];
-      await api.put('/shop/settings', { gallery_images: updatedGallery });
+      await api.put(`/shops/${shop.id}`, { gallery_images: updatedGallery });
       setShopGallery(updatedGallery);
       toast.success('Photo added to your gallery.');
     } catch {
@@ -273,9 +261,10 @@ export function useProfile() {
   };
 
   const handleRemoveCreation = async (urlToRemove: string) => {
+    if (!shop?.id) return;
     try {
       const updatedGallery = shopGallery.filter((url: string) => url !== urlToRemove);
-      await api.put('/shop/settings', { gallery_images: updatedGallery });
+      await api.put(`/shops/${shop.id}`, { gallery_images: updatedGallery });
       setShopGallery(updatedGallery);
       toast.success('Photo removed.');
     } catch {
@@ -309,7 +298,6 @@ export function useProfile() {
     handleCreationUpload,
     handleRemoveCreation,
     logout,
-    specializations,
     shopGallery,
     fetchingGallery,
     specialHours,

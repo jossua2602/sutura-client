@@ -20,7 +20,7 @@ export interface Job {
   courier_name?: string;
   courier_tracking_number?: string;
   shipping_address?: string;
-  customer?: { name: string; id: number };
+  customer?: { name: string; id: number; suki_tag?: string | null };
   service?: { name: string; id: number };
   assigned_staff?: { name: string; id: number };
   staff_stages?: { id: number; pivot: { stage: string; completed_at?: string } }[];
@@ -37,6 +37,7 @@ export interface Job {
   partner_shop_name?: string | null;
   is_rush?: boolean;
   rush_fee?: number | string;
+  completion_photo_url?: string | null;
 }
 
 export interface Staff {

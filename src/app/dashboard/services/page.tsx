@@ -3,13 +3,15 @@
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Plus } from 'lucide-react';
+import { Plus, Trash2 } from 'lucide-react';
 import { useToast } from '@/context/ToastContext';
 
-import { Service, Specialization } from '@/components/services/serviceHelpers';
+import { Service } from '@/components/services/serviceHelpers';
 import ServiceFormModal from '@/components/services/ServiceFormModal';
 import ServiceDeleteModal from '@/components/services/ServiceDeleteModal';
 import ServiceListView from '@/components/services/ServiceListView';
+import ServicePricingModal from '@/components/services/ServicePricingModal';
+import ServiceTrashModal from '@/components/services/ServiceTrashModal';
 import SettingsServicesPricing from '@/components/settings/SettingsServicesPricing';
 import { Sparkles } from 'lucide-react';
 
@@ -31,8 +33,8 @@ export default function ServicesPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
   const [showAutoPopulate, setShowAutoPopulate] = useState(false);
-
-  const [specializations, setSpecializations] = useState<Specialization[]>([]);
+  const [pricingService, setPricingService] = useState<Service | null>(null);
+  const [showTrash, setShowTrash] = useState(false);
 
   const fetchServices = useCallback(() => {
     if (!shop?.id) {
@@ -54,14 +56,6 @@ export default function ServicesPage() {
     fetchServices();
   }, [fetchServices]);
 
-  useEffect(() => {
-    if (shop?.id) {
-      api.get(`/shops/${shop.id}/specializations`)
-        .then(res => setSpecializations(res.data.data))
-        .catch(err => console.error('Failed to fetch specializations:', err));
-    }
-  }, [shop?.id]);
-
   const handleDuplicateClick = async (service: Service) => {
     if (!shop) return;
     setActionLoadingId(service.id);
@@ -70,8 +64,10 @@ export default function ServicesPage() {
         name: `${service.name} (Copy)`,
         description: service.description || '',
         category: service.category,
+        service_type: service.service_type || null,
         base_price: service.base_price ? Number.parseFloat(service.base_price.toString()) : null,
         estimated_days: service.estimated_days,
+        min_order_qty: service.min_order_qty || 1,
         custom_fields: service.custom_fields || [],
         is_active: service.is_active
       };
@@ -168,14 +164,21 @@ export default function ServicesPage() {
           <p className="text-[#827A73] text-sm mt-1">Manage your tailoring offerings and turnaround times.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
+          <button
+            onClick={() => setShowTrash(true)}
+            title="View deleted services"
+            className="flex items-center gap-2 px-4 py-2 rounded-lg font-medium bg-[#FAF6F3] border border-[#EBE6E0] text-[#827A73] hover:bg-[#F0EAE3] transition-colors"
+          >
+            <Trash2 size={18} />
+          </button>
+          <button
             onClick={() => setShowAutoPopulate(!showAutoPopulate)}
             className={`flex items-center gap-2 px-4 py-2 rounded-lg font-medium transition-colors ${showAutoPopulate ? 'bg-[#EBE6E0] text-[#2D2A26]' : 'bg-[#FAF6F3] border border-[#EBE6E0] text-[#524A44] hover:bg-[#F0EAE3]'}`}
           >
             <Sparkles size={18} className={showAutoPopulate ? 'text-taupe' : ''} />
             Auto-Populate
           </button>
-          <button 
+          <button
             onClick={() => {
               setEditingId(null);
               setError('');
@@ -205,6 +208,7 @@ export default function ServicesPage() {
         onDuplicate={handleDuplicateClick}
         onEdit={handleEditClick}
         onDelete={handleDeleteClick}
+        onManagePricing={setPricingService}
         onBulkDelete={handleBulkDelete}
       />
 
@@ -231,6 +235,27 @@ export default function ServicesPage() {
         onConfirm={confirmDelete}
         isSubmitting={isSubmitting}
       />
+
+      {shop && (
+        <ServicePricingModal
+          isOpen={pricingService !== null}
+          onClose={() => setPricingService(null)}
+          shopId={shop.id}
+          service={pricingService}
+        />
+      )}
+
+      {shop && (
+        <ServiceTrashModal
+          isOpen={showTrash}
+          onClose={() => setShowTrash(false)}
+          shopId={shop.id}
+          onRestored={(restored) => {
+            setServices(prev => [restored, ...prev]);
+            toast.success(`"${restored.name}" restored to your active catalog.`);
+          }}
+        />
+      )}
     </div>
   );
 }

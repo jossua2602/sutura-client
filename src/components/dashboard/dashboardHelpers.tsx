@@ -42,8 +42,10 @@ export interface JobItem {
   id: number;
   order_number?: string;
   status: string;
+  intake_channel?: string;
   payment_status: string;
   balance?: string | number;
+  total_amount?: string | number;
   due_date?: string;
   customer?: { name: string };
 }

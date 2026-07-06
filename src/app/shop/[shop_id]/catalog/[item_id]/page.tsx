@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, use } from 'react';
 import api from '@/lib/axios';
-import { Ruler, Info, ShieldCheck, Calendar as CalendarIcon } from 'lucide-react';
+import { Ruler, Info, ShieldCheck, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 
@@ -67,16 +67,17 @@ function ListingTypeBadge({ type }: Readonly<{ type: string }>) {
   );
 }
 
-export default function PublicProductDetailPage({ params }: Readonly<{ params: Readonly<{ shop_id: string; item_id: string; }> }>) {
+export default function PublicProductDetailPage({ params }: Readonly<{ params: Promise<{ shop_id: string; item_id: string; }> }>) {
+  const { shop_id: shopId, item_id: itemId } = use(params);
   const [item, setItem] = useState<CatalogItem | null>(null);
   const [loading, setLoading] = useState(true);
-  
+
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [selectedVariation, setSelectedVariation] = useState<string>('');
   const [showFAQ, setShowFAQ] = useState(false);
 
   useEffect(() => {
-    api.get(`/catalog/${params.shop_id}/${params.item_id}`)
+    api.get(`/catalog/${shopId}/${itemId}`)
       .then(res => {
         setItem(res.data.data);
         const primary = res.data.data.images.find((i: CatalogItemImage) => i.is_primary) || res.data.data.images[0];
@@ -90,7 +91,7 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: R
         console.error(err);
         setLoading(false);
       });
-  }, [params.shop_id, params.item_id]);
+  }, [shopId, itemId]);
 
   if (loading) {
     return <div className="py-32 text-center text-[#A8A19A] animate-pulse">Loading garment details...</div>;
@@ -105,11 +106,18 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: R
       case 'for_rent':
         return 'Inquire Rental';
       case 'for_sale':
+      case 'used_liquidated':
         return 'Inquire Purchase';
       case 'rent_or_sale':
         return 'Rent or Purchase';
-      default:
+      case 'ready_to_wear':
+        return 'Reserve for Pickup';
+      case 'bulk_order':
+        return 'Request a Quote';
+      case 'made_to_order':
         return 'Book a Fitting';
+      default:
+        return 'Inquire About This Item';
     }
   };
 
@@ -178,13 +186,22 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: R
 
   return (
     <div className="max-w-7xl mx-auto px-6 py-12">
+      <Link
+        href={`/shop/${shopId}/catalog`}
+        className="inline-flex items-center gap-2 text-sm font-medium text-[#827A73] hover:text-zinc-900 transition-colors mb-8"
+      >
+        <ArrowLeft size={16} /> Back to Catalog
+      </Link>
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-16">
         
-        {/* Images Column */}
-        <div className="flex gap-4 h-[800px] sticky top-24">
+        {/* Images Column — sticky/fixed-height side-by-side gallery only makes sense
+            once the grid is actually side-by-side (lg:); below that it must scroll
+            away normally and show the whole garment instead of a tall cropped sliver. */}
+        <div className="flex gap-4 lg:h-[800px] lg:sticky lg:top-24">
           <div className="w-24 flex-col gap-4 overflow-y-auto hidden md:flex">
             {item.images.map((img) => (
-              <button 
+              <button
                 key={img.id}
                 onClick={() => {
                   setSelectedImage(img.image_url);
@@ -203,10 +220,10 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: R
               </button>
             ))}
           </div>
-          <div className="flex-1 bg-zinc-100 overflow-hidden relative">
+          <div className="flex-1 bg-zinc-100 overflow-hidden relative aspect-3/4 lg:aspect-auto">
             {selectedImage ? (
               <>
-                <Image src={selectedImage} alt={item.name} className="w-full h-full object-cover object-top" fill unoptimized />
+                <Image src={selectedImage} alt={item.name} className="w-full h-full object-contain lg:object-cover object-top" fill unoptimized />
                 {selectedVariation && selectedVariation !== 'Default' && selectedVariation !== 'front' && (
                   <div className="absolute bottom-4 left-4 bg-zinc-900/80 text-white text-xs font-semibold px-3 py-1.5 rounded-lg backdrop-blur-sm z-10">
                     Design Variation: {selectedVariation}
@@ -345,8 +362,8 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: R
             </a>
           )}
 
-          <Link 
-            href={`/shop/${params.shop_id}/book?item_id=${item.id}&intent=${item.listing_type}${selectedVariation ? `&variation=${encodeURIComponent(selectedVariation)}` : ''}`}
+          <Link
+            href={`/shop/${shopId}/book?item_id=${item.id}&intent=${item.listing_type}${selectedVariation ? `&variation=${encodeURIComponent(selectedVariation)}` : ''}`}
             className="w-full bg-[#2D2A26] hover:bg-black text-white font-medium tracking-wide py-4 mt-4 transition-colors flex items-center justify-center rounded-xl shadow-lg uppercase"
           >
             {getButtonText()}
@@ -365,7 +382,7 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: R
               const recImage = recItem.images?.find((i: CatalogItemImage) => i.is_primary)?.image_url || recItem.images?.[0]?.image_url;
               
               return (
-                <Link href={`/shop/${params.shop_id}/catalog/${recItem.id}`} key={recItem.id} className="group block text-center">
+                <Link href={`/shop/${shopId}/catalog/${recItem.id}`} key={recItem.id} className="group block text-center">
                   <div className="aspect-square bg-zinc-100 overflow-hidden mb-4 relative">
                     {recImage ? (
                       <Image src={recImage} alt={recItem.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700" fill unoptimized />

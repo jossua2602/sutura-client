@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
-import { Loader2, Trash2 } from 'lucide-react';
-import { Service, ServicePricing, Specialization } from './serviceHelpers';
+import { Loader2, Trash2, Pencil, X } from 'lucide-react';
+import { Service, ServicePricing } from './serviceHelpers';
 import api from '@/lib/axios';
 
 interface ServicePricingModalProps {
@@ -9,7 +9,6 @@ interface ServicePricingModalProps {
   readonly onClose: () => void;
   readonly shopId: number;
   readonly service: Service | null;
-  readonly specializations: Specialization[];
 }
 
 export default function ServicePricingModal({
@@ -17,17 +16,16 @@ export default function ServicePricingModal({
   onClose,
   shopId,
   service,
-  specializations,
 }: ServicePricingModalProps) {
   const [pricings, setPricings] = useState<ServicePricing[]>([]);
   const [loadingPricings, setLoadingPricings] = useState(false);
   const [submittingPricing, setSubmittingPricing] = useState(false);
   const [pricingError, setPricingError] = useState('');
   const [pricingFormData, setPricingFormData] = useState({
-    apparel_specialization_id: '',
     label: '',
     amount: ''
   });
+  const [editingPricingId, setEditingPricingId] = useState<number | null>(null);
 
   const loadPricingData = async () => {
     if (!service) return;
@@ -49,10 +47,10 @@ export default function ServicePricingModal({
       // eslint-disable-next-line react-hooks/set-state-in-effect
       loadPricingData();
       setPricingFormData({
-        apparel_specialization_id: '',
         label: '',
         amount: ''
       });
+      setEditingPricingId(null);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isOpen, service]);
@@ -67,19 +65,20 @@ export default function ServicePricingModal({
       const payload = {
         label: pricingFormData.label,
         amount: Number.parseFloat(pricingFormData.amount),
-        apparel_specialization_id: pricingFormData.apparel_specialization_id 
-          ? Number.parseInt(pricingFormData.apparel_specialization_id, 10) 
-          : null
       };
 
-      await api.post(`/shops/${shopId}/services/${service.id}/pricing`, payload);
+      if (editingPricingId) {
+        await api.put(`/shops/${shopId}/services/${service.id}/pricing/${editingPricingId}`, payload);
+      } else {
+        await api.post(`/shops/${shopId}/services/${service.id}/pricing`, payload);
+      }
       await loadPricingData();
 
       setPricingFormData({
-        apparel_specialization_id: '',
         label: '',
         amount: ''
       });
+      setEditingPricingId(null);
     } catch (err) {
       const error = err as { response?: { data?: { message?: string } } };
       setPricingError(error.response?.data?.message || 'Failed to save pricing option.');
@@ -88,11 +87,22 @@ export default function ServicePricingModal({
     }
   };
 
+  const handleEditClick = (pricing: ServicePricing) => {
+    setEditingPricingId(pricing.id);
+    setPricingFormData({ label: pricing.label, amount: pricing.amount });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingPricingId(null);
+    setPricingFormData({ label: '', amount: '' });
+  };
+
   const handleDeletePricing = async (pricingId: number) => {
     if (!service) return;
     try {
       await api.delete(`/shops/${shopId}/services/${service.id}/pricing/${pricingId}`);
       setPricings(prev => prev.filter(p => p.id !== pricingId));
+      if (editingPricingId === pricingId) handleCancelEdit();
     } catch (err) {
       console.error(err);
       alert('Failed to delete pricing option.');
@@ -123,17 +133,20 @@ export default function ServicePricingModal({
           >
             <div className="space-y-0.5">
               <div className="font-semibold text-sm text-[#2D2A26]">{pricing.label}</div>
-              {pricing.apparel_specialization && (
-                <div className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-[#F0EAE3] text-[#827A73] border border-[#EBE6E0] font-medium">
-                  {pricing.apparel_specialization.name}
-                </div>
-              )}
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
               <span className="font-bold text-sm text-[#2D2A26]">
                 +₱{Number.parseFloat(pricing.amount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </span>
+              <button
+                type="button"
+                onClick={() => handleEditClick(pricing)}
+                className="text-[#A8A19A] hover:text-taupe hover:bg-taupe/10 p-1.5 rounded-lg border border-transparent hover:border-taupe/20 transition-colors"
+                title="Edit option"
+              >
+                <Pencil size={14} />
+              </button>
               <button
                 type="button"
                 onClick={() => handleDeletePricing(pricing.id)}
@@ -166,8 +179,21 @@ export default function ServicePricingModal({
           </div>
         )}
 
-        <form onSubmit={handleAddPricing} className="bg-[#FAF6F3] border border-[#EBE6E0] p-4 rounded-xl space-y-3">
-          <h3 className="text-xs font-bold text-[#2D2A26] uppercase tracking-wider">Add Pricing Option</h3>
+        <form onSubmit={handleAddPricing} className={`border p-4 rounded-xl space-y-3 ${editingPricingId ? 'bg-taupe/5 border-taupe/30' : 'bg-[#FAF6F3] border-[#EBE6E0]'}`}>
+          <div className="flex items-center justify-between">
+            <h3 className="text-xs font-bold text-[#2D2A26] uppercase tracking-wider">
+              {editingPricingId ? 'Edit Pricing Option' : 'Add Pricing Option'}
+            </h3>
+            {editingPricingId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="text-[#A8A19A] hover:text-[#524A44] flex items-center gap-1 text-[11px] font-semibold"
+              >
+                <X size={12} /> Cancel Edit
+              </button>
+            )}
+          </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <div>
@@ -199,23 +225,6 @@ export default function ServicePricingModal({
             </div>
           </div>
 
-          {specializations.length > 0 && (
-            <div>
-              <label htmlFor="pricing-spec" className="block text-xs font-medium text-[#524A44] mb-1">Apparel Specialization (Optional)</label>
-              <select
-                id="pricing-spec"
-                value={pricingFormData.apparel_specialization_id}
-                onChange={e => setPricingFormData({ ...pricingFormData, apparel_specialization_id: e.target.value })}
-                className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-1.5 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe"
-              >
-                <option value="">— General / No Specialization —</option>
-                {specializations.map(spec => (
-                  <option key={spec.id} value={spec.id}>{spec.name}</option>
-                ))}
-              </select>
-            </div>
-          )}
-
           <div className="flex justify-end pt-1">
             <button
               type="submit"
@@ -223,7 +232,7 @@ export default function ServicePricingModal({
               className="bg-taupe hover:bg-taupe/90 text-white px-4 py-1.5 rounded-lg text-xs font-semibold transition-colors flex items-center gap-1.5 disabled:opacity-50"
             >
               {submittingPricing && <Loader2 size={12} className="animate-spin" />}
-              Add Option
+              {editingPricingId ? 'Save Changes' : 'Add Option'}
             </button>
           </div>
         </form>

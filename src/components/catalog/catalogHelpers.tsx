@@ -27,6 +27,7 @@ export interface CatalogItem {
   external_gallery_url?: string;
   total_revenue?: number;
   order_count?: number;
+  is_active?: boolean;
 }
 
 export function formatCatalogPrice(price: string | number, listingType?: string): string {
@@ -73,6 +74,8 @@ export function getListingTypeLabel(listingType?: string): string {
       return 'For Sale';
     case 'rent_or_sale':
       return 'For Rent/Sale';
+    case 'used_liquidated':
+      return 'Used / Liquidated';
     default:
       return 'Showcase';
   }
@@ -185,6 +188,7 @@ export function mapCatalogItemToState(item: CatalogItemResponse) {
     price: item.price.toString(),
     material: item.material ?? '',
     color: item.color ?? '',
+    fabric_image_url: item.fabric_image_url ?? '',
     description: item.description ?? '',
     care_instructions: careText,
     garment_type: item.garment_type ?? '',
@@ -193,6 +197,7 @@ export function mapCatalogItemToState(item: CatalogItemResponse) {
     rental_deposit: item.rental_deposit != null ? String(item.rental_deposit) : '',
     sizes: Array.isArray(item.sizes) ? item.sizes.join(', ') : '',
     external_gallery_url: item.external_gallery_url ?? '',
+    is_active: item.is_active ?? true,
   };
 
   const imgs = (item.images || []).map((img, i) => ({
@@ -302,6 +307,7 @@ export function buildSavePayload(
   return {
     ...formData,
     sale_price: formData.price,
+    fabric_image_url: formData.fabric_image_url || null,
     sizes: formData.sizes.split(',').map(s => s.trim()).filter(Boolean),
     features: {
       bullets: filteredFeatures,

@@ -1,32 +1,25 @@
 import React from 'react';
 import Link from 'next/link';
-import { BookOpen, Tag, Package, Settings, Scissors } from 'lucide-react';
+import { BookOpen, Tag, Settings, Scissors } from 'lucide-react';
 
 export default function WelcomeView() {
   const onboardingSteps = [
     {
       step: "Step 1",
-      title: "Declare Specializations",
-      desc: "Go to Specializations to pick categories (Gown, Barong, Jersey, Cosplay) or add custom ones. Set starting prices, MOQ, and sewing days so customers know exactly what you offer.",
+      title: "Set Up Your Services",
+      desc: "Go to Services to declare what you offer (Gown, Barong, Jersey, Cosplay) or add custom ones. Set the service type, starting prices, turnaround, and minimum order quantity so customers know exactly what you offer.",
       icon: Tag,
-      href: "/dashboard/specializations"
-    },
-    {
-      step: "Step 2",
-      title: "Configure Services & Fields",
-      desc: "Go to Services to define what garments you sew. Enable customized dynamic specifications (like custom name/number fields) so customers provide all measurements correctly during fittings.",
-      icon: Package,
       href: "/dashboard/services"
     },
     {
-      step: "Step 3",
+      step: "Step 2",
       title: "Setup Operating Hours & Coordinates",
       desc: "Open Shop Settings to select your Business Type, set map coordinates (so your branch gets discoverable), define operating hours, and customize rental deposits or fitting policies.",
       icon: Settings,
       href: "/dashboard/profile"
     },
     {
-      step: "Step 4",
+      step: "Step 3",
       title: "Track Garment Production",
       desc: "Use the Jobs panel to monitor active sewing workflows (cutting, sewing, fitted, finished). Assign staff, track downpayments, and coordinate order statuses in real-time.",
       icon: Scissors,

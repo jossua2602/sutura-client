@@ -1,5 +1,5 @@
-import React from 'react';
-import { Eye, EyeOff, Loader2, AlertTriangle, ChevronUp, ChevronDown, Clock, CheckCircle2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { Eye, EyeOff, Loader2, AlertTriangle, ChevronUp, ChevronDown, Clock, CheckCircle2, CreditCard } from 'lucide-react';
 import Link from 'next/link';
 import { JobItem } from './dashboardHelpers';
 
@@ -8,6 +8,7 @@ interface DashboardAlertsProps {
   readonly toggleVisibility: () => Promise<void>;
   readonly visibilityLoading: boolean;
   readonly unpaidJobs: JobItem[];
+  readonly pendingDpJobs: JobItem[];
   readonly balanceExpanded: boolean;
   readonly setBalanceExpanded: React.Dispatch<React.SetStateAction<boolean>>;
   readonly dueToday: JobItem[];
@@ -19,11 +20,13 @@ export default function DashboardAlerts({
   toggleVisibility,
   visibilityLoading,
   unpaidJobs,
+  pendingDpJobs,
   balanceExpanded,
   setBalanceExpanded,
   dueToday,
   dueThisWeek,
 }: DashboardAlertsProps) {
+  const [dpExpanded, setDpExpanded] = useState(false);
   return (
     <div className="space-y-6 text-[#2D2A26]">
       {/* Shop Visibility Toggle */}
@@ -98,6 +101,50 @@ export default function DashboardAlerts({
                   </span>
                 </Link>
               ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pending Deposits Alert — active jobs with no DP collected */}
+      {pendingDpJobs.length > 0 && (
+        <div className="bg-[#FFF8F0] border border-amber-300 rounded-2xl overflow-hidden">
+          <button
+            onClick={() => setDpExpanded(p => !p)}
+            className="w-full flex items-center gap-3 px-5 py-3.5 hover:bg-amber-50/60 transition-colors cursor-pointer"
+          >
+            <div className="w-8 h-8 bg-amber-100 border border-amber-200 rounded-xl flex items-center justify-center shrink-0">
+              <CreditCard size={15} className="text-amber-600" />
+            </div>
+            <div className="flex-1 text-left">
+              <p className="text-sm font-bold text-amber-900">
+                {pendingDpJobs.length} active job{pendingDpJobs.length === 1 ? '' : 's'} with no downpayment collected
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Per shop policy: 50% DP required before cutting starts. Tap to collect.
+              </p>
+            </div>
+            {dpExpanded ? <ChevronUp size={16} className="text-amber-600 shrink-0" /> : <ChevronDown size={16} className="text-amber-600 shrink-0" />}
+          </button>
+          {dpExpanded && (
+            <div className="border-t border-amber-200 divide-y divide-amber-100">
+              {pendingDpJobs.slice(0, 8).map(j => (
+                <div key={j.id} className="flex items-center justify-between px-5 py-2.5">
+                  <div>
+                    <p className="text-sm font-semibold text-amber-900">{j.customer?.name || 'Walk-in'}</p>
+                    <p className="text-xs text-amber-600">{j.order_number || `#${j.id}`} · ₱{Number.parseFloat(String(j.total_amount || '0')).toLocaleString('en-PH', { minimumFractionDigits: 0 })} total</p>
+                  </div>
+                  <Link
+                    href={`/dashboard/jobs/${j.id}#financials`}
+                    className="text-xs font-bold text-white bg-amber-500 hover:bg-amber-600 px-3 py-1.5 rounded-lg transition-colors shrink-0"
+                  >
+                    Log DP →
+                  </Link>
+                </div>
+              ))}
+              {pendingDpJobs.length > 8 && (
+                <p className="px-5 py-2 text-xs text-amber-600 text-center">+{pendingDpJobs.length - 8} more — <Link href="/dashboard/payments" className="underline">View all</Link></p>
+              )}
             </div>
           )}
         </div>

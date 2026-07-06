@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useEffect, useState, useCallback, use, Suspense } from 'react';
 import api from '@/lib/axios';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -88,12 +88,13 @@ interface ShopProfile {
 }
 
 interface PublicShopProfilePageProps {
-  readonly params: {
+  readonly params: Promise<{
     readonly shop_id: string;
-  };
+  }>;
 }
 
 function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProps>) {
+  const { shop_id: shopId } = use(params);
   const { user } = useAuthStore();
   const [shop, setShop] = useState<ShopProfile | null>(null);
   const [services, setServices] = useState<PublicService[]>([]);
@@ -108,7 +109,10 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
   const [ratingComment, setRatingComment] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedService, setSelectedService] = useState<PublicService | null>(null);
-  const [activeTab, setActiveTab] = useState<'services' | 'hours' | 'locations'>('services');
+  // A branch_id in the URL means we arrived here from the owner's "Preview Customer
+  // View" link for a specific branch — land straight on Locations with it highlighted
+  // instead of the generic Services tab, which is what read as "blank" before.
+  const [activeTab, setActiveTab] = useState<'services' | 'hours' | 'locations'>(selectedBranchId ? 'locations' : 'services');
 
   const getMessengerUrl = (facebookUrl?: string) => {
     if (!facebookUrl) return 'https://m.me/suturatailoring';
@@ -127,7 +131,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
   const activeBranch = shop?.branches?.find(b => b.id.toString() === selectedBranchId);
 
   const fetchShop = useCallback(() => {
-    api.get(`/public/shops/${params.shop_id}`)
+    api.get(`/public/shops/${shopId}`)
       .then(res => {
         setShop(res.data.data);
         setLoading(false);
@@ -136,7 +140,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
         console.error(err);
         setLoading(false);
       });
-  }, [params.shop_id]);
+  }, [shopId]);
 
   useEffect(() => {
     fetchShop();
@@ -144,12 +148,12 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
 
   // Fetch public services
   useEffect(() => {
-    api.get(`/public/shops/${params.shop_id}/services`)
+    api.get(`/public/shops/${shopId}/services`)
       .then(res => setServices((res.data.data || []).filter((s: PublicService) => s.is_active)))
       .catch(() => {
         // Fall back silently — services section won't show
       });
-  }, [params.shop_id]);
+  }, [shopId]);
 
   const submitRating = async (e: React.SyntheticEvent) => {
     e.preventDefault();
@@ -189,21 +193,25 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
     <div className="bg-white min-h-screen text-zinc-900 selection:bg-[#EBE6E0] selection:text-indigo-900">
       {/* Navigation Bar */}
       <nav className="border-b border-zinc-200 bg-white sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-6 h-16 flex items-center justify-between">
           <div className="font-serif font-bold text-xl tracking-tight text-zinc-900 flex items-center gap-3">
-            {shop.logo_path && (
-              <Image 
-                src={shop.logo_path} 
-                alt="Logo" 
+            {shop.logo_path ? (
+              <Image
+                src={shop.logo_path}
+                alt="Logo"
                 width={32}
                 height={32}
-                className="w-8 h-8 rounded-full object-cover border border-zinc-200" 
+                className="w-8 h-8 rounded-full object-cover border border-zinc-200"
               />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-[#827A73] font-serif text-sm shrink-0">
+                {shop.name.charAt(0).toUpperCase()}
+              </div>
             )}
             {shop.name}
           </div>
           <div className="flex gap-4">
-            <Link href={`/shop/${params.shop_id}/catalog`} className="text-[#827A73] hover:text-black font-medium text-sm flex items-center transition-colors">
+            <Link href={`/shop/${shopId}/catalog`} className="text-[#827A73] hover:text-black font-medium text-sm flex items-center transition-colors">
               View Catalog
             </Link>
             {shop.active_special_hours?.is_closed ? (
@@ -211,7 +219,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
                 Closed
               </span>
             ) : (
-              <Link href={`/shop/${params.shop_id}/book`} className="bg-black hover:bg-zinc-800 text-white px-6 py-2 rounded-full font-medium transition-colors text-sm">
+              <Link href={`/shop/${shopId}/book`} className="bg-black hover:bg-zinc-800 text-white px-6 py-2 rounded-full font-medium transition-colors text-sm">
                 Book Appointment
               </Link>
             )}
@@ -378,7 +386,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
 
           {/* Action Cards */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
-            <Link href={`/shop/${params.shop_id}/catalog`} className="group p-6 border border-zinc-200 rounded-2xl hover:border-zinc-900 hover:shadow-lg transition-all bg-white">
+            <Link href={`/shop/${shopId}/catalog`} className="group p-6 border border-zinc-200 rounded-2xl hover:border-zinc-900 hover:shadow-lg transition-all bg-white">
               <h3 className="font-semibold text-lg text-zinc-900 mb-2 group-hover:text-[#886E62] transition-colors">Catalog Showcase &rarr;</h3>
               <p className="text-sm text-[#A8A19A]">Explore our expertly curated collection of premium garments.</p>
             </Link>
@@ -388,8 +396,8 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
                 <p className="text-sm text-[#B26959]/80">Online booking is temporarily disabled. Check announcement banner for details.</p>
               </div>
             ) : (
-              <Link href={`/shop/${params.shop_id}/book`} className="group p-6 bg-white shadow-sm text-[#2D2A26] rounded-2xl hover:bg-[#F0EAE3] hover:shadow-lg transition-all border border-[#EBE6E0]">
-                <h3 className="font-semibold text-lg mb-2 text-indigo-300">Book Appointment &rarr;</h3>
+              <Link href={`/shop/${shopId}/book`} className="group p-6 bg-white shadow-sm text-[#2D2A26] rounded-2xl hover:bg-[#F0EAE3] hover:shadow-lg transition-all border border-[#EBE6E0]">
+                <h3 className="font-semibold text-lg mb-2 text-zinc-900 group-hover:text-[#886E62] transition-colors">Book Appointment &rarr;</h3>
                 <p className="text-sm text-[#827A73]">Schedule a bespoke fitting or consultation session.</p>
               </Link>
             )}
@@ -452,7 +460,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
                   <p className="text-[#827A73] text-sm mt-1">Browse our tailoring offerings and estimated turnaround times.</p>
                 </div>
                 {services.length > 0 && (
-                  <Link href={`/shop/${params.shop_id}/catalog`} className="text-sm font-semibold text-[#9A8073] hover:underline flex items-center gap-1">
+                  <Link href={`/shop/${shopId}/catalog`} className="text-sm font-semibold text-[#9A8073] hover:underline flex items-center gap-1">
                     View Catalog &rarr;
                   </Link>
                 )}
@@ -675,7 +683,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
                       
                       <div className="flex gap-3 mt-auto">
                         <Link 
-                          href={`/shop/${params.shop_id}/book?branch_id=${branch.id}`}
+                          href={`/shop/${shopId}/book?branch_id=${branch.id}`}
                           className={`flex-1 text-center py-2.5 rounded-xl font-semibold text-sm transition-colors ${
                             isSelected 
                               ? 'bg-[#2D2A26] text-white hover:bg-black' 
@@ -709,7 +717,7 @@ function PublicShopProfileContent({ params }: Readonly<PublicShopProfilePageProp
       {/* Gallery Section */}
       {shop.gallery_images && shop.gallery_images.length > 0 && (
         <div className="bg-zinc-50 py-20 border-t border-zinc-200">
-          <div className="max-w-7xl mx-auto px-6">
+          <div className="max-w-5xl mx-auto px-6">
             <div className="text-center mb-12">
               <h2 className="text-3xl font-serif font-bold text-zinc-900">Shop Gallery</h2>
               <p className="text-[#A8A19A] mt-3">A glimpse inside our establishment and craftsmanship.</p>

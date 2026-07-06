@@ -4,12 +4,13 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Home, Star, CreditCard, Receipt, MapPin, Store, Eye, Sparkles, Ruler } from 'lucide-react';
+import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Home, Star, CreditCard, Receipt, MapPin, Store, Eye, Sparkles } from 'lucide-react';
 import api from '@/lib/axios';
 import NotificationBell from '@/components/NotificationBell';
 import BrandLogo from '@/components/BrandLogo';
 import { ToastProvider } from '@/context/ToastContext';
 import { BranchProvider, useBranch } from '@/context/BranchContext';
+import { useSubscriptionTier } from '@/hooks/useSubscriptionTier';
 
 function DashboardLayoutContent({ children }: { readonly children: React.ReactNode }) {
   const { user, isAuthenticated, logout, setAuth, token, shop } = useAuthStore();
@@ -27,6 +28,7 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
   const { branches, selectedBranchId, setSelectedBranchId } = useBranch();
   const [isBranchOpen, setIsBranchOpen] = useState(false);
   const branchRef = useRef<HTMLDivElement>(null);
+  const { tier: subscriptionTier } = useSubscriptionTier();
 
   if (pathname !== prevPathname) {
     setIsSidebarOpen(false);
@@ -57,6 +59,11 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
           logout();
           router.push('/login');
         });
+    } else if (user && (user.roles?.[0]?.name === 'staff' || user.roles?.[0]?.name === 'branch_manager')) {
+      // This owner dashboard is gated to shop_owner — staff/branch managers
+      // have their own portal. Without this, typing the URL directly would
+      // land them on owner-only pages that only fail once the API rejects the request.
+      router.push('/staff-dashboard');
     }
   }, [isAuthenticated, user, token, router, setAuth, logout]);
 
@@ -85,35 +92,39 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
     }
   };
 
-  if (!mounted || !isAuthenticated) return null;
+  const roleName = user?.roles?.[0]?.name;
+  if (!mounted || !isAuthenticated || roleName === 'staff' || roleName === 'branch_manager') return null;
 
-  const isShopOwner = user?.roles?.[0]?.name === 'shop_owner';
+  const isShopOwner = roleName === 'shop_owner';
 
   const NAV_GROUPS = [
     {
       title: 'Main Operations',
       items: [
-        { name: 'Home',          path: '/dashboard',             icon: Home },
-        { name: 'Appointments',  path: '/dashboard/appointments',icon: Calendar },
-        { name: 'Payments Queue',path: '/dashboard/payments',    icon: CreditCard },
+        { name: 'Home',           path: '/dashboard',             icon: Home },
+        { name: 'Appointments',   path: '/dashboard/appointments',icon: Calendar },
+        { name: 'Collect Payments',path: '/dashboard/payments',    icon: CreditCard },
       ]
     },
     {
+      // Measurements always belong to a customer, so it isn't a useful
+      // standalone starting point — reach it via a customer's own profile
+      // (or the "All Measurements" shortcut on the Customers page) instead
+      // of a co-equal sidebar tab.
       title: 'Workroom',
       items: [
         { name: 'Custom Jobs',   path: '/dashboard/jobs',        icon: Scissors },
         { name: 'Customers',     path: '/dashboard/customers',   icon: Users },
-        { name: 'Measurements',  path: '/dashboard/measurements',icon: Ruler },
       ]
     },
     {
-      // Ready-to-Wear is folded into Design Catalog as a tab (see the catalog page);
-      // it is no longer a standalone sidebar item.
+      // Ready-to-Wear is folded into Design Catalog as a tab (see the catalog page).
+      // "Our Expertise" was merged into Services — a service's category/type IS
+      // the shop's declared expertise, so it no longer needs a separate tab.
       title: 'Showroom',
       items: [
-        { name: 'Design Catalog',path: '/dashboard/catalog',     icon: ShoppingBag },
-        { name: 'Services',      path: '/dashboard/services',    icon: Package },
-        { name: 'Specializations',path: '/dashboard/specializations',icon: Scissors },
+        { name: 'Design Catalog', path: '/dashboard/catalog',        icon: ShoppingBag },
+        { name: 'Services',       path: '/dashboard/services',       icon: Package },
       ]
     },
     {
@@ -124,18 +135,21 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
       ]
     },
     {
-      title: 'Team & Performance',
+      // "Team" is avoided here on purpose — the app also uses "Team Name"/"Team
+      // Roster" for bulk sports-jersey job orders, so labeling staff as a "Team"
+      // reads as if it belongs to that same sports/esports context.
+      title: 'Staff & Performance',
       items: [
-        { name: 'Team Members',  path: '/dashboard/staff',       icon: UserCog },
-        { name: 'Insights',      path: '/dashboard/reports',     icon: LayoutDashboard },
+        { name: 'Staff',  path: '/dashboard/staff',       icon: UserCog },
+        { name: 'Reports & Insights', path: '/dashboard/reports', icon: LayoutDashboard },
       ]
     },
+    // Billing & Plans and Account Settings live in the profile dropdown (top-right
+    // avatar menu) instead — keeping them here too was a duplicate entry point.
     ...(isShopOwner ? [{
       title: 'Configuration',
       items: [
-        { name: 'Branches',         path: '/dashboard/branches',        icon: Building2 },
-        { name: 'Billing & Plans',  path: '/dashboard/billing',         icon: Receipt },
-        { name: 'Account Settings', path: '/dashboard/account-settings',icon: Settings },
+        { name: 'Branches', path: '/dashboard/branches', icon: Building2 },
       ]
     }] : [])
   ];
@@ -157,12 +171,12 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
           <Link href="/dashboard" className="flex items-center">
             <BrandLogo />
           </Link>
-          <Link 
-            href="/dashboard/billing" 
+          <Link
+            href="/dashboard/billing"
             className="hidden md:flex items-center gap-1.5 px-2.5 py-1 bg-linear-to-r from-[#9A8073] to-[#8A7063] text-white rounded-full text-[10px] font-bold uppercase tracking-wider hover:opacity-90 transition-opacity shadow-sm"
           >
             <Sparkles size={10} />
-            Premium Plan Activated
+            {subscriptionTier.charAt(0).toUpperCase() + subscriptionTier.slice(1)} Plan Activated
           </Link>
           {shop?.id && branches.length > 0 && (
             <div className="relative hidden md:block animate-fade-in" ref={branchRef}>

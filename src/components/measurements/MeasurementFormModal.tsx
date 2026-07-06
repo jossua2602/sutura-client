@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 import { User, Ruler, Loader2 } from 'lucide-react';
 import Modal from '@/components/Modal';
 import { CustomerData } from './measurementTypes';
@@ -52,21 +53,31 @@ export default function MeasurementFormModal({
           <label htmlFor="measurement-customer" className="block text-sm font-medium text-[#524A44] mb-1.5">
             Customer <span className="text-[#B26959]">*</span>
           </label>
-          <div className="relative">
-            <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" />
-            <select
-              id="measurement-customer"
-              required
-              value={form.customer_id}
-              onChange={e => setForm(f => ({ ...f, customer_id: e.target.value }))}
-              className="w-full pl-9 pr-4 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-1 focus:ring-[#9A8073]/30 appearance-none cursor-pointer"
-            >
-              <option value="">Select customer...</option>
-              {customers.map(c => (
-                <option key={c.id} value={c.id.toString()}>{c.name}</option>
-              ))}
-            </select>
-          </div>
+          {customers.length === 0 ? (
+            <div className="bg-[#FAF6F3] border border-[#EBE6E0] border-dashed rounded-lg px-4 py-3 text-sm text-[#827A73]">
+              No customers yet.{' '}
+              <Link href="/dashboard/customers" className="text-[#9A8073] font-semibold hover:underline">
+                Add one first
+              </Link>{' '}
+              — a measurement profile always belongs to a customer.
+            </div>
+          ) : (
+            <div className="relative">
+              <User size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" />
+              <select
+                id="measurement-customer"
+                required
+                value={form.customer_id}
+                onChange={e => setForm(f => ({ ...f, customer_id: e.target.value }))}
+                className="w-full pl-9 pr-4 py-2.5 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-[#9A8073] focus:ring-1 focus:ring-[#9A8073]/30 appearance-none cursor-pointer"
+              >
+                <option value="">Select customer...</option>
+                {customers.map(c => (
+                  <option key={c.id} value={c.id.toString()}>{c.name}</option>
+                ))}
+              </select>
+            </div>
+          )}
         </div>
 
         {/* Profile Name */}

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useToast } from '@/context/ToastContext';
 import api from '@/lib/axios';
 import {
   CreditCard, CheckCircle, Zap, ShieldCheck, Loader2,
@@ -65,6 +66,7 @@ function getPlanMeta(slug: string) {
 
 export default function BillingPage() {
   const { shop, user } = useAuthStore();
+  const toast = useToast();
   const [plans, setPlans] = useState<Plan[]>([]);
   const [currentSubscription, setCurrentSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -105,8 +107,10 @@ export default function BillingPage() {
     try {
       await api.post(`/shops/${shop.id}/subscription`, { plan_id: planId, billing_cycle: 'monthly' });
       await fetchBillingData();
-    } catch (err) {
-      console.error('Subscription failed', err);
+      toast.success('Subscription updated successfully.');
+    } catch (err: unknown) {
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Failed to update subscription.');
     } finally {
       setUpgradingTo(null);
     }
@@ -206,7 +210,8 @@ export default function BillingPage() {
             const meta = getPlanMeta(plan.slug);
             const Icon = meta.icon;
             const isActive = activePlanId === plan.id;
-            const features: string[] = JSON.parse(plan.features || '[]');
+            let features: string[] = [];
+            try { features = JSON.parse(plan.features || '[]'); } catch { features = []; }
 
             return (
               <div

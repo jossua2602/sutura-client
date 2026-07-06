@@ -163,5 +163,6 @@ export function useJobs() {
     walkInCount,
     onlineCount,
     pendingReviewCount,
+    fetchJobs,
   };
 }

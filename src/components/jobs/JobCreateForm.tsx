@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ArrowLeft, Loader2, Store, ShoppingBag, Truck, Navigation } from 'lucide-react';
+import { ArrowLeft, Loader2, Store, ShoppingBag, Truck, Navigation, User, FileText, Receipt, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import { serializeCourierName } from '@/lib/fulfillment';
+import { SERVICE_TYPE_META, SERVICE_TYPES } from '@/components/services/serviceHelpers';
 
 const COURIER_OPTIONS = [
   // Same-Day / Local Delivery
@@ -52,7 +53,9 @@ interface ServiceData {
   id: number;
   name: string;
   category?: string;
+  service_type?: 'custom_tailoring' | 'bulk_sublimation' | 'fashion_bridal' | 'alteration_repair' | null;
   base_price?: string | number;
+  min_order_qty?: number;
   custom_fields?: ServiceField[] | null;
   tags?: string[];
 }
@@ -128,6 +131,10 @@ export default function JobCreateForm() {
     { id: 'roster-0', name: '', print_name: '', number: '', size: 'M' }
   ]);
 
+  // Alteration/Repair — protects the shop from false damage claims by logging
+  // the garment's condition before work starts.
+  const [preExistingDamageNotes, setPreExistingDamageNotes] = useState('');
+
   const [formData, setFormData] = useState({
     intake_channel: 'walk_in',
     customer_id: '',
@@ -138,6 +145,7 @@ export default function JobCreateForm() {
     downpayment: '',
     due_date: '',
     notes: '',
+    po_number: '',
     shipping_address: '',
     is_outsourced: false,
     partner_shop_name: '',
@@ -197,24 +205,33 @@ export default function JobCreateForm() {
       (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
     );
 
+    const mostRecentId = displayMeasurements[0]?.id?.toString();
+
     return (
-      <select
-        id="measurement_id"
-        value={formData.measurement_id}
-        onChange={(e) =>
-          setFormData({ ...formData, measurement_id: e.target.value })
-        }
-        className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-      >
-        <option value="">
-          No profile selected / Consultation Only
-        </option>
-        {displayMeasurements.map((m) => (
-          <option key={m.id} value={m.id}>
-            V{m.version} - {m.profile_name}
+      <div className="space-y-1">
+        <select
+          id="measurement_id"
+          value={formData.measurement_id}
+          onChange={(e) =>
+            setFormData({ ...formData, measurement_id: e.target.value })
+          }
+          className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+        >
+          <option value="">
+            No profile selected / Consultation Only
           </option>
-        ))}
-      </select>
+          {displayMeasurements.map((m) => (
+            <option key={m.id} value={m.id}>
+              V{m.version} - {m.profile_name}
+            </option>
+          ))}
+        </select>
+        {formData.measurement_id && formData.measurement_id === mostRecentId && (
+          <p className="text-[11px] text-[#7A8B76] font-medium">
+            ✓ Retrieved this customer&apos;s last saved measurements — no need to re-measure a returning client.
+          </p>
+        )}
+      </div>
     );
   };
 
@@ -487,11 +504,17 @@ export default function JobCreateForm() {
           const measurements = res.data.data || [];
           setCustomerMeasurements(measurements);
 
-          // Prefill measurement_id from search params if it matches one, or select the first one by default
+          // Suki retrieval: a returning customer's most recently saved
+          // measurement is auto-selected so staff don't have to re-measure
+          // them — must sort by recency, not just take the API's raw order.
+          const mostRecent = [...measurements].sort(
+            (a: CustomerMeasurement, b: CustomerMeasurement) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
+          )[0];
+
           const qMeas = searchParams.get('measurement_id') || '';
           setFormData((prev) => ({
             ...prev,
-            measurement_id: qMeas || (measurements[0]?.id?.toString() || ''),
+            measurement_id: qMeas || (mostRecent?.id?.toString() || ''),
           }));
         })
         .catch((err) => {
@@ -554,6 +577,20 @@ export default function JobCreateForm() {
       return;
     }
 
+    const selectedForSubmit = services.find((s) => s.id.toString() === formData.service_id);
+
+    if (isBulkOrder && selectedForSubmit?.min_order_qty && roster.length < selectedForSubmit.min_order_qty) {
+      setError(`This service requires a minimum of ${selectedForSubmit.min_order_qty} pieces — the roster currently has ${roster.length}.`);
+      setSubmitting(false);
+      return;
+    }
+
+    if (selectedForSubmit?.service_type === 'alteration_repair' && !preExistingDamageNotes.trim()) {
+      setError('Please log the garment\'s pre-existing condition before creating an alteration/repair job.');
+      setSubmitting(false);
+      return;
+    }
+
     const balance = totalAmt - downPay;
     const { addressVal, courierNameVal, courierTrackingVal } = getFulfillmentValues();
 
@@ -576,10 +613,14 @@ export default function JobCreateForm() {
         courier_tracking_number: courierTrackingVal,
         custom_order_data: {
           ...customFieldValues,
+          po_number: formData.po_number || null,
           team_name: teamName || null,
           team_roster: isBulkOrder
             ? roster.map(({ name, print_name, number, size }) => ({ name, print_name, number, size }))
-            : null
+            : null,
+          pre_existing_damage_notes: selectedForSubmit?.service_type === 'alteration_repair'
+            ? preExistingDamageNotes.trim()
+            : null,
         },
         is_outsourced: formData.is_outsourced,
         partner_shop_name: formData.is_outsourced ? formData.partner_shop_name : null,
@@ -615,9 +656,18 @@ export default function JobCreateForm() {
     (s) => s.id.toString() === formData.service_id
   );
 
+  // Alteration/repair jobs are typically same-day or short-turnaround work on an
+  // existing garment, so a due date isn't mandatory the way it is for a fresh build.
   const isCustomTailoring = selectedService
-    ? selectedService.category !== 'Alterations & Adjustments'
+    ? selectedService.service_type !== 'alteration_repair'
     : true;
+
+  // Ties the "Custom Specifications" section's icon/color to whichever service_type is
+  // selected, so the form visibly reacts to the choice instead of staying visually static.
+  const sectionTwoMeta = selectedService?.service_type
+    ? SERVICE_TYPE_META[selectedService.service_type]
+    : { icon: FileText, bg: 'bg-[#F0EAE3]', border: 'border-[#EBE6E0]', text: 'text-[#A8A19A]' };
+  const SectionTwoIcon = sectionTwoMeta.icon;
 
   return (
     <div className="max-w-3xl mx-auto space-y-6 pb-12">
@@ -663,14 +713,17 @@ export default function JobCreateForm() {
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Section 1: Customer & Service Selection */}
           <div className="space-y-4">
-            <h3 className="text-sm font-bold text-[#524A44] border-b border-[#EBE6E0] pb-2">
-              Customer & Service Details
-            </h3>
+            <div className="flex items-center gap-3 border-b border-[#EBE6E0] pb-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-taupe/10 border border-taupe/20">
+                <User size={16} className="text-taupe" />
+              </div>
+              <h3 className="text-sm font-bold text-[#524A44]">Customer & Service Details</h3>
+            </div>
 
             {/* Order Type Toggle */}
             <div>
               <span className="block text-xs font-semibold text-[#827A73] mb-2 uppercase tracking-wider">
-                Intake Channel <span className="text-[#B26959]">*</span>
+                How did they order? <span className="text-[#B26959]">*</span>
               </span>
               <div className="grid grid-cols-2 gap-3">
                 <button
@@ -713,6 +766,29 @@ export default function JobCreateForm() {
                 </button>
               </div>
             </div>
+
+            {/* PO Number — shown only for Online/Corporate orders */}
+            {formData.intake_channel === 'online' && (
+              <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-center gap-3">
+                <div className="flex-1">
+                  <label
+                    htmlFor="po_number"
+                    className="block text-xs font-semibold text-blue-700 mb-1 uppercase tracking-wider"
+                  >
+                    PO Number / Reference Code
+                    <span className="text-[10px] font-normal text-blue-500 ml-1 normal-case">(for corporate orders)</span>
+                  </label>
+                  <input
+                    id="po_number"
+                    type="text"
+                    value={formData.po_number}
+                    onChange={(e) => setFormData({ ...formData, po_number: e.target.value })}
+                    placeholder="e.g. PO-2025-00142 or company ref number"
+                    className="w-full bg-white border border-blue-200 rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-blue-400"
+                  />
+                </div>
+              </div>
+            )}
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
@@ -759,7 +835,7 @@ export default function JobCreateForm() {
                   htmlFor="service_id"
                   className="block text-xs font-semibold text-[#827A73] mb-1 uppercase tracking-wider"
                 >
-                  Service Category <span className="text-[#B26959]">*</span>
+                  Type of Service <span className="text-[#B26959]">*</span>
                 </label>
                 <select
                   id="service_id"
@@ -779,15 +855,16 @@ export default function JobCreateForm() {
                     });
                     setCustomFieldValues(initialValues);
 
-                    // Auto-identify sports and esports jerseys to tick roster toggle
+                    // Bulk/team-order services always need the roster; fall back to
+                    // name-sniffing for older services that predate service_type.
                     if (selected) {
                       const name = selected.name.toLowerCase();
-                      if (
+                      const looksBulk =
                         name.includes('jersey') ||
                         name.includes('sublimation') ||
                         name.includes('uniform') ||
-                        name.includes('esports')
-                      ) {
+                        name.includes('esports');
+                      if (selected.service_type === 'bulk_sublimation' || looksBulk) {
                         setIsBulkOrder(true);
                       }
                     }
@@ -838,14 +915,52 @@ export default function JobCreateForm() {
 
           {/* Section 2: Custom Specifications & Notes */}
           <div className="space-y-4 border-t border-[#EBE6E0] pt-6">
-            <h3 className="text-sm font-bold text-[#524A44] border-b border-[#EBE6E0] pb-2">
-              Custom Specifications & Notes
-            </h3>
+            <div className="flex items-center gap-3 border-b border-[#EBE6E0] pb-3">
+              <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${sectionTwoMeta.bg} border ${sectionTwoMeta.border}`}>
+                <SectionTwoIcon size={16} className={sectionTwoMeta.text} />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-[#524A44]">Custom Specifications & Notes</h3>
+                {selectedService?.service_type && (
+                  <p className={`text-[11px] font-medium ${sectionTwoMeta.text}`}>
+                    Fields adapted for {SERVICE_TYPES.find(t => t.value === selectedService.service_type)?.label}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            {selectedService?.service_type === 'fashion_bridal' && (
+              <div className={`flex items-start gap-2 text-xs ${sectionTwoMeta.text} ${sectionTwoMeta.bg} border ${sectionTwoMeta.border} rounded-xl p-3`}>
+                <SectionTwoIcon size={14} className="shrink-0 mt-0.5" />
+                <span>Fashion/bridal garments typically need <strong>two fittings</strong> — book the base-fit and final-drape sessions separately from the Appointments tab once cutting begins.</span>
+              </div>
+            )}
+
+            {selectedService?.service_type === 'alteration_repair' && (
+              <div className={`space-y-1 border ${sectionTwoMeta.border} ${sectionTwoMeta.bg} rounded-xl p-4`}>
+                <label htmlFor="pre_existing_damage_notes" className={`flex items-center gap-1.5 text-xs font-bold ${sectionTwoMeta.text} uppercase tracking-wider`}>
+                  <SectionTwoIcon size={12} />
+                  Pre-Existing Damage / Condition Notes <span className="text-[#B26959]">*</span>
+                </label>
+                <p className="text-[11px] text-amber-700 mb-1">
+                  Log any existing stains, tears, or missing parts before starting work — protects the shop from false damage claims later.
+                </p>
+                <textarea
+                  id="pre_existing_damage_notes"
+                  value={preExistingDamageNotes}
+                  onChange={(e) => setPreExistingDamageNotes(e.target.value)}
+                  rows={2}
+                  className="w-full bg-white border border-amber-200 rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe resize-y"
+                  placeholder="e.g. Small stain near hemline, missing one button on left cuff. No damage noted if left blank is not allowed — describe condition even if 'No visible damage.'"
+                />
+              </div>
+            )}
 
             {/* Dynamic Custom Fields Section */}
             {formData.service_id && selectedService?.custom_fields && selectedService.custom_fields.length > 0 ? (
-              <div className="space-y-4 border border-[#EBE6E0] rounded-xl p-4">
-                <h4 className="text-xs font-bold text-[#2D2A26] border-b border-[#EBE6E0] pb-2 uppercase tracking-wider">
+              <div className={`space-y-4 border ${sectionTwoMeta.border} rounded-xl p-4`}>
+                <h4 className={`flex items-center gap-1.5 text-xs font-bold ${sectionTwoMeta.text} border-b border-[#EBE6E0] pb-2 uppercase tracking-wider`}>
+                  <SectionTwoIcon size={12} />
                   Custom Service Fields
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -904,7 +1019,7 @@ export default function JobCreateForm() {
               </label>
 
               {isBulkOrder && (
-                <div className="mt-4 bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+                <div className={`mt-4 ${SERVICE_TYPE_META.bulk_sublimation.bg} border ${SERVICE_TYPE_META.bulk_sublimation.border} rounded-xl p-4 space-y-3`}>
                   <div>
                     <label htmlFor="team-name-input" className="block text-xs font-semibold text-[#827A73] mb-1 uppercase tracking-wider">
                       Team Name
@@ -918,6 +1033,23 @@ export default function JobCreateForm() {
                       className="w-full bg-white border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe max-w-md"
                     />
                   </div>
+
+                  {selectedService?.min_order_qty && selectedService.min_order_qty > 1 && (
+                    <p className={`text-xs font-semibold px-3 py-2 rounded-lg border ${
+                      roster.length < selectedService.min_order_qty
+                        ? 'bg-[#B26959]/5 border-[#B26959]/20 text-[#B26959]'
+                        : 'bg-[#7A8B76]/5 border-[#7A8B76]/20 text-[#7A8B76]'
+                    }`}>
+                      {roster.length} / {selectedService.min_order_qty} minimum pieces
+                      {roster.length < selectedService.min_order_qty && ' — add more players/items to meet this service\'s minimum order quantity'}
+                    </p>
+                  )}
+
+                  {roster.length >= 10 && (
+                    <p className="text-xs font-semibold px-3 py-2 rounded-lg border bg-amber-50 border-amber-200 text-amber-700">
+                      🎁 Freebies unlocked: {roster.length >= 20 ? 'Free Layout + Free Banner + Free Coach Shirt' : roster.length >= 15 ? 'Free Layout + Free Banner' : 'Free Layout Design'} (remember to apply manually to pricing)
+                    </p>
+                  )}
 
                   <div className="flex flex-col gap-3 pt-2">
                     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -969,90 +1101,82 @@ export default function JobCreateForm() {
                     </div>
                   </div>
                   
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left text-xs divide-y divide-zinc-200">
-                      <thead>
-                        <tr>
-                          <th className="pb-2 font-semibold text-zinc-600">Player/Employee Name</th>
-                          <th className="pb-2 font-semibold text-zinc-600">Print Name / Nickname</th>
-                          <th className="pb-2 font-semibold text-zinc-600 w-24">Number</th>
-                          <th className="pb-2 font-semibold text-zinc-600 w-24">Size</th>
-                          <th className="pb-2 text-right"></th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-zinc-150">
-                        {roster.map((row, idx) => (
-                          <tr key={row.id}>
-                            <td className="py-2 pr-2">
-                              <input
-                                type="text"
-                                required
-                                value={row.name}
-                                placeholder="e.g. J. Arabejo"
-                                onChange={(e) => {
-                                  const newRoster = [...roster];
-                                  newRoster[idx].name = e.target.value;
-                                  setRoster(newRoster);
-                                }}
-                                className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1 text-xs focus:outline-none focus:border-taupe"
-                              />
-                            </td>
-                            <td className="py-2 pr-2">
-                              <input
-                                type="text"
-                                value={row.print_name}
-                                placeholder="e.g. FROSTY"
-                                onChange={(e) => {
-                                  const newRoster = [...roster];
-                                  newRoster[idx].print_name = e.target.value;
-                                  setRoster(newRoster);
-                                }}
-                                className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1 text-xs focus:outline-none focus:border-taupe"
-                              />
-                            </td>
-                            <td className="py-2 pr-2">
-                              <input
-                                type="text"
-                                value={row.number}
-                                placeholder="e.g. 12"
-                                onChange={(e) => {
-                                  const newRoster = [...roster];
-                                  newRoster[idx].number = e.target.value;
-                                  setRoster(newRoster);
-                                }}
-                                className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1 text-xs focus:outline-none focus:border-taupe"
-                              />
-                            </td>
-                            <td className="py-2 pr-2">
-                              <select
-                                value={row.size}
-                                onChange={(e) => {
-                                  const newRoster = [...roster];
-                                  newRoster[idx].size = e.target.value;
-                                  setRoster(newRoster);
-                                }}
-                                className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1 text-xs focus:outline-none"
-                              >
-                                {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map(sz => (
-                                  <option key={sz} value={sz}>{sz}</option>
-                                ))}
-                              </select>
-                            </td>
-                            <td className="py-2 text-right">
-                              {roster.length > 1 && (
-                                <button
-                                  type="button"
-                                  onClick={() => setRoster(roster.filter((r) => r.id !== row.id))}
-                                  className="text-red-500 hover:text-red-700 font-semibold"
-                                >
-                                  Delete
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  <div className="hidden sm:grid grid-cols-[28px_1fr_1fr_72px_72px_28px] gap-2 text-[10px] font-semibold text-blue-700/70 uppercase tracking-wider px-1">
+                    <span></span>
+                    <span>Player/Employee Name</span>
+                    <span>Print Name / Nickname</span>
+                    <span>Number</span>
+                    <span>Size</span>
+                    <span></span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {roster.map((row, idx) => (
+                      <div
+                        key={row.id}
+                        className={`grid grid-cols-2 sm:grid-cols-[28px_1fr_1fr_72px_72px_28px] gap-2 items-center p-2 rounded-lg border border-blue-100 ${idx % 2 === 0 ? 'bg-white' : 'bg-blue-50/50'}`}
+                      >
+                        <span className="hidden sm:flex items-center justify-center text-[10px] font-bold text-blue-700 w-6 h-6 rounded-full bg-blue-100 shrink-0">
+                          {idx + 1}
+                        </span>
+                        <input
+                          type="text"
+                          required
+                          value={row.name}
+                          placeholder="e.g. J. Arabejo"
+                          onChange={(e) => {
+                            const newRoster = [...roster];
+                            newRoster[idx].name = e.target.value;
+                            setRoster(newRoster);
+                          }}
+                          className="col-span-2 sm:col-span-1 w-full bg-white border border-[#EBE6E0] rounded px-2 py-1.5 text-xs focus:outline-none focus:border-taupe"
+                        />
+                        <input
+                          type="text"
+                          value={row.print_name}
+                          placeholder="e.g. FROSTY"
+                          onChange={(e) => {
+                            const newRoster = [...roster];
+                            newRoster[idx].print_name = e.target.value;
+                            setRoster(newRoster);
+                          }}
+                          className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1.5 text-xs focus:outline-none focus:border-taupe"
+                        />
+                        <input
+                          type="text"
+                          value={row.number}
+                          placeholder="e.g. 12"
+                          onChange={(e) => {
+                            const newRoster = [...roster];
+                            newRoster[idx].number = e.target.value;
+                            setRoster(newRoster);
+                          }}
+                          className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1.5 text-xs focus:outline-none focus:border-taupe"
+                        />
+                        <select
+                          value={row.size}
+                          onChange={(e) => {
+                            const newRoster = [...roster];
+                            newRoster[idx].size = e.target.value;
+                            setRoster(newRoster);
+                          }}
+                          className="w-full bg-white border border-[#EBE6E0] rounded px-2 py-1.5 text-xs focus:outline-none"
+                        >
+                          {['XS', 'S', 'M', 'L', 'XL', 'XXL', '3XL'].map(sz => (
+                            <option key={sz} value={sz}>{sz}</option>
+                          ))}
+                        </select>
+                        {roster.length > 1 ? (
+                          <button
+                            type="button"
+                            onClick={() => setRoster(roster.filter((r) => r.id !== row.id))}
+                            title="Remove"
+                            className="flex items-center justify-center w-6 h-6 rounded-md text-[#B26959] hover:bg-[#B26959]/10 transition-colors shrink-0 justify-self-end sm:justify-self-auto"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        ) : <span />}
+                      </div>
+                    ))}
                   </div>
                   <div className="flex items-center justify-between border-t border-[#EBE6E0] pt-2 text-xs text-[#827A73] font-semibold">
                     <span>Total Items: {roster.length}</span>
@@ -1064,9 +1188,12 @@ export default function JobCreateForm() {
 
           {/* Section 3: Production & Fulfillment */}
           <div className="space-y-4 border-t border-[#EBE6E0] pt-6">
-            <h3 className="text-sm font-bold text-[#524A44] border-b border-[#EBE6E0] pb-2">
-              Production & Fulfillment
-            </h3>
+            <div className="flex items-center gap-3 border-b border-[#EBE6E0] pb-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-blue-50 border border-blue-200">
+                <Truck size={16} className="text-blue-700" />
+              </div>
+              <h3 className="text-sm font-bold text-[#524A44]">Production & Fulfillment</h3>
+            </div>
 
             {/* Outsourcing Details */}
             <div>
@@ -1247,9 +1374,12 @@ export default function JobCreateForm() {
 
           {/* Section 4: Timeline & Financial Summary */}
           <div className="space-y-4 border-t border-[#EBE6E0] pt-6">
-            <h3 className="text-sm font-bold text-[#524A44] border-b border-[#EBE6E0] pb-2">
-              Timeline & Invoice Summary
-            </h3>
+            <div className="flex items-center gap-3 border-b border-[#EBE6E0] pb-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#7A8B76]/10 border border-[#7A8B76]/20">
+                <Receipt size={16} className="text-[#7A8B76]" />
+              </div>
+              <h3 className="text-sm font-bold text-[#524A44]">Timeline & Invoice Summary</h3>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>

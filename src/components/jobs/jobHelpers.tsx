@@ -41,7 +41,9 @@ export interface Job {
   status: string;
   payment_status: string;
   balance: number | string;
-  customer?: { name: string } | null;
+  downpayment?: number | string;
+  total_amount?: number | string;
+  customer?: { name: string; suki_tag?: string | null } | null;
   service?: { name: string } | null;
   assigned_staff?: { name: string } | null;
   due_date?: string | null;

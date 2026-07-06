@@ -1,4 +1,4 @@
-import { ShoppingBag, Truck, CheckCircle, Clock, Calendar } from 'lucide-react';
+import { ShoppingBag, Truck, CheckCircle, Clock, Calendar, Search, XCircle } from 'lucide-react';
 
 export interface CatalogOrder {
   id: number;
@@ -16,6 +16,10 @@ export interface CatalogOrder {
   rental_start_date: string | null;
   rental_end_date: string | null;
   security_deposit_amount: string | null;
+  valid_id_captured: boolean;
+  valid_id_notes: string | null;
+  return_inspection_notes: string | null;
+  deposit_deduction_amount: string | null;
   catalog_item: {
     name: string;
     images: { id: number; image_url: string; view_angle: string; is_primary: boolean }[];
@@ -56,10 +60,22 @@ export function StatusBadge({ status, listingType }: { readonly status: string; 
           )}
         </span>
       );
+    case 'returned_pending_inspection':
+      return (
+        <span className="px-2 py-1 bg-orange-100 text-orange-800 rounded-full text-xs font-medium flex items-center gap-1">
+          <Search className="w-3 h-3"/> Inspecting Return
+        </span>
+      );
     case 'completed':
       return (
         <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs font-medium flex items-center gap-1">
           <CheckCircle className="w-3 h-3"/> {isRental ? 'Returned & Fulfilled' : 'Completed'}
+        </span>
+      );
+    case 'cancelled':
+      return (
+        <span className="px-2 py-1 bg-rose-100 text-rose-800 rounded-full text-xs font-medium flex items-center gap-1">
+          <XCircle className="w-3 h-3"/> Cancelled
         </span>
       );
     default:

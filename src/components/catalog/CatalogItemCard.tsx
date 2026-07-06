@@ -29,11 +29,16 @@ export default function CatalogItemCard({
           <img
             src={primaryImage}
             alt={item.name}
-            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+            className={`w-full h-full object-cover transition-transform duration-700 group-hover:scale-105 ${item.is_active === false ? 'grayscale opacity-60' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center text-[#827A73]">
             <ImageIcon size={32} />
+          </div>
+        )}
+        {item.is_active === false && (
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 px-2.5 py-1 bg-[#2D2A26]/90 backdrop-blur-md rounded-full text-[10px] font-bold text-white uppercase tracking-wider shadow-sm z-20">
+            Paused
           </div>
         )}
         <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/95 backdrop-blur-md rounded-lg text-xs font-bold text-[#2D2A26] shadow-sm border border-[#EBE6E0]">

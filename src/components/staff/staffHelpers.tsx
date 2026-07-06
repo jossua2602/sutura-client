@@ -7,6 +7,9 @@ export interface Staff {
   specialization?: string | string[];
   active_jobs?: number;
   completed_jobs?: number;
+  shop_branch_id?: number | null;
+  is_branch_manager?: boolean;
+  branch?: { id: number; name: string } | null;
 }
 
 /**

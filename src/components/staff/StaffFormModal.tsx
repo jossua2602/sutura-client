@@ -1,5 +1,6 @@
 import React from 'react';
 import { X, Loader2 } from 'lucide-react';
+import { useBranch } from '@/context/BranchContext';
 
 interface StaffFormModalProps {
   readonly isOpen: boolean;
@@ -16,6 +17,8 @@ interface StaffFormModalProps {
     specialization: string;
     hired_at: string;
     is_active: boolean;
+    shop_branch_id: string;
+    is_branch_manager: boolean;
   };
   readonly setFormData: React.Dispatch<React.SetStateAction<{
     name: string;
@@ -26,6 +29,8 @@ interface StaffFormModalProps {
     specialization: string;
     hired_at: string;
     is_active: boolean;
+    shop_branch_id: string;
+    is_branch_manager: boolean;
   }>>;
 }
 
@@ -38,6 +43,7 @@ export default function StaffFormModal({
   formData,
   setFormData,
 }: StaffFormModalProps) {
+  const { branches } = useBranch();
   if (!isOpen) return null;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -170,6 +176,42 @@ export default function StaffFormModal({
               placeholder="e.g. Suits, Gowns, Alterations (comma-separated)"
               className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
             />
+          </div>
+
+          {branches.length > 0 && (
+            <div>
+              <label htmlFor="staff_branch" className="block text-sm font-medium text-[#524A44] mb-1">
+                Assigned Branch
+              </label>
+              <select
+                id="staff_branch"
+                name="shop_branch_id"
+                value={formData.shop_branch_id}
+                onChange={handleInputChange}
+                className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
+              >
+                <option value="">Unassigned (works across all branches)</option>
+                {branches.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}{b.is_main ? ' (Main)' : ''}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          <div className="flex items-center gap-3 pt-1">
+            <input
+              id="staff_is_branch_manager"
+              type="checkbox"
+              checked={formData.is_branch_manager}
+              onChange={e => setFormData(prev => ({ ...prev, is_branch_manager: e.target.checked }))}
+              className="w-4 h-4 rounded border-[#EBE6E0] text-taupe focus:ring-taupe"
+            />
+            <label htmlFor="staff_is_branch_manager" className="text-sm font-medium text-[#524A44]">
+              Make Branch Manager{' '}
+              <span className="block text-xs font-normal text-[#A8A19A]">
+                Can collect payments, assign staff, and manage job orders for their branch without owner access.
+              </span>
+            </label>
           </div>
 
           {/* Active toggle — only shown when editing */}

@@ -1,19 +1,10 @@
-import BrandLogo from '@/components/BrandLogo';
-
+// Each page under /shop/[shop_id] (profile, catalog, book, item detail) already
+// renders its own working navigation tailored to that shop and page — a shared
+// nav here would either duplicate it or (as it did before) point nowhere, since
+// this layout has no access to which shop is even being viewed.
 export default function PublicShopLayout({ children }: { readonly children: React.ReactNode }) {
   return (
     <div className="min-h-screen bg-white text-zinc-900 font-sans selection:bg-zinc-200">
-      <header className="border-b border-zinc-200 bg-white/80 backdrop-blur-md sticky top-0 z-50">
-        <div className="max-w-7xl mx-auto px-6 h-20 flex items-center justify-between">
-          <BrandLogo />
-          <nav className="hidden md:flex gap-8 text-sm font-medium text-[#A8A19A]">
-            <button className="hover:text-zinc-900 transition-colors font-medium">Catalog</button>
-            <button className="hover:text-zinc-900 transition-colors font-medium">Book Appointment</button>
-            <button className="hover:text-zinc-900 transition-colors font-medium">Our Process</button>
-            <button className="hover:text-zinc-900 transition-colors font-medium">Contact</button>
-          </nav>
-        </div>
-      </header>
       <main>
         {children}
       </main>

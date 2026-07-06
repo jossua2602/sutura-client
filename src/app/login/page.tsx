@@ -34,16 +34,20 @@ export default function LoginPage() {
           }
         }
 
-        setAuth(user, token, activeShop, staff_profile);
-        
-        if (user.roles[0]?.name === 'staff') {
+        const roleName = user.roles[0]?.name;
+
+        if (roleName === 'staff' || roleName === 'branch_manager') {
+          setAuth(user, token, activeShop, staff_profile);
           router.push('/staff-dashboard');
-        } else if (user.roles[0]?.name === 'admin') {
-          router.push('/admin');
-        } else if (user.roles[0]?.name === 'shop_owner') {
+        } else if (roleName === 'shop_owner') {
+          setAuth(user, token, activeShop, staff_profile);
           router.push('/dashboard');
         } else {
-          router.push('/customer-dashboard');
+          // admin / customer accounts don't have a web dashboard yet — avoid
+          // navigating to a route that doesn't exist and 404ing right after login.
+          setError('This account type does not have a dashboard yet. Please contact support.');
+          setLoading(false);
+          return;
         }
       }
     } catch (err: unknown) {

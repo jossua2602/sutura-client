@@ -3,9 +3,9 @@
 import React, { useState } from 'react';
 import {
   Search, Loader2, Copy, DollarSign, Pencil, Trash2,
-  Image as ImageIcon, CheckSquare, Square, Check, Clock, Tag,
+  Image as ImageIcon, CheckSquare, Square, Check, Clock, Tag, Layers,
 } from 'lucide-react';
-import { Service } from './serviceHelpers';
+import { Service, SERVICE_TYPES, SERVICE_TYPE_META } from './serviceHelpers';
 
 interface ServiceListViewProps {
   readonly filteredServices: Service[];
@@ -19,6 +19,7 @@ interface ServiceListViewProps {
   readonly onDuplicate: (service: Service) => Promise<void>;
   readonly onEdit: (service: Service) => void;
   readonly onDelete: (id: number) => void;
+  readonly onManagePricing: (service: Service) => void;
   readonly onBulkDelete?: (ids: number[]) => void;
 }
 
@@ -34,6 +35,7 @@ export default function ServiceListView({
   onDuplicate,
   onEdit,
   onDelete,
+  onManagePricing,
   onBulkDelete,
 }: ServiceListViewProps) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -240,7 +242,41 @@ export default function ServiceListView({
                         <span className="text-[11px] text-[#A8A19A] truncate">{service.category}</span>
                       </div>
                     )}
+                    {service.service_type && (() => {
+                      const meta = SERVICE_TYPE_META[service.service_type];
+                      const TypeIcon = meta.icon;
+                      return (
+                        <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.bg} ${meta.text} border ${meta.border}`}>
+                          <TypeIcon size={10} />
+                          {SERVICE_TYPES.find(t => t.value === service.service_type)?.label || service.service_type}
+                        </span>
+                      );
+                    })()}
                   </div>
+
+                  {/* Price / turnaround / min-qty stats */}
+                  {(service.base_price || service.estimated_days || (service.service_type === 'bulk_sublimation' && service.min_order_qty && service.min_order_qty > 1)) && (
+                    <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#524A44] font-medium">
+                      {service.base_price && (
+                        <span className="flex items-center gap-1">
+                          <DollarSign size={11} className="text-[#7A8B76]" />
+                          ₱{Number.parseFloat(service.base_price).toLocaleString()}
+                        </span>
+                      )}
+                      {service.estimated_days ? (
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} className="text-[#A8A19A]" />
+                          {service.estimated_days}d turnaround
+                        </span>
+                      ) : null}
+                      {service.service_type === 'bulk_sublimation' && service.min_order_qty && service.min_order_qty > 1 && (
+                        <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
+                          <Layers size={10} />
+                          Min {service.min_order_qty} pcs
+                        </span>
+                      )}
+                    </div>
+                  )}
 
                   {/* Description */}
                   {service.description && (
@@ -282,6 +318,13 @@ export default function ServiceListView({
                           className="flex items-center justify-center p-1.5 text-[#A8A19A] hover:text-[#9A8073] hover:bg-[#FAF6F3] rounded-lg transition-colors"
                         >
                           <Copy size={14} />
+                        </button>
+                        <button
+                          onClick={() => onManagePricing(service)}
+                          title="Manage Pricing"
+                          className="flex items-center justify-center p-1.5 text-[#A8A19A] hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 rounded-lg transition-colors"
+                        >
+                          <DollarSign size={14} />
                         </button>
                         <button
                           onClick={() => onDelete(service.id)}

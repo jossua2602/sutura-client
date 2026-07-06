@@ -218,7 +218,7 @@ export function usePayments() {
   }, [activeTab, shop, fetchJobBalances, fetchCatalogOrders]);
 
   // Verify receipt
-  const handleVerify = async (item: ReceiptItem, status: 'paid' | 'pending') => {
+  const handleVerify = async (item: ReceiptItem, status: 'paid' | 'pending' | 'rejected') => {
     if (!shop) return;
     setProcessingId(item.id);
     try {
@@ -226,7 +226,7 @@ export function usePayments() {
         ? `/shops/${shop.id}/appointments/${item.id}/verify-payment`
         : `/shops/${shop.id}/catalog-orders/${item.id}/verify-payment`;
       await api.put(endpoint, { payment_status: status });
-      toast.success('Payment verified successfully!');
+      toast.success(status === 'rejected' ? 'Receipt rejected.' : 'Payment verified successfully!');
       setSelectedReceipt(null);
       fetchReceipts();
     } catch {

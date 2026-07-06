@@ -25,6 +25,7 @@ export function useJobDetail(jobId: string) {
   const [notes, setNotes] = useState('');
   const [courierTracking, setCourierTracking] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [completionPhotoUrl, setCompletionPhotoUrl] = useState('');
   
   // Outsourcing
   const [isOutsourced, setIsOutsourced] = useState(false);
@@ -68,6 +69,7 @@ export function useJobDetail(jobId: string) {
           setNotes(data.notes || '');
           setCourierTracking(data.courier_tracking_number || '');
           setShippingAddress(data.shipping_address || '');
+          setCompletionPhotoUrl(data.completion_photo_url || '');
           setIsOutsourced(data.is_outsourced || false);
           setPartnerShopName(data.partner_shop_name || '');
           
@@ -135,6 +137,7 @@ export function useJobDetail(jobId: string) {
         shipping_address: isPickup ? 'Store Pickup' : (shippingAddress || null),
         is_outsourced: isOutsourced,
         partner_shop_name: isOutsourced ? partnerShopName : null,
+        completion_photo_url: completionPhotoUrl || null,
       });
       // Refresh
       const res = await api.get(`/shops/${shop.id}/jobs/${jobId}`);
@@ -142,7 +145,8 @@ export function useJobDetail(jobId: string) {
       setJob(data);
       setCourierTracking(data.courier_tracking_number || '');
       setShippingAddress(data.shipping_address || '');
-      
+      setCompletionPhotoUrl(data.completion_photo_url || '');
+
       const parsed = parseCourierName(data.courier_name);
       setFulfillmentType(parsed.type);
       setFulfillmentProvider(parsed.name);
@@ -246,6 +250,8 @@ export function useJobDetail(jobId: string) {
     setCourierTracking,
     shippingAddress,
     setShippingAddress,
+    completionPhotoUrl,
+    setCompletionPhotoUrl,
     isOutsourced,
     setIsOutsourced,
     partnerShopName,

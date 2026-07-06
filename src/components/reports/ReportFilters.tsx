@@ -17,8 +17,8 @@ export default function ReportFilters({
   return (
     <div className="flex items-center justify-between no-print">
       <div>
-        <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Sales & Analytics</h1>
-        <p className="text-[#827A73] text-sm mt-1">Real-time performance metrics and business overview.</p>
+        <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Reports & Insights</h1>
+        <p className="text-[#827A73] text-sm mt-1">Revenue, production trends, and business performance at a glance.</p>
       </div>
       <div className="flex items-center gap-3">
         <div className="flex items-center gap-2 bg-white shadow-sm border border-[#EBE6E0] rounded-lg px-3 py-1.5 filter-bar">

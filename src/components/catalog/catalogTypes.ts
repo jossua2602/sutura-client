@@ -17,6 +17,7 @@ export interface CatalogItemResponse {
   listing_type?: string;
   images: { id: number; image_url: string; angle?: string; is_primary: number }[];
   external_gallery_url?: string;
+  is_active?: boolean;
 }
 
 export interface BulletItem {
@@ -37,6 +38,7 @@ export interface CatalogFormData {
   price: string;
   material: string;
   color: string;
+  fabric_image_url: string;
   description: string;
   care_instructions: string;
   garment_type: string;
@@ -45,4 +47,5 @@ export interface CatalogFormData {
   rental_deposit: string;
   sizes: string;
   external_gallery_url: string;
+  is_active: boolean;
 }

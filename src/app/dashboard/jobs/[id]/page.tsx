@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, Loader2, Save, Trash2, ShoppingBag, Store, Printer, Truck } from 'lucide-react';
+import { ArrowLeft, Loader2, Save, Trash2, ShoppingBag, Store, Printer, Truck, CreditCard, AlertTriangle, Scissors } from 'lucide-react';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import JobProductionTimeline from '@/components/jobs/JobProductionTimeline';
@@ -32,6 +32,8 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
     setCourierTracking,
     shippingAddress,
     setShippingAddress,
+    completionPhotoUrl,
+    setCompletionPhotoUrl,
     isOutsourced,
     setIsOutsourced,
     partnerShopName,
@@ -108,14 +110,14 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => globalThis.print()}
+            <Link
+              href={`/dashboard/jobs/${job.id}/print`}
+              target="_blank"
               className="p-2 rounded-lg bg-white shadow-sm border border-[#EBE6E0] text-[#A8A19A] hover:text-[#524A44] transition-colors flex items-center gap-2"
-              title="Print Job Ticket"
-              type="button"
+              title="Print Work Ticket"
             >
               <Printer size={18} />
-            </button>
+            </Link>
             <button
               onClick={() => setIsDeleteModalOpen(true)}
               className="p-2 rounded-lg bg-white shadow-sm border border-[#EBE6E0] text-[#A8A19A] hover:text-[#B26959] transition-colors flex items-center gap-2"
@@ -135,6 +137,33 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
             </button>
           </div>
         </div>
+
+        {/* DP Gate Alert — Prominent banner for unpaid jobs */}
+        {job.payment_status === 'unpaid' && (
+          <div className="bg-amber-50 border border-amber-300 rounded-2xl px-5 py-4 flex items-start gap-4">
+            <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
+              <CreditCard size={18} className="text-amber-600" />
+            </div>
+            <div className="flex-1">
+              <p className="font-bold text-amber-800 text-sm">No Downpayment Recorded</p>
+              <p className="text-amber-700 text-xs mt-0.5">Per shop policy: 50% downpayment is required before cutting/production begins. Log the payment below.</p>
+            </div>
+            <a
+              href="#financials"
+              className="shrink-0 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold px-3 py-2 rounded-lg transition-colors"
+            >
+              Log DP →
+            </a>
+          </div>
+        )}
+
+        {/* Rush Order Alert */}
+        {job.is_rush && (
+          <div className="bg-orange-50 border border-orange-200 rounded-2xl px-5 py-3 flex items-center gap-3">
+            <AlertTriangle size={15} className="text-orange-500 shrink-0" />
+            <p className="text-orange-700 text-sm font-semibold">⚡ Rush Order — This job is on an expedited production schedule.</p>
+          </div>
+        )}
 
         <div className="grid grid-cols-3 gap-6">
           <div className="col-span-2 space-y-6">
@@ -174,6 +203,30 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
                   </div>
                 )}
               </div>
+            </div>
+
+            {/* ── Production Cut Sheet ─────────────────────────────────── */}
+            <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-9 h-9 bg-amber-50 border border-amber-100 rounded-xl flex items-center justify-center shrink-0">
+                  <Scissors size={16} className="text-amber-600" />
+                </div>
+                <div>
+                  <h2 className="text-base font-semibold text-[#2D2A26]">Production Instructions</h2>
+                  <p className="text-xs text-[#A8A19A] mt-0.5">Cut sheet for the manggagawa — fabric panels, stitch type, linings, embellishments</p>
+                </div>
+              </div>
+              <textarea
+                value={notes}
+                onChange={e => setNotes(e.target.value)}
+                rows={5}
+                placeholder="e.g. Use cocoon silk panel A for the back. French seam on collar. Add 1cm allowance all sides. Embroidery on left chest pocket only..."
+                className="w-full bg-[#FFFDF7] border border-amber-200 focus:border-amber-400 rounded-xl px-4 py-3 text-sm text-[#2D2A26] placeholder-[#C5BDBA] focus:outline-none resize-y min-h-[100px] leading-relaxed"
+              />
+              <p className="text-[10px] text-[#A8A19A] mt-2 flex items-center gap-1.5">
+                <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-300 shrink-0" />
+                These notes will print on the Work Ticket for the production team.
+              </p>
             </div>
 
             {/* Custom Specifications Card */}
@@ -276,6 +329,8 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
               notes={notes}
               setNotes={setNotes}
               fulfillmentType={fulfillmentType}
+              completionPhotoUrl={completionPhotoUrl}
+              setCompletionPhotoUrl={setCompletionPhotoUrl}
             />
 
             {/* Fulfillment Details Card */}
@@ -304,11 +359,13 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
 
           <div className="space-y-6">
             {/* Financials / POS Card */}
-            <JobFinancialsCard
-              job={job}
-              saving={saving}
-              onCharge={handleChargePayment}
-            />
+            <div id="financials">
+              <JobFinancialsCard
+                job={job}
+                saving={saving}
+                onCharge={handleChargePayment}
+              />
+            </div>
           </div>
         </div>
 

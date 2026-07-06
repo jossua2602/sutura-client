@@ -4,7 +4,7 @@ import { Search, Mail, Phone, Package, Eye, Pencil, Trash2 } from 'lucide-react'
 import { isWalkInEmail } from './customerHelpers';
 import { CustomerData } from './customerTypes';
 
-type FilterType = 'all' | 'online' | 'walkin';
+type FilterType = 'all' | 'online' | 'walkin' | 'b2b_suki' | 'reseller' | 'walk_in_retail';
 
 interface CustomerListViewProps {
   readonly customers: CustomerData[];
@@ -33,16 +33,16 @@ export default function CustomerListView({
 }: CustomerListViewProps) {
   return (
     <div className="space-y-6 text-[#2D2A26]">
-      {/* Tabs */}
+      {/* Primary Tabs */}
       <div className="flex border-b border-[#EBE6E0] gap-6">
         {[
-          { id: 'all', label: 'All Clients', count: customers.length },
-          { id: 'online', label: 'Online Clients', count: customers.filter(c => !isWalkInEmail(c.email)).length },
-          { id: 'walkin', label: 'Walk-in Clients', count: customers.filter(c => isWalkInEmail(c.email)).length },
+          { id: 'all',     label: 'All Clients',    count: customers.length },
+          { id: 'online',  label: 'Online Clients',  count: customers.filter(c => !isWalkInEmail(c.email)).length },
+          { id: 'walkin',  label: 'Walk-in Clients', count: customers.filter(c => isWalkInEmail(c.email)).length },
         ].map(tab => (
           <button
             key={tab.id}
-            onClick={() => onFilterTypeChange(tab.id as 'all' | 'online' | 'walkin')}
+            onClick={() => onFilterTypeChange(tab.id as FilterType)}
             className={`pb-3 font-semibold text-sm transition-all border-b-2 px-1 flex items-center gap-2 cursor-pointer ${
               filterType === tab.id
                 ? 'border-taupe text-[#2D2A26]'
@@ -55,6 +55,31 @@ export default function CustomerListView({
             }`}>
               {tab.count}
             </span>
+          </button>
+        ))}
+      </div>
+
+      {/* Suki Classification Filter */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <span className="text-[10px] font-bold text-[#A8A19A] uppercase tracking-wider">Suki Type:</span>
+        {[
+          { id: 'b2b_suki',      label: '⭐ B2B Suki',    cls: 'amber' },
+          { id: 'reseller',      label: '🏪 Reseller',     cls: 'purple' },
+          { id: 'walk_in_retail',label: '🚶 Walk-in Retail', cls: 'gray' },
+        ].map(tag => (
+          <button
+            key={tag.id}
+            type="button"
+            onClick={() => onFilterTypeChange(filterType === tag.id ? 'all' : tag.id as FilterType)}
+            className={`text-[10px] font-bold px-2 py-1 rounded-full border transition-all cursor-pointer ${
+              filterType === tag.id
+                ? tag.cls === 'amber'  ? 'bg-amber-100 text-amber-700 border-amber-300' :
+                  tag.cls === 'purple' ? 'bg-purple-100 text-purple-700 border-purple-300' :
+                                         'bg-[#F0EAE3] text-[#524A44] border-[#D1C7BD]'
+                : 'bg-white text-[#827A73] border-[#EBE6E0] hover:border-[#D1C7BD]'
+            }`}
+          >
+            {tag.label}
           </button>
         ))}
       </div>
@@ -119,7 +144,22 @@ export default function CustomerListView({
                           )}
                         </div>
                         <div>
-                          <div className="font-semibold text-[#2D2A26] group-hover:text-taupe transition-colors">{customer.name}</div>
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-[#2D2A26] group-hover:text-taupe transition-colors">{customer.name}</span>
+                            {customer.suki_tag && (() => {
+                              const tagMap: Record<string, { label: string; cls: string }> = {
+                                b2b_suki: { label: 'B2B Suki', cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+                                reseller: { label: 'Reseller', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+                                walk_in_retail: { label: 'Walk-in', cls: 'bg-[#FAF6F3] text-[#827A73] border-[#EBE6E0]' },
+                              };
+                              const tag = tagMap[customer.suki_tag] ?? { label: customer.suki_tag, cls: 'bg-[#FAF6F3] text-[#827A73] border-[#EBE6E0]' };
+                              return (
+                                <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-wider ${tag.cls}`}>
+                                  {tag.label}
+                                </span>
+                              );
+                            })()}
+                          </div>
                           <div className="text-xs text-[#A8A19A]">Joined {new Date(customer.created_at).toLocaleDateString()}</div>
                         </div>
                       </div>

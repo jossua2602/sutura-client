@@ -32,6 +32,7 @@ interface InteractiveCalendarProps {
   durationMinutes: number;
   operatingHours: Record<string, OperatingHours> | null;
   specialHours: SpecialHour[] | null;
+  maxAppointmentsPerDay?: number | null;
   selectedDate: string; // YYYY-MM-DD
   selectedTime: string; // HH:mm
   onDateChange: (date: string) => void;
@@ -45,6 +46,7 @@ export default function InteractiveCalendar({
   durationMinutes,
   operatingHours,
   specialHours,
+  maxAppointmentsPerDay,
   selectedDate,
   selectedTime,
   onDateChange,
@@ -90,17 +92,30 @@ export default function InteractiveCalendar({
     return operatingHours?.[dayName] || null;
   };
 
+  // Best-effort count from the anonymized slot list (pending + confirmed only);
+  // the server re-checks the real cap (including all non-cancelled statuses) on submit.
+  const getAppointmentCountForDate = (dateStr: string) => {
+    return appointments.filter(appt => appt.scheduled_at.slice(0, 10) === dateStr).length;
+  };
+
+  const isDateFullyBooked = (dateStr: string) => {
+    if (!maxAppointmentsPerDay) return false;
+    return getAppointmentCountForDate(dateStr) >= maxAppointmentsPerDay;
+  };
+
   const isDateDisabled = (dateStr: string) => {
     if (dateStr < todayStr) return true; // past dates
-    
+
     const special = getSpecialHoursForDate(dateStr);
     if (special?.is_closed) return true;
-    
+
     // If not special, check standard operating hours
     if (!special) {
       const opHours = getOperatingHoursForDate(dateStr);
       if (opHours && !opHours.is_open) return true;
     }
+
+    if (isDateFullyBooked(dateStr)) return true;
 
     return false;
   };
@@ -187,21 +202,26 @@ export default function InteractiveCalendar({
       const disabled = isDateDisabled(dateStr);
       const isSelected = selectedDate === dateStr;
       const isToday = todayStr === dateStr;
+      const fullyBooked = dateStr >= todayStr && !getSpecialHoursForDate(dateStr)?.is_closed && isDateFullyBooked(dateStr);
 
       return (
         <button
           key={`day-${d}`}
           type="button"
           disabled={disabled}
+          title={fullyBooked ? 'Fully booked — please choose another date' : undefined}
           onClick={() => {
             onDateChange(dateStr);
             onTimeChange(''); // reset time when date changes
           }}
-          className={`h-10 w-10 flex items-center justify-center rounded-full text-sm font-medium transition-all
+          className={`relative h-10 w-10 flex items-center justify-center rounded-full text-sm font-medium transition-all
             ${isSelected ? 'bg-[#9A8073] text-white shadow-md hover:bg-[#856D60]' : ''}
             ${!isSelected && !disabled && isToday ? 'border-2 border-[#9A8073] text-[#9A8073]' : ''}
             ${!isSelected && !disabled && !isToday ? 'text-[#2D2A26] hover:bg-[#EBE6E0]' : ''}
-            ${disabled ? 'text-zinc-300 cursor-not-allowed' : 'cursor-pointer'}
+            ${!isSelected && fullyBooked ? 'bg-[#B26959]/10 text-[#B26959] line-through' : ''}
+            ${disabled && !fullyBooked ? 'text-zinc-300 cursor-not-allowed' : ''}
+            ${disabled && fullyBooked ? 'cursor-not-allowed' : ''}
+            ${!disabled ? 'cursor-pointer' : ''}
           `}
         >
           {d}
@@ -252,6 +272,12 @@ export default function InteractiveCalendar({
           <div className="grid grid-cols-7 gap-y-2 justify-items-center">
             {renderCalendarDays()}
           </div>
+          {!!maxAppointmentsPerDay && (
+            <p className="text-[11px] text-[#A8A19A] mt-3 flex items-center gap-1.5">
+              <span className="w-2.5 h-2.5 rounded-full bg-[#B26959]/10 border border-[#B26959]/30 inline-block shrink-0"></span>
+              Dates crossed out are fully booked ({maxAppointmentsPerDay} slot{maxAppointmentsPerDay === 1 ? '' : 's'}/day max) — please choose another date.
+            </p>
+          )}
         </div>
       </div>
 

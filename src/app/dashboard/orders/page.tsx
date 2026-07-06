@@ -4,14 +4,14 @@ import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
-import { Search, ShoppingBag, Truck, Package, CheckCircle2, Clock } from 'lucide-react';
+import { Search, ShoppingBag, Truck, Package, CheckCircle2, Clock, XCircle } from 'lucide-react';
 
 import { CatalogOrder } from '@/components/orders/orderHelpers';
 import OrderListItem from '@/components/orders/OrderListItem';
 import CatalogModuleTabs from '@/components/catalog/CatalogModuleTabs';
 
 type TypeFilter = 'walkin' | 'online';
-type StatusFilter = 'all' | 'pending' | 'out_for_delivery' | 'ready' | 'completed';
+type StatusFilter = 'all' | 'pending' | 'out_for_delivery' | 'ready' | 'completed' | 'cancelled';
 
 const STATUS_TABS: { id: StatusFilter; label: string; icon: React.ReactNode }[] = [
   { id: 'all',             label: 'All',         icon: <ShoppingBag size={14} /> },
@@ -19,6 +19,7 @@ const STATUS_TABS: { id: StatusFilter; label: string; icon: React.ReactNode }[] 
   { id: 'out_for_delivery',label: 'Out for Delivery', icon: <Truck size={14} /> },
   { id: 'ready',           label: 'Ready',       icon: <Package size={14} /> },
   { id: 'completed',       label: 'Completed',   icon: <CheckCircle2 size={14} /> },
+  { id: 'cancelled',       label: 'Cancelled',   icon: <XCircle size={14} /> },
 ];
 
 export default function OrdersPage() {
@@ -55,7 +56,7 @@ export default function OrdersPage() {
     }
   }, [shop, user, fetchOrders]);
 
-  const updateStatus = async (orderId: number, newStatus: string, extra: Record<string, string> = {}) => {
+  const updateStatus = async (orderId: number, newStatus: string, extra: Record<string, string | number | boolean> = {}) => {
     if (!shop) return;
     setUpdating(orderId);
     try {
@@ -96,7 +97,7 @@ export default function OrdersPage() {
   if (loading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#8A7E72]" />
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9A8073]" />
       </div>
     );
   }

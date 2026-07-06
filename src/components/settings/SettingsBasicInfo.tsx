@@ -223,6 +223,27 @@ export default function SettingsBasicInfo({ formData, onChange, handleSocialChan
             />
           </div>
 
+          <div className="space-y-1">
+            <label htmlFor="max-appointments-per-day" className="text-sm font-medium text-[#524A44]">
+              Max Appointments Per Day (Optional)
+            </label>
+            <input
+              id="max-appointments-per-day"
+              type="number"
+              min={1}
+              value={formData.max_appointments_per_day ?? ''}
+              onChange={e => {
+                const val = e.target.value;
+                setFormData(prev => ({ ...prev, max_appointments_per_day: val === '' ? null : Number.parseInt(val, 10) }));
+              }}
+              placeholder="Leave blank for unlimited"
+              className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe text-sm max-w-xs"
+            />
+            <p className="text-[11px] text-[#827A73]">
+              During peak season, blocks further online bookings once a day hits this cap — protects production quality instead of overcommitting. Doesn&apos;t apply to walk-ins you enter yourself.
+            </p>
+          </div>
+
           <div className="space-y-3">
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium text-[#524A44]">Custom Booking Questions</span>

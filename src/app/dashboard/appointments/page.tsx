@@ -81,8 +81,8 @@ export default function AppointmentsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Appointments</h1>
-          <p className="text-[#827A73] text-sm mt-1">Manage client fittings, consultations, and garment pickups.</p>
+          <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Schedule & Appointments</h1>
+          <p className="text-[#827A73] text-sm mt-1">Book and manage client fittings, measurement sessions, and garment consultations.</p>
         </div>
         <div className="flex items-center gap-3">
           <div className="flex bg-white shadow-sm border border-[#EBE6E0] rounded-lg p-1">

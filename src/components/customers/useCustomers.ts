@@ -10,6 +10,7 @@ export interface CustomerData {
   email: string;
   phone: string;
   profile_picture: string;
+  suki_tag?: string | null;
   total_spend: number;
   active_jobs: number;
   completed_jobs: number;
@@ -32,7 +33,7 @@ export function useCustomers() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
   const [error, setError] = useState('');
-  const [filterType, setFilterType] = useState<'all' | 'online' | 'walkin'>('all');
+  const [filterType, setFilterType] = useState<'all' | 'online' | 'walkin' | 'b2b_suki' | 'reseller' | 'walk_in_retail'>('all');
 
   const isWalkInEmail = (email?: string) => email ? (email.startsWith('walkin_') && email.endsWith('@sutura.com')) : false;
 
@@ -149,6 +150,10 @@ export function useCustomers() {
     const isWalkIn = isWalkInEmail(c.email);
     if (filterType === 'online') return !isWalkIn;
     if (filterType === 'walkin') return isWalkIn;
+    // Suki type filters
+    if (filterType === 'b2b_suki') return c.suki_tag === 'b2b_suki';
+    if (filterType === 'reseller') return c.suki_tag === 'reseller';
+    if (filterType === 'walk_in_retail') return c.suki_tag === 'walk_in_retail';
     return true;
   });
 

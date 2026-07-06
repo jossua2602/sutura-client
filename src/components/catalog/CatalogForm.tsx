@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import {
@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { BulletItem, ImageItem, CatalogFormData } from './catalogTypes';
 import { uploadSectionImage, uploadCatalogImage, buildSavePayload } from './catalogHelpers';
+import api from '@/lib/axios';
 
 interface SectionImageUploadProps {
   readonly imageUrl: string;
@@ -94,6 +95,7 @@ export default function CatalogForm({
     price: '',
     material: '',
     color: '',
+    fabric_image_url: '',
     description: '',
     care_instructions: '',
     garment_type: '',
@@ -102,7 +104,11 @@ export default function CatalogForm({
     rental_deposit: '',
     sizes: '',
     external_gallery_url: '',
+    is_active: true,
   });
+
+  const [fabricImageUploading, setFabricImageUploading] = useState(false);
+  const fabricImageInputRef = useRef<HTMLInputElement>(null);
 
   const [features, setFeatures] = useState<BulletItem[]>([{ id: 'init', text: '' }]);
   const [fitGuide, setFitGuide] = useState<BulletItem[]>([{ id: 'init', text: '' }]);
@@ -120,6 +126,8 @@ export default function CatalogForm({
     fit: false,
     care: false,
   });
+
+  const [showMoreDetails, setShowMoreDetails] = useState(false);
 
   useEffect(() => {
     if (!initialData) return;
@@ -172,8 +180,27 @@ export default function CatalogForm({
     await onSubmit(payload);
   };
 
+  const handleFabricImageUpload = async (file: File | undefined) => {
+    if (!file || !shop?.id) return;
+    setFabricImageUploading(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await api.post(`/shops/${shop.id}/upload`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const url = res.data?.data?.url || res.data?.url || '';
+      setFormData(prev => ({ ...prev, fabric_image_url: url }));
+    } catch {
+      alert('Failed to upload fabric image.');
+    } finally {
+      setFabricImageUploading(false);
+    }
+  };
+
   const isRentable = formData.listing_type === 'for_rent' || formData.listing_type === 'rent_or_sale';
-  const saveDisabled = submitting || !formData.name || !formData.price || images.every(i => !i.url);
+  const isSaleOnly = formData.listing_type !== 'for_rent';
+  const saveDisabled = submitting || !formData.name || (!isSaleOnly ? false : !formData.price) || images.every(i => !i.url);
 
   return (
     <form onSubmit={handleFormSubmit} className="bg-[#FAF6F3] min-h-screen text-[#2D2A26] pb-16 font-sans selection:bg-[#EBE6E0]">
@@ -234,20 +261,23 @@ export default function CatalogForm({
                   />
                 </div>
 
-                <div>
-                  <label htmlFor="catalog-price" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
-                    Sale Price (PHP) <span className="text-rose-500">*</span>
-                  </label>
-                  <input
-                    id="catalog-price"
-                    type="number"
-                    name="price"
-                    value={formData.price}
-                    onChange={handleChange}
-                    placeholder="e.g. 24999"
-                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
-                  />
-                </div>
+                {/* Sale Price — hidden when listing type is 'For Rent Only' */}
+                {formData.listing_type !== 'for_rent' && (
+                  <div>
+                    <label htmlFor="catalog-price" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
+                      Sale Price (PHP) <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      id="catalog-price"
+                      type="number"
+                      name="price"
+                      value={formData.price}
+                      onChange={handleChange}
+                      placeholder="e.g. 24999"
+                      className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -262,6 +292,40 @@ export default function CatalogForm({
                     placeholder="e.g. Cocoon Silk, Piña"
                     className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
                   />
+                  {/* Fabric Texture Image Upload */}
+                  <div className="mt-2">
+                    {formData.fabric_image_url ? (
+                      <div className="relative inline-flex items-center gap-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-xs">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={formData.fabric_image_url} alt="Fabric texture" className="w-10 h-10 object-cover rounded border border-[#EBE6E0]" />
+                        <span className="text-[#524A44] font-medium">Fabric texture uploaded</span>
+                        <button
+                          type="button"
+                          onClick={() => setFormData(prev => ({ ...prev, fabric_image_url: '' }))}
+                          className="ml-1 text-[#B26959] hover:text-[#B26959]/80 transition-colors"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ) : (
+                      <label className="inline-flex items-center gap-2 cursor-pointer text-xs text-[#827A73] hover:text-taupe transition-colors">
+                        {fabricImageUploading ? (
+                          <Loader2 size={14} className="animate-spin text-taupe" />
+                        ) : (
+                          <UploadCloud size={14} />
+                        )}
+                        <span>{fabricImageUploading ? 'Uploading texture...' : 'Upload fabric texture image (optional)'}</span>
+                        <input
+                          ref={fabricImageInputRef}
+                          type="file"
+                          accept="image/*"
+                          className="hidden"
+                          disabled={fabricImageUploading}
+                          onChange={e => handleFabricImageUpload(e.target.files?.[0])}
+                        />
+                      </label>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -289,51 +353,9 @@ export default function CatalogForm({
                     className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
                   />
                 </div>
-
-                <div>
-                  <label htmlFor="catalog-rental-price" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
-                    Rental Price (PHP){isRentable ? <span className="text-rose-500"> *</span> : <span className="text-[#A8A19A] normal-case"> — for rentals</span>}
-                  </label>
-                  <input
-                    id="catalog-rental-price"
-                    type="number"
-                    name="rental_price"
-                    value={formData.rental_price}
-                    onChange={handleChange}
-                    placeholder="e.g. 1500"
-                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="catalog-rental-deposit" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">Rental Deposit (PHP)</label>
-                  <input
-                    id="catalog-rental-deposit"
-                    type="number"
-                    name="rental_deposit"
-                    value={formData.rental_deposit}
-                    onChange={handleChange}
-                    placeholder="e.g. 3000"
-                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
-                  />
-                </div>
-
-                <div>
-                  <label htmlFor="catalog-sizes" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
-                    Available Sizes <span className="text-[#A8A19A] normal-case">— comma separated</span>
-                  </label>
-                  <input
-                    id="catalog-sizes"
-                    type="text"
-                    name="sizes"
-                    value={formData.sizes}
-                    onChange={handleChange}
-                    placeholder="e.g. S, M, L, XL"
-                    className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
-                  />
-                </div>
               </div>
 
+              {/* Listing Type */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label htmlFor="catalog-listing" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">Listing Type</label>
@@ -349,6 +371,7 @@ export default function CatalogForm({
                     <option value="for_rent">For Rent Only</option>
                     <option value="for_sale">For Sale Only</option>
                     <option value="rent_or_sale">For Rent and Sale</option>
+                    <option value="used_liquidated">Used / Liquidated (Pre-loved)</option>
                   </select>
                 </div>
 
@@ -364,6 +387,90 @@ export default function CatalogForm({
                     className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
                   />
                 </div>
+              </div>
+
+              {/* Active / Paused toggle */}
+              <div className="flex items-center gap-3 pt-1">
+                <input
+                  id="catalog-is-active"
+                  type="checkbox"
+                  checked={formData.is_active}
+                  onChange={e => setFormData(prev => ({ ...prev, is_active: e.target.checked }))}
+                  className="w-4 h-4 rounded border-[#EBE6E0] text-taupe focus:ring-taupe"
+                />
+                <label htmlFor="catalog-is-active" className="text-sm font-medium text-[#524A44]">
+                  Active &amp; Visible to Customers{' '}
+                  <span className="block text-xs font-normal text-[#A8A19A]">
+                    Uncheck to pause this item (e.g. out of stock) without deleting it — it&apos;s hidden from your public storefront but stays in your own catalog list.
+                  </span>
+                </label>
+              </div>
+
+              {/* ── More Details Toggle ────────────────────────────────── */}
+              <div className="border-t border-[#EBE6E0] pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowMoreDetails(v => !v)}
+                  className="flex items-center gap-2 text-xs font-semibold text-[#9A8073] hover:text-[#2D2A26] transition-colors"
+                >
+                  <span className={`w-5 h-5 rounded-full border border-[#EBE6E0] bg-[#FAF6F3] flex items-center justify-center transition-transform ${showMoreDetails ? 'rotate-180' : ''}`}>
+                    <ChevronDown size={12} />
+                  </span>
+                  {showMoreDetails ? 'Hide optional details' : 'Add rental pricing, sizes & availability →'}
+                </button>
+
+                {showMoreDetails && (
+                  <div className="mt-5 grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                      <label htmlFor="catalog-rental-price" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
+                        Rental Price (PHP){isRentable ? <span className="text-rose-500"> *</span> : <span className="text-[#A8A19A] normal-case"> — for rentals</span>}
+                      </label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A] text-sm font-medium">₱</span>
+                        <input
+                          id="catalog-rental-price"
+                          type="number"
+                          name="rental_price"
+                          value={formData.rental_price}
+                          onChange={handleChange}
+                          placeholder="e.g. 1500"
+                          className="w-full pl-7 pr-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <label htmlFor="catalog-rental-deposit" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">Rental Deposit (PHP)</label>
+                      <div className="relative">
+                        <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A] text-sm font-medium">₱</span>
+                        <input
+                          id="catalog-rental-deposit"
+                          type="number"
+                          name="rental_deposit"
+                          value={formData.rental_deposit}
+                          onChange={handleChange}
+                          placeholder="e.g. 3000"
+                          className="w-full pl-7 pr-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="md:col-span-2">
+                      <label htmlFor="catalog-sizes" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
+                        Available Sizes <span className="text-[#A8A19A] normal-case">— comma separated</span>
+                      </label>
+                      <input
+                        id="catalog-sizes"
+                        type="text"
+                        name="sizes"
+                        value={formData.sizes}
+                        onChange={handleChange}
+                        placeholder="e.g. XS, S, M, L, XL, XXL — or leave blank for made-to-order"
+                        className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

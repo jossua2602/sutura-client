@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, FormEvent, Suspense } from 'react';
+import { useEffect, useState, FormEvent, Suspense, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { ArrowLeft, ArrowRight, CheckCircle2, Calendar as CalendarIcon, Clock, MessageSquare, Ruler, Shirt, Scissors, Package, AlertCircle, MapPin } from 'lucide-react';
@@ -25,6 +25,7 @@ interface ShopSettings {
   name: string;
   booking_policy?: string | null;
   booking_questions?: string[] | null;
+  max_appointments_per_day?: number | null;
   operating_hours?: Record<string, { is_open: boolean; open: string; close: string }> | string | null;
   branches?: Branch[];
   services?: Service[];
@@ -53,7 +54,31 @@ interface CatalogItem {
   images: CatalogItemImage[];
 }
 
-function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id: string }> }>) {
+// Mirrors the catalog item page's own getButtonText() mapping — a ready-to-wear
+// or bulk item never actually needs a tailoring "fitting," so the label shown
+// here (and the note logged for the shop) should match what got the customer here.
+const INTENT_LABELS: Record<string, string> = {
+  for_rent: 'Rental Inquiry',
+  for_sale: 'Purchase Inquiry',
+  used_liquidated: 'Purchase Inquiry',
+  rent_or_sale: 'Rental/Purchase Inquiry',
+  ready_to_wear: 'Reservation Inquiry',
+  bulk_order: 'Bulk Order Inquiry',
+  made_to_order: 'Fitting Request',
+};
+
+const INTENT_TYPE_LABELS: Record<string, string> = {
+  for_rent: 'Rent',
+  for_sale: 'Purchase',
+  used_liquidated: 'Purchase',
+  rent_or_sale: 'Rent/Purchase',
+  ready_to_wear: 'Reservation',
+  bulk_order: 'Bulk Order',
+  made_to_order: 'Fitting',
+};
+
+function BookingWizardContent({ params }: Readonly<{ params: Promise<{ shop_id: string }> }>) {
+  const { shop_id: shopId } = use(params);
   const router = useRouter();
   const searchParams = useSearchParams();
   const itemId = searchParams.get('item_id');
@@ -102,7 +127,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
     formData.append('file', file);
 
     try {
-      const res = await api.post(`/public/shops/${params.shop_id}/upload-receipt`, formData, {
+      const res = await api.post(`/public/shops/${shopId}/upload-receipt`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       if (res.data.success) {
@@ -126,7 +151,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
 
   useEffect(() => {
     // Fetch shop settings
-    api.get(`/catalog/${params.shop_id}/booking-settings`)
+    api.get(`/catalog/${shopId}/booking-settings`)
       .then(res => {
         const settings = res.data.data;
         setShopSettings(settings);
@@ -142,7 +167,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
 
     // Fetch catalog item details if provided in query params
     if (itemId) {
-      api.get(`/catalog/${params.shop_id}/${itemId}`)
+      api.get(`/catalog/${shopId}/${itemId}`)
         .then(res => {
           setCatalogItem(res.data.data);
         })
@@ -150,7 +175,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
           console.error('Failed to fetch catalog item details:', err);
         });
     }
-  }, [params.shop_id, itemId]);
+  }, [shopId, itemId]);
 
   const handleSubmit = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -162,7 +187,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
     // Compile remarks and catalog item context
     let notesPayload = '';
     if (catalogItem) {
-      const typeLabel = intent === 'for_rent' ? 'Rent' : intent === 'for_sale' ? 'Purchase' : 'Fitting';
+      const typeLabel = (intent && INTENT_TYPE_LABELS[intent]) || 'Fitting';
       notesPayload += `[${typeLabel} Inquiry: ${catalogItem.name} (ID: ${catalogItem.id})]\n`;
     }
     if (remarks.trim()) {
@@ -170,7 +195,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
     }
 
     try {
-      await api.post(`/catalog/${params.shop_id}/book`, {
+      await api.post(`/catalog/${shopId}/book`, {
         name: customer.name,
         email: customer.email,
         phone: customer.phone,
@@ -213,7 +238,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
             Your appointment request has been sent to {shopSettings?.name}. They will review it shortly.
           </p>
           <button 
-            onClick={() => router.push(`/shop/${params.shop_id}/catalog`)}
+            onClick={() => router.push(`/shop/${shopId}/catalog`)}
             className="w-full bg-[#F0EAE3] hover:bg-[#EBE6E0] text-[#2D2A26] font-medium py-3 rounded-lg transition-colors cursor-pointer"
           >
             Back to Catalog
@@ -259,7 +284,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
             )}
             <div className="flex-1 min-w-0">
               <span className="text-[10px] font-bold text-[#9A8073] uppercase tracking-wider">
-                {intent === 'for_rent' ? 'Rental Inquiry' : intent === 'for_sale' ? 'Purchase Inquiry' : 'Fitting Request'}
+                {(intent && INTENT_LABELS[intent]) || 'Fitting Request'}
               </span>
               <h3 className="font-semibold text-sm text-[#2D2A26] truncate">{catalogItem.name}</h3>
               <p className="text-xs text-[#827A73]">₱{Number(catalogItem.price).toLocaleString()}</p>
@@ -384,11 +409,12 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
 
                 <div className="col-span-1 md:col-span-2">
                   <InteractiveCalendar 
-                    shopId={params.shop_id}
+                    shopId={shopId}
                     selectedBranchId={selectedBranchId ? String(selectedBranchId) : null}
                     durationMinutes={appointmentType === 'consultation' ? 30 : 60}
                     operatingHours={shopSettings?.operating_hours as any}
                     specialHours={shopSettings?.special_hours as any}
+                    maxAppointmentsPerDay={shopSettings?.max_appointments_per_day ?? null}
                     selectedDate={date}
                     selectedTime={time}
                     onDateChange={setDate}
@@ -770,7 +796,7 @@ function BookingWizardContent({ params }: Readonly<{ params: Readonly<{ shop_id:
   );
 }
 
-export default function BookingWizard({ params }: Readonly<{ params: Readonly<{ shop_id: string }> }>) {
+export default function BookingWizard({ params }: Readonly<{ params: Promise<{ shop_id: string }> }>) {
   return (
     <Suspense fallback={<div className="min-h-screen flex items-center justify-center bg-[#FAF6F3] text-[#2D2A26] animate-pulse">Loading booking system...</div>}>
       <BookingWizardContent params={params} />

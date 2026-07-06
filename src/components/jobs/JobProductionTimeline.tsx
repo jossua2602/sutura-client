@@ -1,5 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Camera, Loader2, X } from 'lucide-react';
 import { Job } from './jobTypes';
+import { useAuthStore } from '@/store/useAuthStore';
+import api from '@/lib/axios';
 
 interface JobProductionTimelineProps {
   readonly job: Job;
@@ -8,6 +11,8 @@ interface JobProductionTimelineProps {
   readonly notes: string;
   readonly setNotes: (notes: string) => void;
   readonly fulfillmentType: 'shipping' | 'delivery' | 'pickup';
+  readonly completionPhotoUrl: string;
+  readonly setCompletionPhotoUrl: (url: string) => void;
 }
 
 export default function JobProductionTimeline({
@@ -17,7 +22,28 @@ export default function JobProductionTimeline({
   notes,
   setNotes,
   fulfillmentType,
+  completionPhotoUrl,
+  setCompletionPhotoUrl,
 }: JobProductionTimelineProps) {
+  const { shop } = useAuthStore();
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
+
+  const handlePhotoUpload = async (file: File | undefined) => {
+    if (!file || !shop) return;
+    setUploadingPhoto(true);
+    const fd = new FormData();
+    fd.append('file', file);
+    try {
+      const res = await api.post(`/shops/${shop.id}/upload`, fd, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      setCompletionPhotoUrl(res.data?.data?.url || res.data?.url || '');
+    } catch {
+      alert('Failed to upload completion photo.');
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
   let STAGES: Array<{ key: string; label: string; emoji: string }> = [];
   
   if (job.intake_channel === 'online' || job.fulfillment_type === 'shipping' || job.fulfillment_type === 'delivery') {
@@ -171,6 +197,43 @@ export default function JobProductionTimeline({
             placeholder="e.g. Needs adjustments on the sleeves..."
           />
         </div>
+
+        {(status === 'completed' || completionPhotoUrl) && (
+          <div className="space-y-1.5 border-t border-[#EBE6E0] pt-4">
+            <span className="text-sm font-medium text-[#524A44] flex items-center gap-1.5">
+              <Camera size={15} className="text-[#7A8B76]" />
+              Completion Photo <span className="text-xs font-normal text-[#A8A19A]">(optional)</span>
+            </span>
+            <p className="text-[11px] text-[#A8A19A]">
+              A quick photo of the finished garment — doubles as proof-of-delivery and builds your portfolio.
+            </p>
+            {completionPhotoUrl ? (
+              <div className="relative inline-block mt-1">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={completionPhotoUrl} alt="Completed garment" className="h-28 w-28 object-cover rounded-lg border border-[#EBE6E0]" />
+                <button
+                  type="button"
+                  onClick={() => setCompletionPhotoUrl('')}
+                  className="absolute -top-2 -right-2 bg-white border border-[#EBE6E0] text-[#827A73] hover:text-[#B26959] rounded-full p-1 shadow-sm"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            ) : (
+              <label className="inline-flex items-center gap-2 cursor-pointer text-xs text-[#827A73] hover:text-[#7A8B76] transition-colors mt-1">
+                {uploadingPhoto ? <Loader2 size={14} className="animate-spin text-[#7A8B76]" /> : <Camera size={14} />}
+                <span>{uploadingPhoto ? 'Uploading...' : 'Upload a photo'}</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  disabled={uploadingPhoto}
+                  onChange={e => handlePhotoUpload(e.target.files?.[0])}
+                />
+              </label>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

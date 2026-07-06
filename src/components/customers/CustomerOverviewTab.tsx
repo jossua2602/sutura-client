@@ -46,6 +46,20 @@ export default function CustomerOverviewTab({
               <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Profile Reference</span>
               <span className="text-[#2D2A26] font-medium">Customer ID #{customer?.id}</span>
             </div>
+            <div>
+              <span className="text-[#A8A19A] block mb-0.5 text-xs font-semibold">Client Type (Suki Tag)</span>
+              {customer?.suki_tag ? (() => {
+                const tagMap: Record<string, { label: string; cls: string }> = {
+                  b2b_suki: { label: '⭐ B2B Suki (Bulk / Corporate)', cls: 'text-amber-700' },
+                  reseller: { label: '🏪 Reseller (Palengke / Wholesale)', cls: 'text-purple-700' },
+                  walk_in_retail: { label: '🚶 Walk-in Retail', cls: 'text-[#827A73]' },
+                };
+                const tag = tagMap[customer.suki_tag] ?? { label: customer.suki_tag, cls: 'text-[#2D2A26]' };
+                return <span className={`font-medium text-sm ${tag.cls}`}>{tag.label}</span>;
+              })() : (
+                <span className="text-[#A8A19A] text-sm italic">Not classified</span>
+              )}
+            </div>
           </div>
         </div>
 
@@ -83,36 +97,70 @@ export default function CustomerOverviewTab({
         </div>
       </div>
 
-      {/* Quick Measurements Version Box */}
+      {/* Body Measurements Card */}
       <div className="space-y-6">
         <div className="bg-white border border-[#EBE6E0] rounded-2xl p-6 shadow-sm space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-base font-bold text-[#2D2A26]">Quick Specs</h2>
-            <button onClick={() => setActiveTab('measurements')} className="text-xs text-taupe font-semibold hover:underline cursor-pointer">
-              Manage
+            <div>
+              <h2 className="text-base font-bold text-[#2D2A26]">Body Measurements</h2>
+              <p className="text-[10px] text-[#A8A19A] mt-0.5">All sizes in cm</p>
+            </div>
+            <button
+              onClick={() => setActiveTab('measurements')}
+              className="text-xs font-semibold text-taupe hover:underline cursor-pointer"
+            >
+              {measurements.length > 0 ? 'Manage →' : 'Add →'}
             </button>
           </div>
-          <div className="space-y-3">
-            {measurements.slice(0, 2).map(m => (
-              <div key={m.id} className="bg-[#FAF6F3]/50 border border-[#EBE6E0] p-3.5 rounded-xl text-xs">
-                <div className="font-bold text-[#2D2A26] border-b border-[#EBE6E0]/60 pb-1 mb-2 flex justify-between">
-                  <span>{m.profile_name}</span>
-                  <span className="font-normal text-[10px] text-[#827A73]">({Object.keys(m.metrics || {}).length} specs)</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 max-h-36 overflow-y-auto">
-                  {Object.entries(m.metrics || {}).slice(0, 4).map(([k, v]) => (
-                    <div key={k} className="flex justify-between border-b border-[#EBE6E0]/20 pb-0.5">
-                      <span className="text-[#827A73] capitalize truncate">{k}</span>
-                      <span className="font-semibold text-[#524A44]">{String(v)}</span>
-                    </div>
-                  ))}
-                </div>
+
+          {measurements.length === 0 ? (
+            <div className="text-center py-6">
+              <div className="w-12 h-12 mx-auto rounded-full bg-[#FAF6F3] border border-[#EBE6E0] flex items-center justify-center mb-3">
+                <ChevronRight size={20} className="text-[#C5BDBA]" />
               </div>
-            ))}
-            {measurements.length === 0 && (
-              <div className="text-center py-6 text-xs text-[#A8A19A] italic">No specifications entered.</div>
-            )}
-          </div>
+              <p className="text-xs text-[#A8A19A] mb-3">No measurements recorded yet.</p>
+              <button
+                onClick={() => setActiveTab('measurements')}
+                className="text-xs font-bold bg-taupe text-white px-4 py-2 rounded-lg hover:bg-taupe/90 transition-colors cursor-pointer"
+              >
+                📏 Record Measurements
+              </button>
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {measurements.slice(0, 2).map(m => {
+                const KNOWN_LABELS: Record<string, string> = {
+                  chest: 'Chest', waist: 'Waist', hip: 'Hip',
+                  shoulder: 'Shoulder', sleeve: 'Sleeve', neck: 'Neck',
+                  inseam: 'Inseam', thigh: 'Thigh',
+                  shirt_length: 'Shirt Length', pant_length: 'Pant Length',
+                  bust: 'Bust', back_length: 'Back Length',
+                };
+                const entries = Object.entries(m.metrics || {});
+                return (
+                  <div key={m.id}>
+                    <p className="text-[10px] font-bold text-[#9A8073] uppercase tracking-widest mb-2">{m.profile_name}</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {entries.slice(0, 8).map(([k, v]) => (
+                        <div key={k} className="bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-2.5 py-2 text-center">
+                          <p className="text-[9px] text-[#A8A19A] font-bold uppercase">{KNOWN_LABELS[k] ?? k.replace(/_/g, ' ')}</p>
+                          <p className="text-sm font-bold text-[#2D2A26] mt-0.5">{String(v)}<span className="text-[9px] font-normal text-[#A8A19A] ml-0.5">cm</span></p>
+                        </div>
+                      ))}
+                    </div>
+                    {entries.length > 8 && (
+                      <p className="text-[10px] text-[#A8A19A] mt-1 text-center">+{entries.length - 8} more specs</p>
+                    )}
+                  </div>
+                );
+              })}
+              {measurements.length > 2 && (
+                <button onClick={() => setActiveTab('measurements')} className="w-full text-xs text-[#9A8073] font-semibold hover:underline cursor-pointer">
+                  View all {measurements.length} profiles →
+                </button>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

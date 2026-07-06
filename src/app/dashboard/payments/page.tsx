@@ -1,8 +1,9 @@
 'use client';
 
+import React from 'react';
 import {
   CreditCard, Check, X, ExternalLink, Calendar, ShoppingBag,
-  CheckCircle2, Banknote, Smartphone, Scissors, Loader2,
+  CheckCircle2, Banknote, Smartphone, Scissors, Loader2, XCircle,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -58,9 +59,9 @@ export default function PaymentQueuePage() {
   } = usePayments();
 
   const TAB_DEFS: { id: Tab; label: string; count?: number }[] = [
-    { id: 'receipts',      label: 'Digital Receipts',  count: receipts.length },
-    { id: 'job_balances',  label: 'Job Balances',       count: jobBalances.length },
-    { id: 'catalog_orders',label: 'Catalog Orders' },
+    { id: 'receipts',       label: 'GCash & Bank Receipts',  count: receipts.length },
+    { id: 'job_balances',   label: 'Outstanding Balances',   count: jobBalances.length },
+    { id: 'catalog_orders', label: 'Catalog Orders' },
   ];
 
   // ── TAB 1: Digital Receipts ───────────────────────────────────────
@@ -156,6 +157,18 @@ export default function PaymentQueuePage() {
                 >
                   {processingId === selectedReceipt.id ? <Loader2 size={15} className="animate-spin" /> : <Check size={15} />}
                   Approve
+                </button>
+                <button
+                  onClick={() => {
+                    if (window.confirm('Reject this receipt? Use this when the reference number or screenshot looks fake or doesn\'t match — the customer will need to resubmit proof of payment.')) {
+                      handleVerify(selectedReceipt, 'rejected');
+                    }
+                  }}
+                  disabled={processingId !== null}
+                  className="flex-1 border border-[#B26959]/30 text-[#B26959] hover:bg-[#B26959]/10 disabled:opacity-50 font-medium py-2.5 rounded-xl flex items-center justify-center gap-2 text-sm transition-colors"
+                >
+                  <XCircle size={15} />
+                  Reject
                 </button>
                 <button
                   onClick={() => setSelectedReceipt(null)}
@@ -309,8 +322,8 @@ export default function PaymentQueuePage() {
   return (
     <div className="space-y-6 text-[#2D2A26]">
       <div>
-        <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Payment Center</h1>
-        <p className="text-sm text-[#827A73] mt-1">Verify digital receipts, collect job order balances, and manage catalog order payments.</p>
+        <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Collect Payments</h1>
+        <p className="text-sm text-[#827A73] mt-1">Verify GCash &amp; bank receipts, collect job balances, and manage catalog order payments.</p>
       </div>
 
       {/* Tabs */}

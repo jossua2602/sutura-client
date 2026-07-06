@@ -21,7 +21,7 @@ export default function CustomerFormModal({
   isSubmitting,
   error,
 }: CustomerFormModalProps) {
-  const [formData, setFormData] = useState({ name: '', email: '', phone: '' });
+  const [formData, setFormData] = useState({ name: '', email: '', phone: '', suki_tag: '' });
 
   useEffect(() => {
     if (editingCustomer && isOpen) {
@@ -30,9 +30,10 @@ export default function CustomerFormModal({
         name: editingCustomer.name,
         email: isWalkInEmail(editingCustomer.email) ? '' : editingCustomer.email,
         phone: editingCustomer.phone || '',
+        suki_tag: editingCustomer.suki_tag || '',
       });
     } else {
-      setFormData({ name: '', email: '', phone: '' });
+      setFormData({ name: '', email: '', phone: '', suki_tag: '' });
     }
   }, [editingCustomer, isOpen]);
 
@@ -42,6 +43,7 @@ export default function CustomerFormModal({
       name: formData.name,
       email: formData.email.trim() || null,
       phone: formData.phone.trim() || null,
+      suki_tag: formData.suki_tag || null,
     };
     onSubmit(payload);
   };
@@ -97,6 +99,24 @@ export default function CustomerFormModal({
             className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-taupe"
             placeholder="+63 900 000 0000"
           />
+        </div>
+
+        {/* Suki Tag */}
+        <div>
+          <label htmlFor="suki_tag" className="block text-sm font-medium text-[#524A44] mb-1">
+            Client Type <span className="text-xs text-[#827A73] font-normal">(Suki Classification)</span>
+          </label>
+          <select
+            id="suki_tag"
+            value={formData.suki_tag}
+            onChange={e => setFormData({...formData, suki_tag: e.target.value})}
+            className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-taupe text-sm"
+          >
+            <option value="">Select client type...</option>
+            <option value="walk_in_retail">Walk-in Retail</option>
+            <option value="b2b_suki">B2B Suki (Bulk / Corporate)</option>
+            <option value="reseller">Reseller (Palengke / Wholesale)</option>
+          </select>
         </div>
 
         <div className="pt-4 flex justify-end gap-3">

@@ -5,6 +5,7 @@ import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import Link from 'next/link';
 
+import QuickJobModal from '@/components/jobs/QuickJobModal';
 import { AnalyticsData, JobItem, StaffPresence } from '@/components/dashboard/dashboardHelpers';
 import DashboardHeader from '@/components/dashboard/DashboardHeader';
 import DashboardAlerts from '@/components/dashboard/DashboardAlerts';
@@ -12,6 +13,8 @@ import DashboardMetrics from '@/components/dashboard/DashboardMetrics';
 import DashboardCharts from '@/components/dashboard/DashboardCharts';
 import StaffOnline from '@/components/dashboard/StaffOnline';
 import RecentReviews from '@/components/dashboard/RecentReviews';
+import NewsView from '@/components/dashboard/NewsView';
+import WelcomeView from '@/components/dashboard/WelcomeView';
 import { DashboardSkeleton } from '@/components/ui/Skeleton';
 import {
   Calendar, Scissors, Users, AlertTriangle, CreditCard,
@@ -24,6 +27,8 @@ export default function DashboardPage() {
   const { selectedBranchId } = useBranch();
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [quickModalOpen, setQuickModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'news' | 'welcome'>('dashboard');
 
   // Visibility toggle
   const [shopVisible, setShopVisible] = useState<boolean | null>(null);
@@ -131,6 +136,15 @@ export default function DashboardPage() {
   // Today's appointments now come from analytics data
   const todayAppointments = data?.today_appointments ?? [];
 
+  // Active jobs with no downpayment collected.
+  // The server tracks this via payment_status='unpaid' (balance === total_amount, nothing paid).
+  const activeStatuses2 = new Set(['pending', 'confirmed', 'cutting', 'sewing', 'fitting']);
+  const pendingDpJobs = allJobs.filter(j =>
+    activeStatuses2.has(j.status) &&
+    j.payment_status === 'unpaid' &&
+    Number.parseFloat(String(j.total_amount ?? '0')) > 0
+  );
+
   // Needs Attention cards
   const needsAttentionCards = [
     {
@@ -182,8 +196,13 @@ export default function DashboardPage() {
   return (
     <div className="space-y-6 pb-12 text-[#2D2A26]">
       {/* Header */}
-      <DashboardHeader userName={user?.name || ''} />
+      <DashboardHeader userName={user?.name || ''} activeTab={activeTab} setActiveTab={setActiveTab} />
 
+      {activeTab === 'news' && <NewsView />}
+      {activeTab === 'welcome' && <WelcomeView />}
+
+      {activeTab === 'dashboard' && (
+      <>
       {/* ── Needs Attention Section ──────────────────────────────────────────── */}
       {needsAttentionCards.length > 0 && (
         <div>
@@ -262,6 +281,7 @@ export default function DashboardPage() {
         toggleVisibility={toggleVisibility}
         visibilityLoading={visibilityLoading}
         unpaidJobs={unpaidJobs}
+        pendingDpJobs={pendingDpJobs}
         balanceExpanded={balanceExpanded}
         setBalanceExpanded={setBalanceExpanded}
         dueToday={dueToday}
@@ -391,13 +411,20 @@ export default function DashboardPage() {
             <h3 className="font-semibold text-[#2D2A26] mb-1">Quick Actions</h3>
             <p className="text-xs text-[#A8A19A] mb-5">Core daily operations at your fingertips</p>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Quick Entry — opens modal */}
+              <button
+                type="button"
+                onClick={() => setQuickModalOpen(true)}
+                className="flex flex-col gap-2 bg-[#FAF6F3] border border-[#EBE6E0] hover:border-[#9A8073] hover:shadow-sm p-4 rounded-xl transition-all group text-left"
+              >
+                <div className="w-8 h-8 rounded-lg bg-white border border-[#EBE6E0] flex items-center justify-center group-hover:border-[#9A8073]/30 transition-colors">
+                  <Scissors size={15} className="text-[#9A8073]" />
+                </div>
+                <span className="text-sm font-semibold text-[#2D2A26]">New Custom Job</span>
+                <span className="text-[11px] text-[#827A73] leading-relaxed">Log fabric cut, tailoring setup &amp; measurements</span>
+              </button>
+
               {[
-                {
-                  href: '/dashboard/jobs/new',
-                  icon: Scissors,
-                  title: 'New Custom Job',
-                  desc: 'Log fabric cut, tailoring setup & measurements',
-                },
                 {
                   href: '/dashboard/appointments',
                   icon: Calendar,
@@ -449,6 +476,14 @@ export default function DashboardPage() {
           <DashboardCharts data={data} />
         </div>
       </div>
+      </>
+      )}
+
+      <QuickJobModal
+        isOpen={quickModalOpen}
+        onClose={() => setQuickModalOpen(false)}
+        onCreated={() => {}}
+      />
     </div>
   );
 }

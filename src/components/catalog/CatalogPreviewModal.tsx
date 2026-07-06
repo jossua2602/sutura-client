@@ -39,6 +39,20 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
   const fitGuideData = parseFitGuide(item.fit_guide);
   const careData = parseCareInstructions(item.care_instructions);
 
+  // Defensive helper: handles both string bullets and {id, text} objects
+  // Fixes the [object Object] rendering bug for legacy data
+  const safeText = (bullet: unknown): string => {
+    if (typeof bullet === 'string') return bullet;
+    if (bullet && typeof bullet === 'object') {
+      const b = bullet as Record<string, unknown>;
+      return typeof b.text === 'string' ? b.text : JSON.stringify(b);
+    }
+    return String(bullet ?? '');
+  };
+
+  const visibleFeatureBullets = featuresData.bullets.filter(b => safeText(b).trim() !== '');
+  const visibleFitBullets = fitGuideData.bullets.filter(b => safeText(b).trim() !== '');
+
   const images = item.images && item.images.length > 0 
     ? item.images 
     : [{ id: 0, image_url: '', is_primary: true }];
@@ -171,6 +185,13 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
               <div>
                 <span className="text-[10px] font-bold text-[#A8A19A] uppercase tracking-wider">Fabric / Material</span>
                 <p className="text-sm font-medium text-[#2D2A26] mt-0.5">{item.material || 'Not specified'}</p>
+                {/* Fabric texture image */}
+                {item.fabric_image_url && (
+                  <div className="mt-2">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={item.fabric_image_url} alt="Fabric texture" className="w-16 h-16 object-cover rounded-lg border border-[#EBE6E0] shadow-sm" />
+                  </div>
+                )}
               </div>
               <div>
                 <span className="text-[10px] font-bold text-[#A8A19A] uppercase tracking-wider">Garment Category</span>
@@ -190,9 +211,8 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
                 </p>
               </div>
             )}
-
-            {/* Product Specifications bullets */}
-            {featuresData.bullets && featuresData.bullets.length > 0 && (
+                  {/* Product Specifications bullets */}
+            {visibleFeatureBullets.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-[#524A44] uppercase tracking-wider flex items-center gap-1.5">
                   <Scissors size={14} className="text-taupe" />
@@ -200,10 +220,10 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
                 </h3>
                 <div className="bg-white border border-[#EBE6E0]/60 p-4 rounded-2xl space-y-2.5">
                   <ul className="grid grid-cols-1 sm:grid-cols-2 gap-x-4 gap-y-2 text-sm text-[#524A44]">
-                    {featuresData.bullets.map((bullet, idx) => (
-                      <li key={bullet.id || idx} className="flex items-start gap-2">
+                    {visibleFeatureBullets.map((bullet, idx) => (
+                      <li key={(bullet as {id?: string}).id || idx} className="flex items-start gap-2">
                         <Check size={14} className="text-taupe mt-0.5 shrink-0" />
-                        <span>{bullet.text || String(bullet)}</span>
+                        <span>{safeText(bullet)}</span>
                       </li>
                     ))}
                   </ul>
@@ -218,7 +238,7 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
             )}
 
             {/* Sizing & Guidelines */}
-            {fitGuideData.bullets && fitGuideData.bullets.length > 0 && (
+            {visibleFitBullets.length > 0 && (
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-[#524A44] uppercase tracking-wider flex items-center gap-1.5">
                   <Ruler size={14} className="text-taupe" />
@@ -226,10 +246,10 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
                 </h3>
                 <div className="bg-white border border-[#EBE6E0]/60 p-4 rounded-2xl space-y-2.5">
                   <ul className="space-y-2 text-sm text-[#524A44]">
-                    {fitGuideData.bullets.map((bullet, idx) => (
-                      <li key={bullet.id || idx} className="flex items-start gap-2">
+                    {visibleFitBullets.map((bullet, idx) => (
+                      <li key={(bullet as {id?: string}).id || idx} className="flex items-start gap-2">
                         <Check size={14} className="text-taupe mt-0.5 shrink-0" />
-                        <span>{bullet.text || String(bullet)}</span>
+                        <span>{safeText(bullet)}</span>
                       </li>
                     ))}
                   </ul>

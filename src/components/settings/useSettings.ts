@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
-import { Specialization, BLANK_FORM } from '@/components/specializations/specializationHelpers';
 import { ShopSettingsData } from '@/components/settings/SettingsRentalPolicies';
 
 const DEFAULT_HOURS = {
@@ -57,74 +56,6 @@ export function useSettings() {
 
   const savedDataRef = useRef<ShopSettingsData | null>(null);
 
-  // Specialization state
-  const [specializations, setSpecializations] = useState<Specialization[]>([]);
-  const [specSearch, setSpecSearch] = useState('');
-  const [specModalOpen, setSpecModalOpen] = useState(false);
-  const [specDeleteModalOpen, setSpecDeleteModalOpen] = useState(false);
-  const [editingSpecId, setEditingSpecId] = useState<number | null>(null);
-  const [deletingSpecId, setDeletingSpecId] = useState<number | null>(null);
-  const [specSubmitting, setSpecSubmitting] = useState(false);
-  const [specError, setSpecError] = useState('');
-  const [specFormData, setSpecFormData] = useState({ ...BLANK_FORM });
-
-  const fetchSpecializations = useCallback(() => {
-    if (!shop) return;
-    api.get(`/shops/${shop.id}/specializations`)
-      .then(res => setSpecializations(res.data.data || []))
-      .catch(console.error);
-  }, [shop]);
-
-  useEffect(() => {
-    if ((activeTab as string) === 'specializations') fetchSpecializations();
-  }, [activeTab, fetchSpecializations]);
-
-  const handleSpecSubmit = async (e: React.SyntheticEvent) => {
-    e.preventDefault();
-    if (!shop) return;
-    setSpecSubmitting(true);
-    setSpecError('');
-    try {
-      if (editingSpecId) {
-        const res = await api.put(`/shops/${shop.id}/specializations/${editingSpecId}`, specFormData);
-        setSpecializations(prev => prev.map(s => s.id === editingSpecId ? res.data.data : s));
-      } else {
-        const res = await api.post(`/shops/${shop.id}/specializations`, specFormData);
-        setSpecializations(prev => [res.data.data, ...prev]);
-      }
-      closeSpecModal();
-      toast.success(editingSpecId ? 'Specialization updated!' : 'Specialization added!');
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      setSpecError(error.response?.data?.message || 'Failed to save specialization');
-    } finally {
-      setSpecSubmitting(false);
-    }
-  };
-
-  const confirmSpecDelete = async () => {
-    if (!shop || !deletingSpecId) return;
-    setSpecSubmitting(true);
-    try {
-      await api.delete(`/shops/${shop.id}/specializations/${deletingSpecId}`);
-      setSpecializations(prev => prev.filter(s => s.id !== deletingSpecId));
-      setSpecDeleteModalOpen(false);
-      toast.success('Specialization removed.');
-    } catch (err: unknown) {
-      const error = err as { response?: { data?: { message?: string } } };
-      toast.error(error.response?.data?.message || 'Failed to delete specialization');
-    } finally {
-      setSpecSubmitting(false);
-    }
-  };
-
-  const closeSpecModal = () => {
-    setSpecModalOpen(false);
-    setEditingSpecId(null);
-    setSpecFormData({ ...BLANK_FORM });
-    setSpecError('');
-  };
-
   const [formData, setFormData] = useState<ShopSettingsData>({
     name: '',
     description: '',
@@ -136,6 +67,7 @@ export function useSettings() {
     email: '',
     booking_policy: '',
     booking_questions: [] as string[],
+    max_appointments_per_day: null,
     latitude: '',
     longitude: '',
     social_links: [] as { label: string; url: string }[],
@@ -183,6 +115,7 @@ export function useSettings() {
             email: s.email || '',
             booking_policy: s.booking_policy || '',
             booking_questions: Array.isArray(s.booking_questions) ? s.booking_questions : [],
+            max_appointments_per_day: s.max_appointments_per_day ?? null,
             latitude: s.latitude || '',
             longitude: s.longitude || '',
             social_links: Array.isArray(s.social_links)
@@ -299,21 +232,6 @@ export function useSettings() {
     isDirty,
     activeTab,
     setActiveTab,
-    specializations,
-    specSearch,
-    setSpecSearch,
-    specModalOpen,
-    setSpecModalOpen,
-    specDeleteModalOpen,
-    setSpecDeleteModalOpen,
-    editingSpecId,
-    setEditingSpecId,
-    deletingSpecId,
-    setDeletingSpecId,
-    specSubmitting,
-    specError,
-    specFormData,
-    setSpecFormData,
     formData,
     setFormDataWithDirty,
     handleChange,
@@ -324,8 +242,5 @@ export function useSettings() {
     handleRemoveImage,
     handleSave,
     handleDiscard,
-    closeSpecModal,
-    confirmSpecDelete,
-    handleSpecSubmit,
   };
 }

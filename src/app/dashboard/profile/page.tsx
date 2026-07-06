@@ -166,14 +166,16 @@ export default function StoreProfilePage() {
               <Link
                 href={`/shop/${shop?.slug}`}
                 target="_blank"
-                className="px-4 py-2 bg-[#9A8073] text-white rounded-lg"
+                title="View Public Storefront"
+                className="px-4 py-2 bg-[#9A8073] hover:bg-[#8A7063] text-white rounded-lg transition-colors"
               >
                 <Globe size={16} />
               </Link>
 
               <button
                 onClick={() => setActiveTab('about')}
-                className="px-4 py-2 bg-[#F0F2F5] rounded-lg"
+                title="Edit Profile"
+                className="px-4 py-2 bg-[#F0EAE3] hover:bg-[#EBE6E0] text-[#524A44] rounded-lg transition-colors"
               >
                 <Edit2 size={16} />
               </button>
@@ -190,10 +192,10 @@ export default function StoreProfilePage() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id)}
-                  className={`px-4 py-3 text-[15px] font-semibold ${
+                  className={`px-4 py-3 text-[15px] font-semibold transition-colors whitespace-nowrap ${
                     isActive
                       ? 'text-[#9A8073] border-b-[3px] border-[#9A8073]'
-                      : 'text-[#65676B]'
+                      : 'text-[#827A73] hover:text-[#2D2A26]'
                   }`}
                 >
                   {tab.label}
@@ -263,8 +265,195 @@ export default function StoreProfilePage() {
                 : 'lg:col-span-12'
             }
           >
-            {activeTab === 'appointments' && (
-              <ProfileAppointmentsCalendar />
+            {activeTab === 'appointments' && <ProfileAppointmentsCalendar />}
+
+            {activeTab === 'hours' && (
+              <div className="space-y-6">
+                <div className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="font-bold text-[#2D2A26]">Weekly Operating Hours</h3>
+                    <button
+                      onClick={() => setIsEditHoursModalOpen(true)}
+                      className="flex items-center gap-1.5 text-sm font-medium text-[#9A8073] hover:text-[#8A7063] transition-colors"
+                    >
+                      <Edit2 size={14} /> Edit Hours
+                    </button>
+                  </div>
+                  {shop?.operating_hours ? (
+                    <div className="space-y-1">
+                      {(['monday','tuesday','wednesday','thursday','friday','saturday','sunday'] as const).map(day => {
+                        const h = (shop.operating_hours as Record<string, { is_open: boolean; open: string; close: string }>)[day];
+                        return (
+                          <div key={day} className="flex items-center justify-between py-2 border-b border-[#F0EAE3] last:border-0">
+                            <span className="text-sm font-medium text-[#524A44] capitalize w-28">{day}</span>
+                            {h?.is_open
+                              ? <span className="text-sm text-[#2D2A26]">{h.open} – {h.close}</span>
+                              : <span className="text-sm text-[#A8A19A] italic">Closed</span>
+                            }
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-[#A8A19A] italic">No weekly hours configured yet.</p>
+                  )}
+                </div>
+                <StorefrontSchedules specialHours={specialHours} />
+              </div>
+            )}
+
+            {activeTab === 'gallery' && (
+              <div className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-[#2D2A26]">Shop Gallery</h3>
+                  <label className="flex items-center gap-1.5 text-sm font-medium text-white bg-[#9A8073] px-3 py-1.5 rounded-lg cursor-pointer hover:bg-[#8A7063] transition-colors">
+                    {uploadingCreation ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    {uploadingCreation ? 'Uploading…' : 'Add Photo'}
+                    <input type="file" accept="image/*" className="hidden" onChange={handleCreationUpload} disabled={uploadingCreation} />
+                  </label>
+                </div>
+                {fetchingGallery ? (
+                  <div className="flex justify-center py-12"><Loader2 className="animate-spin text-[#A8A19A]" /></div>
+                ) : shopGallery.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ImageIcon className="mx-auto h-10 w-10 text-[#C5BDBA] mb-3" />
+                    <p className="text-sm text-[#827A73]">No photos yet. Add your first shop photo.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {shopGallery.map((url, idx) => (
+                      <div key={idx} className="relative group aspect-square rounded-xl overflow-hidden border border-[#EBE6E0]">
+                        <Image src={url} alt={`Gallery ${idx + 1}`} fill className="object-cover" unoptimized />
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-center justify-center gap-2 opacity-0 group-hover:opacity-100">
+                          <button onClick={() => setViewerImage(url)} className="p-1.5 bg-white/90 rounded-full text-[#2D2A26]">
+                            <ImageIcon size={14} />
+                          </button>
+                          <button onClick={() => handleRemoveCreation(url)} className="p-1.5 bg-white/90 rounded-full text-red-500">
+                            <X size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'catalog' && (
+              <div className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-[#2D2A26]">Catalog Items</h3>
+                  <Link href="/dashboard/catalog" className="text-sm text-[#9A8073] hover:underline flex items-center gap-1">
+                    <Package size={14} /> Manage Catalog
+                  </Link>
+                </div>
+                {catalogItems.length === 0 ? (
+                  <div className="text-center py-12">
+                    <ShoppingBag className="mx-auto h-10 w-10 text-[#C5BDBA] mb-3" />
+                    <p className="text-sm text-[#827A73]">No catalog items yet.</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {catalogItems.map(item => {
+                      const primaryImage = item.images?.find(img => img.is_primary)?.image_url ?? item.images?.[0]?.image_url;
+                      return (
+                        <Link key={item.id} href={`/dashboard/catalog/${item.id}/edit`} className="group block border border-[#EBE6E0] rounded-xl overflow-hidden hover:border-[#D1C7BD] transition-colors">
+                          <div className="aspect-square bg-[#FAF6F3] relative">
+                            {primaryImage
+                              ? <Image src={primaryImage} alt={item.name} fill className="object-cover" unoptimized />
+                              : <div className="w-full h-full flex items-center justify-center"><ShoppingBag className="text-[#C5BDBA]" /></div>
+                            }
+                          </div>
+                          <div className="p-2.5">
+                            <p className="text-xs font-semibold text-[#2D2A26] truncate">{item.name}</p>
+                            {item.price != null && <p className="text-xs text-[#827A73] mt-0.5">₱{Number(item.price).toLocaleString()}</p>}
+                          </div>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'services' && (
+              <div className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-[#2D2A26]">Services</h3>
+                  <Link href="/dashboard/services" className="text-sm text-[#9A8073] hover:underline flex items-center gap-1">
+                    <Briefcase size={14} /> Manage Services
+                  </Link>
+                </div>
+                {services.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Briefcase className="mx-auto h-10 w-10 text-[#C5BDBA] mb-3" />
+                    <p className="text-sm text-[#827A73]">No services listed yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {services.map(svc => (
+                      <button
+                        key={svc.id}
+                        onClick={() => setSelectedService(svc)}
+                        className="w-full text-left flex items-center gap-3 p-3 rounded-xl border border-[#EBE6E0] hover:border-[#D1C7BD] hover:bg-[#FAF6F3] transition-colors"
+                      >
+                        {svc.image_url
+                          ? <Image src={svc.image_url} alt={svc.name} width={40} height={40} className="rounded-lg object-cover shrink-0" unoptimized />
+                          : <div className="w-10 h-10 rounded-lg bg-[#F0EAE3] flex items-center justify-center shrink-0"><Briefcase size={16} className="text-[#9A8073]" /></div>
+                        }
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-[#2D2A26] truncate">{svc.name}</p>
+                          {svc.description && <p className="text-xs text-[#827A73] truncate">{svc.description}</p>}
+                        </div>
+                        {(svc.base_price ?? svc.price) != null && (
+                          <span className="text-sm font-medium text-[#9A8073] shrink-0">
+                            ₱{Number(svc.base_price ?? svc.price).toLocaleString()}
+                          </span>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {activeTab === 'reviews' && (
+              <div className="bg-white border border-[#EBE6E0] rounded-xl p-5 shadow-sm">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-[#2D2A26]">Recent Reviews</h3>
+                  <Link href="/dashboard/reviews" className="text-sm text-[#9A8073] hover:underline flex items-center gap-1">
+                    <Star size={14} /> View All
+                  </Link>
+                </div>
+                {recentReviews.length === 0 ? (
+                  <div className="text-center py-12">
+                    <Star className="mx-auto h-10 w-10 text-[#C5BDBA] mb-3" />
+                    <p className="text-sm text-[#827A73]">No reviews yet.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {recentReviews.map(review => (
+                      <div key={review.id} className="flex gap-3 pb-4 border-b border-[#F0EAE3] last:border-0 last:pb-0">
+                        <div className="w-9 h-9 rounded-full bg-[#EBE6E0] flex items-center justify-center font-bold text-[#524A44] shrink-0">
+                          {review.user.name.charAt(0)}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="text-sm font-semibold text-[#2D2A26]">{review.user.name}</p>
+                            <span className="text-xs text-[#A8A19A]">{new Date(review.created_at).toLocaleDateString()}</span>
+                          </div>
+                          <div className="flex gap-0.5 my-1">
+                            {[1,2,3,4,5].map(s => (
+                              <Star key={s} size={12} className={s <= review.rating ? 'fill-yellow-400 text-yellow-400' : 'text-gray-200'} />
+                            ))}
+                          </div>
+                          {review.comment && <p className="text-sm text-[#524A44] line-clamp-2">{review.comment}</p>}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             )}
           </div>
         </div>

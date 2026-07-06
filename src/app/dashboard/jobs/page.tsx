@@ -1,12 +1,17 @@
 'use client';
 
-import { Plus, Search, Store, ShoppingBag, AlertCircle, Truck, Scissors } from 'lucide-react';
+import React from 'react';
+import { Plus, Search, Store, ShoppingBag, AlertCircle, Truck, Scissors, Zap, Trash2 } from 'lucide-react';
 import Link from 'next/link';
 import JobRejectModal from '@/components/jobs/JobRejectModal';
 import JobKanbanBoard from '@/components/jobs/JobKanbanBoard';
+import QuickJobModal from '@/components/jobs/QuickJobModal';
+import JobTrashModal from '@/components/jobs/JobTrashModal';
 import { useJobs } from '@/components/jobs/useJobs';
+import { useAuthStore } from '@/store/useAuthStore';
 
 export default function JobOrdersPage() {
+  const { shop } = useAuthStore();
   const {
     jobs,
     loading,
@@ -26,7 +31,11 @@ export default function JobOrdersPage() {
     walkInCount,
     onlineCount,
     pendingReviewCount,
+    fetchJobs,
   } = useJobs();
+
+  const [quickModalOpen, setQuickModalOpen] = React.useState(false);
+  const [trashModalOpen, setTrashModalOpen] = React.useState(false);
 
   return (
     <div className="space-y-5 h-full flex flex-col text-[#2D2A26]">
@@ -35,13 +44,32 @@ export default function JobOrdersPage() {
           <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Production Pipeline</h1>
           <p className="text-[#827A73] text-sm mt-1">Track and manage garment production — Walk-in and Online orders.</p>
         </div>
-        <Link
-          href="/dashboard/jobs/new"
-          className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
-        >
-          <Plus size={18} />
-          Create Job Order
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => setTrashModalOpen(true)}
+            title="View deleted job orders"
+            className="flex items-center gap-2 px-3.5 py-2 rounded-lg font-medium bg-[#FAF6F3] border border-[#EBE6E0] text-[#827A73] hover:bg-[#F0EAE3] transition-colors"
+          >
+            <Trash2 size={16} />
+          </button>
+          {/* ⚡ Quick Entry — walk-in shortcut */}
+          <button
+            type="button"
+            onClick={() => setQuickModalOpen(true)}
+            className="flex items-center gap-1.5 bg-[#FAF6F3] border border-[#EBE6E0] hover:border-taupe text-[#524A44] hover:text-taupe px-3.5 py-2 rounded-lg font-semibold text-sm transition-all"
+          >
+            <Zap size={15} className="text-amber-500" />
+            Quick Entry
+          </button>
+          <Link
+            href="/dashboard/jobs/new"
+            className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors"
+          >
+            <Plus size={18} />
+            Create Job Order
+          </Link>
+        </div>
       </div>
 
       {pendingReviewCount > 0 && (
@@ -146,6 +174,21 @@ export default function JobOrdersPage() {
         onConfirm={handleConfirmReject}
         actionLoading={actionLoadingId !== null}
       />
+
+      <QuickJobModal
+        isOpen={quickModalOpen}
+        onClose={() => setQuickModalOpen(false)}
+        onCreated={() => { if (fetchJobs) fetchJobs(); }}
+      />
+
+      {shop && (
+        <JobTrashModal
+          isOpen={trashModalOpen}
+          onClose={() => setTrashModalOpen(false)}
+          shopId={shop.id}
+          onRestored={() => { if (fetchJobs) fetchJobs(); }}
+        />
+      )}
     </div>
   );
 }

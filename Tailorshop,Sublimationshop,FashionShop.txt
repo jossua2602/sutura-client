@@ -1,0 +1,802 @@
+# 📋 COMPLETE BUSINESS ANALYSIS: TAILORING SHOP, SUBLIMATION SHOP, FASHION SHOP
+### (Customer Order Tracking Perspective — "Ano ang Ginatahi? Saan na ang Order Ko?")
+
+---
+
+# 🪡 BUSINESS 1: TAILORING SHOP
+
+## A. BUSINESS OVERVIEW (Based on Sotera Dressmaking & Lyndel's Tailoring Shop)
+
+A **Tailoring Shop** is a service-driven garment business that focuses on **cut-and-sew custom apparel**, **uniform manufacturing**, and **garment repair/alteration**. Based on the documents analyzed (Sotera and LTS), the typical Philippine tailoring shop operates on a **manual, walk-in, and Facebook Messenger-based workflow** with no centralized digital tracking. Customers are left in the dark about production progress and rely on physically visiting the shop or messaging the owner to ask, *"Sa na po ang uniform ko?"*
+
+### Real Business Profiles Extracted:
+
+**Sotera Dressmaking and Tailoring Shop:**
+- Accepts repairs, alterations, resizing
+- Tailoring services for school uniforms (with image/picture references)
+- Sews and sells finished garments simultaneously
+- Produces Lab Gowns, Ateneo Senior High Uniforms
+- RTW (Ready-to-Wear) designs
+- General repair services
+- Skirt uniforms and necktie uniforms
+- Ironing (plantsa) before delivery
+- Walk-in measurement/sukat accepted same day
+- Posts Midnight Sales and Ready-to-Wear items
+- Posts about human limitations ("we get tired and need rest")
+- Customer expectation: Fast turnaround, but reality is 7–14 working days
+
+**Lyndel's Tailoring Shop (LTS):**
+- Accepts school uniforms, casual/corporate wear, lab gowns, scrub suits, slacks, PE pants, alterations
+- Bulk orders for: Pequiño National (DepEd), Bislig Central (DepEd), SICC Public Admin OJT, CHDC Scrub Suits
+- Non-teaching uniforms, New DepEd Uniforms
+- Davao Doctors College contracts
+- School uniform tiers: Elementary, JHS, SHS, College
+- Acknowledges "katah" (sewers) as production backbone
+
+---
+
+## B. COMPLETE SERVICES OFFERED
+
+| Service Category | Specific Services |
+|---|---|
+| **Custom Uniform Tailoring** | School uniforms (Elementary, JHS, SHS, College), PE pants, faculty polos, DepEd uniforms, non-teaching uniforms, Ateneo Senior High uniforms |
+| **Medical & Laboratory Apparel** | Lab gowns, scrub suits (e.g., CHDC, Davao Doctors College) |
+| **Corporate & Casual Wear** | Slacks, corporate polos, casual wear, OJT uniforms |
+| **Alterations & Repairs** | Resizing (rasing/ajuste), zipper changes, hemming, repairing tears, adjusting fits |
+| **Ironing / Finishing** | Plantsa (pressing) before delivery — explicit in Sotera's observation |
+| **Ready-to-Wear (RTW)** | Pre-sewn items sold directly (Bago Oshiro Blouse Uniform, kids' shorts, etc.) |
+| **Bulk / Institutional Orders** | DepEd, SICC, CHDC, Davao Doctors College, government, LGUs |
+| **Walk-in Measurement** | Same-day sukatan accepted in Sotera |
+| **Rush Orders** | Implied acceptance with longer-than-expected wait times |
+
+---
+
+## C. PRODUCTS SOLD
+
+- School uniforms (all levels)
+- Lab gowns and scrub suits
+- Corporate slacks and polos
+- PE pants
+- Skirt uniforms and necktie uniforms
+- RTW blouses (e.g., "Bago Oshiro Blouse Uniform — Bagong tahi")
+- Kids' shorts (Ready to Wear)
+- Altered/modified second-hand garments
+
+---
+
+## D. CUSTOMER ORDER TRACKING WORKFLOW (The Core Problem)
+
+### Current Manual Flow (What Customers Experience Now):
+
+```
+1. Customer inquires via Facebook PM or walk-in
+       ↓
+2. Owner quotes verbally (no formal receipt or digital record)
+       ↓
+3. Customer visits shop for sukatan (measurement)
+       ↓
+4. 50% downpayment collected (cash or GCash)
+       ↓
+5. Order details written on a PHYSICAL JOB TICKET CARD
+       (Customer Name, Garment Type, Measurements, Due Date)
+       ↓
+6. Card is pinned to the fabric bundle
+       ↓
+7. Customer goes home — NO UPDATES until due date
+       ↓
+8. Customer messages: "Sa na po ba?"
+   Owner replies: "On going pa po." (Vague)
+       ↓
+9. Customer physically returns on pickup date
+       ↓
+10. Final fitting / claiming — balance paid before release
+```
+
+### Customer Pain Points Identified:
+1. **No real-time visibility** — Customer does not know if fabric has been cut, sewn, or is in QC
+2. **Vague responses** — "On going lang po" does not tell the customer anything specific
+3. **No estimated pickup date communicated formally** — verbally given only
+4. **No notification when ready for fitting** — Customer has to keep checking
+5. **No proof of progress** — No photos sent during production
+6. **Lost job tickets** — Physical cards get misplaced, especially during peak season
+7. **Double appointments** — Customer arrives but garment isn't ready yet
+8. **Peak season chaos** — Sotera explicitly says, "If we could finish every uniform in one sitting, we would! But we're humans too, we get tired."
+
+---
+
+## E. PROPOSED ORDER TRACKING STAGES (Customer-Facing)
+
+Based on full analysis of both Sotera and LTS, here is the **complete tracking stage matrix** the customer should see:
+
+| Stage # | Stage Name (English) | Stage Name (Tagalog) | What It Means to Customer |
+|---|---|---|---|
+| 1 | **Order Received** | Na-receive na ang order | Inquiry logged, awaiting sukatan appointment |
+| 2 | **Measurement Taken** | Na-sukat na | Walk-in or scheduled fitting completed |
+| 3 | **Downpayment Verified** | Na-verify na ang DP | 50% DP confirmed, production will start |
+| 4 | **Pattern Making** | Ginagawa ang pattern | Master cutter creating the garment blueprint |
+| 5 | **Fabric Cutting** | Ginagupit na ang tela | Fabric cut according to pattern and size |
+| 6 | **Sewing In Progress** | Naitatahi na | Mananahi actively sewing the garment |
+| 7 | **Embroidery / Logo Application** | Embroidery / Logo | Patches, names, or logos being applied |
+| 8 | **Quality Check** | QC / Pagsusuri | Inspecting stitches, fit, and finish |
+| 9 | **Pressing / Ironing** | Pagpa-plantsa | Sotera explicitly does this before delivery |
+| 10 | **Ready for Fitting** | Handa na sa fitting | Customer must come for final fitting |
+| 11 | **Alterations (if needed)** | Ajuste / Resing | Adjustments based on fitting feedback |
+| 12 | **Ready for Pickup** | Handa na kunin | Final balance must be paid before release |
+| 13 | **Claimed / Completed** | Na-claim na | Order closed, feedback requested |
+
+---
+
+## F. PAYMENT TRACKING FLOW
+
+| Payment Milestone | Trigger | Action |
+|---|---|---|
+| **Downpayment (50%)** | Order creation | Mandatory before cutting starts ("No DP, No Layout, No Cut" rule) |
+| **Balance Payment** | Stage 12 (Ready for Pickup) | "No balance, no claim" strictly enforced |
+| **Corporate / DepEd Billing** | PO submission | 50% DP upon PO signing, 50% upon delivery (30-day terms possible) |
+| **Payment Methods** | Throughout | GCash, Cash, Bank Transfer (BDO/BPI for bulk) |
+| **Refund / Cancellation** | If customer cancels after DP | DP forfeited (fabric already cut) |
+
+---
+
+## G. CUSTOMER DASHBOARD VIEW (What Customer Should See)
+
+```
+┌─────────────────────────────────────────────────┐
+│  HI, MARIA! HERE'S YOUR ORDER TRACKER           │
+├─────────────────────────────────────────────────┤
+│  Order #: LTS-2026-0042                         │
+│  Shop: Lyndel's Tailoring Shop                  │
+│  Garment: Davao Doctors College Scrub Suit      │
+│  Quantity: 2 pcs                                │
+│  Total Cost: ₱1,400.00                          │
+│  DP Paid: ₱700.00 ✅                            │
+│  Balance: ₱700.00 (due on pickup)               │
+│  Estimated Pickup: March 18, 2026               │
+├─────────────────────────────────────────────────┤
+│  PROGRESS: ████████░░░░ 70%                     │
+│                                                 │
+│  ✅ Order Received            — Mar 03, 9:00 AM │
+│  ✅ Measurement Taken         — Mar 04, 2:00 PM │
+│  ✅ Downpayment Verified      — Mar 04, 2:30 PM │
+│  ✅ Fabric Cut                — Mar 06, 10:00 AM│
+│  ✅ Sewing In Progress        — Mar 09, 8:00 AM │
+│  ✅ Embroidery (Name Patch)   — Mar 11, 1:00 PM │
+│  ⏳ Quality Check             — In Progress     │
+│  ⬜ Pressing / Ironing                          │
+│  ⬜ Ready for Pickup                            │
+├─────────────────────────────────────────────────┤
+│  📩 Last Update: "Your scrub suit is now        │
+│     undergoing quality check. Expected          │
+│     pickup: March 18."                          │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## H. BUSINESS-SPECIFIC TRACKING REQUIREMENTS (Tailoring Shop)
+
+| Requirement | Description |
+|---|---|
+| **Measurement Repository** | JSON-structured body dimensions (Chest, Waist, Hip, Inseam, Shoulder, Sleeve, Length) saved per customer profile |
+| **Garment Type Categorization** | Filter by: School Uniform, Lab Gown, Scrub Suit, Slacks, Corporate, Casual, Barong, Filipiniana |
+| **Appointment Scheduling** | For sukatan and fitting sessions — prevent double booking |
+| **Bulk Order Matrix** | For DepEd / school contracts — Master size list (Name, Grade, Size, Gender) |
+| **Alteration History** | Track if garment went through adjustment cycle (1 free adjustment within 7 days) |
+| **"Suki" Tagging** | Repeat customers get saved measurements, priority slots, waived rush fees |
+| **Printable Job Ticket** | QR-coded physical card attached to fabric bundle for workshop floor |
+| **Rush Order Flag** | Red flag + rush fee auto-calculation (30-50% more) |
+| **Peak Season Cutoff** | Capacity blocker when slots are full (e.g., June back-to-school) |
+
+---
+
+# 🎨 BUSINESS 2: SUBLIMATION SHOP
+
+## A. BUSINESS OVERVIEW (Based on MAX Business Document)
+
+A **Sublimation Shop** is a **hybrid digital printing + cut-and-sew apparel manufacturing business** that uses heat transfer technology to permanently bond dye into polyester fabrics. Based on the comprehensive MAX document, this is a **high-volume, B2B-dominated business** with complex multi-departmental workflows spanning design, printing, sewing, and fulfillment.
+
+### Core Business Model:
+- **B2B Bulk Apparel Manufacturing** (sports teams, schools, corporate, government)
+- **B2C Custom Retail** (family reunions, birthdays, personalized gifts)
+- **Digital Product Sales** (30,000+ design template bundles)
+- **Commercial Print Contracts** (BIR receipts, packaging labels)
+
+---
+
+## B. COMPLETE SERVICES OFFERED
+
+### Sublimation Services:
+- Full Sublimation Printing (Sportswear, Jerseys, Jackets, T-shirts, Polo)
+- Print and Press Sublimation (client-supplied garments)
+- 3D Sublimation Vacuum Heat Press (mugs, plates, rock photos)
+- Sublimation for non-apparel (mugs, tumblers, keychains, plates, coasters)
+
+### Printing (Non-Sublimation):
+- DTF (Direct-to-Film) Printing
+- Silk Screen / K-Screen Printing
+- Offset Printing (BIR Official Receipts, Invoices, Forms, Letterheads)
+- Digital / Document Printing
+- Large Format / Tarpaulin / Plastic Banner Printing
+- Photo Printing / Enlargement (A4 to A0)
+- Vinyl Sticker / Label Printing (Waterproof, Oil-proof)
+
+### Tailoring / Sewing:
+- Pattern making
+- Cut and sew services
+- Bulk sewing (3,000 pcs weekly capacity)
+- Embroidery (Polo, Bomber, Corporate Jackets)
+- Uniform manufacturing (PE, School, Company, Government)
+- Tailoring adjustments/fitting
+
+### Design & Digital Products:
+- Custom Logo Design (Vape, Motovlog, Small Business)
+- T-shirt Layout Design (PSD, PNG, JPEG)
+- Mockup Bundle Sales (Photoshop/Canva editable, lifetime access)
+- 30,000+ Ready-to-print design bundles (Anime, NBA, Marvel, Fraternities)
+
+### Accessories & Packaging:
+- Custom Packaging Boxes (Soap, Serum, Cake, T-shirt, Perfume)
+- Custom Paper Placemats
+- Custom Keycard Sleeves
+- Lanyard Printing
+
+---
+
+## C. PRODUCTS SOLD
+
+### Customizable Apparel:
+- Basketball Jersey (Set, NBA Cut, Reversible)
+- Volleyball Jersey
+- Cycling Jersey (Short/Long Sleeve)
+- Football/Soccer Jersey
+- Baseball Uniform
+- E-sports Jersey
+- Polo Shirt (Chinese Collar, Zipper, Buttoned, Embroidered)
+- T-shirt (Round Neck, V-Neck, Oversized)
+- Long Sleeves (Aircool, Reflectorized, Rider's)
+- Hoodies / Rider's Hoodies
+- Jackets (Bomber, Varsity, Windbreaker, Warmer)
+- Jogging / Track Pants
+- Shorts (Mesh, Compression, Grappling, Muay Thai)
+- Singlet / Sando / Tank Top
+- Rash Guard (Kids & Adult)
+- Graduation Sash
+- Leotards / Wrestling Singlet
+
+### Non-Apparel Physical Products:
+- Sublimation Mugs (Magic, Sparkling, Inner-color, 3D Mold, Shot Glass)
+- Tumblers / Stainless Travel Mugs / Sports Jug
+- Ceramic Plates / Coasters
+- Sublimated Keychains
+- Ref Magnets / Wristbands
+- Caps (Mesh, Embroidered)
+- Tote Bags / Drawstring Bags / Shoebags / Pickleball bags / 3-in-1 School bags
+- Plush Toys / Mini Me Pillows / Hoodie Blankets
+- Lanyards / Ballpens / Powerbanks / USBs / Planners
+
+### Fabrics / Materials:
+- Pineapple Mesh, C-Stripes, Square Net, Polydex, Square Knitted, Square Mesh
+- Sports Max (170 GSM), Sports Active (150 GSM), Sports Lite (100 GSM)
+- Honeycomb / Cotton / Spandex / Microcool / Aircool / Dri-fit
+
+### Digital Products:
+- 30,000+ Design Templates (PNG, PSD, AI)
+- Canva Drag & Drop Mockups (600+ templates)
+- Tote Bag Designs
+- Mug Design Bundles
+
+---
+
+## D. CUSTOMER ORDER TRACKING WORKFLOW
+
+### Current Reality (The "Messenger Bounce"):
+```
+1. Customer sends Pinterest/TikTok screenshot via FB Messenger
+       ↓
+2. Owner quotes based on mental price matrix (fabric + complexity + qty)
+       ↓
+3. Customer sends 50% DP via GCash (screenshot as proof)
+       ↓
+4. Owner verifies GCash reference number
+       ↓
+5. Layout artist creates digital mockup → sent via Messenger
+       ↓
+6. Customer must explicitly say "Approved" or send screenshot
+       ↓
+7. Fabric cut in stacks using pattern
+       ↓
+8. Sublimation printer prints panels
+       ↓
+9. Heat press bonds dye to fabric
+       ↓
+10. Cut panels sent to row of sewers (mananahi)
+       ↓
+11. Sewing assembly (slower than printing — bottleneck)
+       ↓
+12. QC check
+       ↓
+13. Photo sent to customer via Messenger ("Order Released Today" post)
+       ↓
+14. Balance payment via GCash before shipping
+       ↓
+15. Shipped via J&T / LBC / Bus Cargo
+```
+
+### Customer Pain Points:
+1. **Layout bottleneck** — Artists take too long, delaying printing
+2. **Fabric shortages** — Running out of color mid-bulk-order
+3. **Sewing bottleneck** — Can print 100 jerseys/day but only sew 30
+4. **Fake GCash screenshots** — Common scam
+5. **Color fading/cracking** — Previous suppliers delivered poor quality
+6. **Sizing issues** — "Siguraduhing tama ang sukat!"
+7. **Incomplete uniforms** — "Kulang-kulang, Hindi komportable"
+8. **No real-time progress** — Customer just waits blindly
+
+---
+
+## E. PROPOSED ORDER TRACKING STAGES (Sublimation-Specific)
+
+| Stage # | Stage Name | What Customer Sees |
+|---|---|---|
+| 1 | **Inquiry Logged** | "We received your jersey request!" |
+| 2 | **Quotation Sent** | Price breakdown with fabric options |
+| 3 | **Downpayment Received** | 50% DP verified, layout will start |
+| 4 | **Layout / Mockup Creation** | Designer working on your jersey design |
+| 5 | **Layout Approval Pending** | Mockup sent — waiting for your "Approved" |
+| 6 | **Layout Approved** | You confirmed the design ✅ |
+| 7 | **Fabric Sourcing / Cutting** | Fabric being cut to your sizes |
+| 8 | **Sublimation Printing** | Dye being bonded to fabric panels |
+| 9 | **Heat Press Complete** | Print bonded, ready for sewing |
+| 10 | **Sewing Assembly** | Mananahi stitching panels together |
+| 11 | **Embroidery / Add-ons** | Names, numbers, logos being applied |
+| 12 | **Quality Check** | Inspecting print quality, stitch integrity |
+| 13 | **Packing** | Item packed with team set |
+| 14 | **Ready for Pickup / Shipped** | Tracking number provided (J&T/LBC) |
+| 15 | **Delivered / Claimed** | Order complete, feedback requested |
+
+---
+
+## F. BULK TEAM ORDER TRACKING (Special Sublimation Feature)
+
+For team orders (e.g., 15-piece basketball jersey set), the customer needs a **Master Size Matrix**:
+
+```
+┌──────────────────────────────────────────────────┐
+│  TEAM ORDER: Barangay United Basketball Jersey   │
+│  Order #: MAX-2026-0157                          │
+│  Total Sets: 15                                  │
+│  Fabric: Sports Max 170GSM (Sky Blue)            │
+│  Cut: NBA Cut with Reversible Option             │
+├──────────────────────────────────────────────────┤
+│  #  │ Player Name     │ Number │ Size │ Status   │
+│  1  │ Juan Dela Cruz  │ 23     │ XL   │ ✅ Done  │
+│  2  │ Pedro Santos    │ 7      │ L    │ ✅ Done  │
+│  3  │ Maria Lopez     │ 10     │ M    │ ⏳ Sewing│
+│  4  │ Jose Garcia     │ 32     │ XL   │ ⬜ Queue │
+│  5  │ Ana Reyes       │ 11     │ S    │ ⬜ Queue │
+│  ... │                 │        │      │          │
+│  15 │ Carlos Tan      │ 45     │ XXL  │ ⬜ Queue │
+├──────────────────────────────────────────────────┤
+│  FREEBIES UNLOCKED:                              │
+│  ✅ Free Layout Design (min 10pcs)               │
+│  ✅ Free Banner (min 15pcs)                      │
+│  ✅ Free Coach Shirt (min 20pcs)                 │
+│  ✅ Free Ball (Molten/Mikasa) — team order       │
+│  ✅ Plus 1 Free Jersey                           │
+├──────────────────────────────────────────────────┤
+│  TEAM PROGRESS: ██████░░░░░░ 50%                 │
+│  Estimated Completion: April 10, 2026            │
+└──────────────────────────────────────────────────┘
+```
+
+---
+
+## G. PAYMENT & PROMO TRACKING
+
+| Payment Scenario | Rule |
+|---|---|
+| Standard Custom Order | 50% DP before layout, 50% before shipping |
+| Digital Asset (Templates) | 100% upfront, Google Drive link auto-sent |
+| Corporate / Government PO | 50% DP upon PO, 50% upon delivery (30-day terms) |
+| Rush Order | 30-50% rush fee added |
+| Suki / Repeat Client | Rush fee waived, free layout, free upgrades |
+
+### Promo Bundle Engine (Auto-Applied):
+- 10pcs → Free Layout Design
+- 15pcs → Free Banner
+- 20pcs → Free Coach/Muse Shirt
+- Team Order → Free Ball + Plus 1 Free Jersey
+- Buy 1 Polo → Get 1 Lanyard at 50% OFF
+
+---
+
+## H. BUSINESS-SPECIFIC TRACKING REQUIREMENTS (Sublimation Shop)
+
+| Requirement | Description |
+|---|---|
+| **Team Builder Matrix** | CSV/Google Sheet upload of Name, Number, Size per player |
+| **Fabric Swatch Catalog** | Visual showcase of Honeycomb, Polydex, Microcool with GSM notes |
+| **Layout Approval Routing** | Customer must digitally approve mockup before printing |
+| **Multi-Department Routing** | Design → Print → Cut → Sew → Embroidery → QC → Pack |
+| **Rush Order Logic** | Checkbox triggers rush fee + priority queue + adjusted ETA |
+| **Capacity Cutoff** | Peak season (Intramurals, Ber months) — auto-block when full |
+| **Shipping Integration** | J&T, LBC, Bus Cargo tracking number field |
+| **Digital Asset Fulfillment** | Auto-send Google Drive link upon payment verification |
+| **BIR Receipt Module** | For corporate clients requiring official receipts |
+| **Piece-Rate Payroll Tracking** | Per-garment payout for mananahi (₱50/jersey sewn) |
+| **Machine Maintenance Log** | Track sublimation printer/heat press downtime |
+
+---
+
+# 👗 BUSINESS 3: FASHION SHOP
+
+## A. BUSINESS OVERVIEW (Synthesized from All Documents)
+
+A **Fashion Shop** is a **hybrid atelier + rental + ready-to-wear boutique** that focuses on **formal wear, bridal, debut gowns, Barong Tagalog, Filipiniana, and event attire**. While not explicitly detailed as a standalone business in the provided documents, the SUTURA capstone document repeatedly references **Filipiniana, Barong Tagalog, formal wear, and corporate attire** as primary garment categories. Combined with the MAX document's references to graduation sashes, bomber jackets, and seasonal wedding/debut demand, we can construct a complete Fashion Shop business model.
+
+### Core Business Model:
+- **Made-to-Order (MTO) Formal Wear** — Bridal gowns, debut gowns, Barong, Filipiniana
+- **Hybrid Rental + Custom** — Rent gowns/barongs for 2-3 days with security deposit
+- **Ready-to-Wear (RTW) Boutique** — Pre-made cocktail dresses, formal barongs
+- **Alterations & Fittings** — Adjustment services for existing formal wear
+- **Event Package Deals** — Wedding entourage, debut court, corporate galas
+
+---
+
+## B. COMPLETE SERVICES OFFERED
+
+### Custom Formal Wear Construction:
+- Bridal gowns (with beading, lace, embroidery)
+- Debut gowns (18th birthday, 21st birthday)
+- Barong Tagalog (Piña, Jusi, Organza, Cotton)
+- Filipiniana dresses and tops
+- Cocktail dresses
+- Evening gowns
+- Graduation dresses
+- Terno and Maria Clara
+- Wedding entourage dresses (maid of honor, bridesmaids, flower girls)
+- Barong for groom, groomsmen, fathers
+- Suit and tuxedo tailoring
+- Graduation sashes (sublimated or embroidered)
+
+### Rental Services:
+- Gown rentals (bridal, debut, evening)
+- Barong rentals
+- Filipiniana rentals
+- Toga rentals and repairs
+- Tuxedo/suit rentals
+- Children's formal wear rentals
+
+### Alterations & Repairs:
+- Gown resizing (letting out/taking in seams)
+- Hemming formal dresses
+- Replacing zippers, buttons, hooks
+- Beadwork repair
+- Lace reattachment
+- Barong restoration
+
+### Styling & Consultation:
+- Wedding styling consultation
+- Color palette coordination for entourage
+- Fabric sourcing assistance
+- Sketch and peg board creation
+
+### Ready-to-Wear:
+- RTW cocktail dresses
+- RTW formal barongs
+- RTW Filipiniana tops
+- RTW graduation sashes
+- Accessory bundles (veils, gloves, shawls)
+
+---
+
+## C. PRODUCTS SOLD
+
+### Made-to-Order Apparel:
+- Bridal gowns (custom beading, cathedral train, veil)
+- Debut gowns (princess cut, mermaid, A-line)
+- Barong Tagalog (Piña-jusi, pure Piña, organza)
+- Filipiniana dresses (modern and traditional)
+- Terno with butterfly sleeves
+- Evening gowns (sequined, velvet, satin)
+- Cocktail dresses
+- Wedding entourage sets (5-10 pcs coordinated)
+- Graduation sashes (sublimated with school logo)
+
+### Rental Inventory:
+- Bridal gowns (various sizes)
+- Debut gowns (various sizes)
+- Barong Tagalog (S-XXL)
+- Filipiniana sets
+- Tuxedos and suits
+- Togas (graduation)
+- Children's formal wear
+
+### Accessories:
+- Veils (cathedral, fingertip, blusher)
+- Gloves (elbow, opera length)
+- Shawls and wraps
+- Corsages
+- Boutonnieres
+- Jewelry sets (earrings, necklace)
+- Shoes (bridal, formal)
+
+### Fabrics / Materials:
+- Piña, Jusi, Organza, Rami
+- Satin, Silk, Taffeta, Chiffon, Velvet
+- Lace, Beading, Sequins
+- lining fabrics, boning, crinoline
+
+---
+
+## D. CUSTOMER ORDER TRACKING WORKFLOW (Fashion Shop Specific)
+
+### Custom Gown / Barong Order Flow:
+```
+1. Customer inquires (FB PM, walk-in, referral)
+       ↓
+2. Consultation appointment scheduled
+       ↓
+3. Customer brings peg photos (Pinterest, Instagram)
+       ↓
+4. Designer sketches gown / barong based on peg
+       ↓
+5. Fabric selection (swatches presented)
+       ↓
+6. Quotation given (fabric + labor + beading + lining)
+       ↓
+7. Reservation fee collected (₱1,000-₱3,000 non-refundable)
+       ↓
+8. 50% Downpayment collected
+       ↓
+9. First fitting scheduled (base fit check)
+       ↓
+10. Pattern making → cutting → initial sewing
+       ↓
+11. FIRST FITTING (customer tries on base gown)
+       ↓
+12. Adjustments pinned on the spot
+       ↓
+13. Beading / embroidery / lace application
+       ↓
+14. SECOND FITTING (final drape check)
+       ↓
+15. Final adjustments
+       ↓
+16. Pressing / steaming
+       ↓
+17. Ready for pickup — balance must be paid
+       ↓
+18. Claimed — photo documentation for shop portfolio
+```
+
+### Rental Flow:
+```
+1. Customer browses rental catalog (online or in-shop)
+       ↓
+2. Fitting appointment scheduled
+       ↓
+3. Customer tries on rental item
+       ↓
+4. Valid ID captured (security requirement)
+       ↓
+5. Rental fee + refundable deposit collected
+       ↓
+6. Rental agreement signed (2-3 day window)
+       ↓
+7. Item released with garment bag
+       ↓
+8. Customer uses item for event
+       ↓
+9. Customer returns item
+       ↓
+10. Return inspection (stains, tears, missing parts)
+       ↓
+11. If damaged: deposit deduction
+       ↓
+12. If clean: full deposit refunded
+       ↓
+13. Item goes to "Needs Cleaning" status
+       ↓
+14. Cleaning / pressing complete → "Ready to Rent" again
+```
+
+---
+
+## E. PROPOSED ORDER TRACKING STAGES (Fashion Shop — Custom)
+
+| Stage # | Stage Name | Customer Notification |
+|---|---|---|
+| 1 | **Consultation Booked** | "Your styling appointment is on March 5, 2PM" |
+| 2 | **Design Sketch Created** | "Your gown sketch is ready for review" |
+| 3 | **Sketch Approved** | Customer confirms design ✅ |
+| 4 | **Fabric Selected** | "Piña-jusi fabric selected for your barong" |
+| 5 | **Reservation Fee Paid** | Slot blocked, production queued |
+| 6 | **Downpayment (50%) Paid** | Production will begin |
+| 7 | **Pattern Making** | Master pattern being created |
+| 8 | **Fabric Cut** | Fabric cut to your measurements |
+| 9 | **Initial Sewing** | Base gown under construction |
+| 10 | **First Fitting Scheduled** | "Please come on March 20 for fitting" |
+| 11 | **First Fitting Completed** | Adjustments noted and pinned |
+| 12 | **Alterations In Progress** | Adjusting based on fitting feedback |
+| 13 | **Beading / Embroidery / Lace** | Handwork being applied |
+| 14 | **Second Fitting Scheduled** | "Final fitting on April 2" |
+| 15 | **Second Fitting Completed** | Final drape confirmed |
+| 16 | **Final Adjustments** | Last-minute tweaks |
+| 17 | **Pressing / Steaming** | Garment being pressed |
+| 18 | **Ready for Pickup** | "Your gown is ready! Please settle balance." |
+| 19 | **Claimed** | Photo taken for portfolio, feedback requested |
+
+### Rental Tracking Stages:
+
+| Stage # | Stage Name | Status Flag |
+|---|---|---|
+| 1 | **Available for Rent** | Green |
+| 2 | **Reserved** | Yellow |
+| 3 | **Rented Out** | Red (with return date) |
+| 4 | **Overdue** | Red Alert (deposit forfeited) |
+| 5 | **Returned — Needs Inspection** | Orange |
+| 6 | **Damaged — Under Repair** | Purple |
+| 7 | **Needs Cleaning / Pressing** | Blue |
+| 8 | **Ready to Rent** | Green (cycle repeats) |
+
+---
+
+## F. CUSTOMER DASHBOARD VIEW (Fashion Shop)
+
+### For Custom Order:
+```
+┌─────────────────────────────────────────────────┐
+│  HI, ISABELLA! YOUR GOWN TRACKER                │
+├─────────────────────────────────────────────────┤
+│  Order #: FS-2026-0089                          │
+│  Shop: Sutura Fashion Atelier                   │
+│  Garment: Debut Gown (Mermaid, Sweetheart)      │
+│  Fabric: Matte Satin + Lace Overlay             │
+│  Event Date: April 25, 2026                     │
+│  Total Cost: ₱18,000.00                         │
+│  DP Paid: ₱9,000.00 ✅                          │
+│  Balance: ₱9,000.00 (due on pickup)             │
+│  Estimated Pickup: April 22, 2026               │
+├─────────────────────────────────────────────────┤
+│  PROGRESS: ████████████░░ 85%                   │
+│                                                 │
+│  ✅ Consultation Booked       — Feb 10          │
+│  ✅ Design Sketch Approved    — Feb 15          │
+│  ✅ Fabric Selected           — Feb 18          │
+│  ✅ DP Paid                   — Feb 18          │
+│  ✅ Pattern Made              — Feb 25          │
+│  ✅ Fabric Cut                — Mar 01          │
+│  ✅ Initial Sewing            — Mar 08          │
+│  ✅ First Fitting             — Mar 20          │
+│  ✅ Alterations Done          — Mar 25          │
+│  ✅ Beading & Lace Applied    — Apr 05          │
+│  ⏳ Second Fitting Scheduled  — Apr 12          │
+│  ⬜ Final Adjustments                           │
+│  ⬜ Pressing / Steaming                         │
+│  ⬜ Ready for Pickup                            │
+├─────────────────────────────────────────────────┤
+│  📩 Next Step: "Please visit the shop on        │
+│     April 12 for your final fitting."           │
+└─────────────────────────────────────────────────┘
+```
+
+### For Rental:
+```
+┌─────────────────────────────────────────────────┐
+│  RENTAL TRACKER — Order #: FS-RENT-0034         │
+├─────────────────────────────────────────────────┤
+│  Item: Burgundy Evening Gown (Size M)           │
+│  Rental Fee: ₱2,500.00 ✅ Paid                  │
+│  Security Deposit: ₱3,000.00 ✅ Held            │
+│  Pickup Date: April 18, 2026                    │
+│  Return Due: April 21, 2026 (3 days)            │
+│  Valid ID: Driver's License ✅ Captured         │
+├─────────────────────────────────────────────────┤
+│  STATUS: 🟡 Rented Out                          │
+│  Days Remaining: 2                              │
+│  ⚠️ Return by April 21 to avoid penalty         │
+├─────────────────────────────────────────────────┤
+│  Upon Return:                                   │
+│  → Inspection (stains, tears, missing parts)    │
+│  → If clean: ₱3,000 deposit refunded            │
+│  → If damaged: deduction applied                │
+└─────────────────────────────────────────────────┘
+```
+
+---
+
+## G. PAYMENT TRACKING FLOW (Fashion Shop)
+
+| Payment Type | Amount | Trigger |
+|---|---|---|
+| **Reservation Fee** | ₱1,000–₱3,000 | To block slot (non-refundable) |
+| **Downpayment** | 50% of total | Before fabric cutting |
+| **Balance** | Remaining 50% | Before pickup (strictly enforced) |
+| **Rental Fee** | 30–50% of retail value | Upon rental release |
+| **Security Deposit** | Refundable | Held until return inspection |
+| **Damage Deduction** | Variable | If item returned stained/torn |
+| **Late Return Penalty** | ₱500/day | If beyond 3-day window |
+
+---
+
+## H. BUSINESS-SPECIFIC TRACKING REQUIREMENTS (Fashion Shop)
+
+| Requirement | Description |
+|---|---|
+| **Two-Fitting System** | First fitting (base fit) + Second fitting (final drape) — both must be tracked |
+| **Rental Lifecycle Module** | Available → Reserved → Rented → Returned → Inspection → Cleaning → Ready |
+| **Valid ID Capture** | Required field before rental release |
+| **Damage Tracking** | Log stains, tears, missing buttons with photo evidence |
+| **Deposit Deduction Logic** | Auto-calculate deduction based on damage severity |
+| **Hygiene/Cleaning Status** | Toggle between "Needs Cleaning" and "Ready to Rent" |
+| **Saved Measurements (Suki)** | Family-based records — mother's gown → daughter's debut 18 years later |
+| **Design Sketch Archive** | Store approved sketches and peg photos per customer |
+| **Fabric Swatch Showcase** | Piña, Jusi, Organza, Satin with texture notes and pricing |
+| **Event Date Tracking** | Critical — gown MUST be ready before wedding/debut date |
+| **Entourage Coordination** | Group orders (bridesmaid sets) tracked as one master order |
+| **Photo Portfolio** | Before/after photos for shop marketing |
+| **Restoration History** | For vintage/heirloom gowns being restored |
+
+---
+
+# 📊 COMPARATIVE SUMMARY: ALL THREE BUSINESSES
+
+| Feature | Tailoring Shop | Sublimation Shop | Fashion Shop |
+|---|---|---|---|
+| **Primary Product** | Uniforms, slacks, lab gowns | Jerseys, polo shirts, mugs | Gowns, barongs, Filipiniana |
+| **Production Method** | Cut-and-sew (manual) | Digital print + heat press + sew | Hand-tailored + beading |
+| **Order Volume** | Medium (1-50 pcs typical) | High (bulk 50-3000 pcs) | Low (1-20 pcs, high value) |
+| **Lead Time** | 7-14 working days | 5-10 working days | 3-8 weeks |
+| **Tracking Complexity** | Medium (linear flow) | High (multi-department) | High (multiple fittings) |
+| **Rental Component** | Minimal (toga) | None | Major (gowns, barongs) |
+| **Fittings Required** | 1 (final) | 0 (size chart based) | 2 (base + final) |
+| **Payment Structure** | 50% DP, 50% balance | 50% DP, 50% before ship | Reservation + 50% DP + 50% balance |
+| **Peak Season** | June (back-to-school) | Summer (Intramurals, Elections) | Nov-Dec (weddings, debuts) |
+| **Customer Tracking Need** | "Sa na ang uniform ko?" | "Naka-print na ba ang jersey?" | "Ready na ba ang gown ko for fitting?" |
+| **Key Pain Point** | Lost job tickets, vague updates | Layout bottleneck, sewing bottleneck | Missed fittings, rental damage |
+
+---
+
+# 🎯 UNIFIED CUSTOMER TRACKING EXPECTATION (All Three Businesses)
+
+Regardless of business type, **every customer wants to answer these 3 questions at any time:**
+
+### 1. **"ANO ANG GINATAHI?" (What is being sewn?)**
+- What garment type?
+- What fabric?
+- What size/measurements?
+- What design/logo/name?
+- How many pieces?
+- What stage is it in RIGHT NOW?
+
+### 2. **"SAAN NA ANG ORDER KO?" (Where is my order now?)**
+- Which production stage?
+- Who is working on it?
+- Is it ahead of schedule or delayed?
+- When is the next milestone?
+- When is the estimated pickup/delivery date?
+
+### 3. **"MAGKANO NA ANG NABAYAD KO AT MAGKANO PA?" (Payment status?)**
+- How much DP paid?
+- How much balance remaining?
+- When is balance due?
+- What payment methods accepted?
+
+---
+
+### FINAL RECOMMENDATION
+
+A **unified tracking system** (like SUTURA) must support **all three business types** with:
+- **Role-based dashboards** (Admin, Shop Owner, Staff, Customer)
+- **Multi-stage production tracking** with real-time SMS/email notifications
+- **Saved measurement repositories** per customer profile
+- **Appointment scheduling** for sukatan and fittings
+- **Payment tracking** with DP/balance logic
+- **Map-based shop discovery** for customers
+- **Rental lifecycle management** (for Fashion Shops)
+- **Bulk team builder matrix** (for Sublimation Shops)
+- **Printable QR-coded job tickets** (for all workshops)
+- **Analytics dashboards** for shop owners and admins
+
+This ensures that whether a customer orders a **school uniform from Sotera**, a **basketball jersey set from MAX**, or a **debut gown from a Fashion Atelier**, they can **always see what's being sewn, where their order is, and when they can claim it** — eliminating the "Sabay-sabay na naman ang claiman" chaos forever. 🎯

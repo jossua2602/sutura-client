@@ -8,14 +8,19 @@ import { AnalyticsData, STATUS_LABELS } from '@/components/reports/reportHelpers
 import ReportKpiCards from '@/components/reports/ReportKpiCards';
 import ReportCharts from '@/components/reports/ReportCharts';
 import ReportFilters from '@/components/reports/ReportFilters';
+import BranchComparisonTable, { BranchPerformance } from '@/components/reports/BranchComparisonTable';
+import OutstandingBalancesList from '@/components/reports/OutstandingBalancesList';
 import { useBranch } from '@/context/BranchContext';
 
 export default function ReportsPage() {
   const { shop, user } = useAuthStore();
-  const { selectedBranchId } = useBranch();
+  const { selectedBranchId, branches } = useBranch();
+  const isShopOwner = user?.roles?.[0]?.name === 'shop_owner';
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('all_time');
+  const [branchComparison, setBranchComparison] = useState<BranchPerformance[]>([]);
+  const [branchComparisonLoading, setBranchComparisonLoading] = useState(false);
 
   const handleExportCSV = () => {
     if (!data) return;
@@ -66,6 +71,29 @@ export default function ReportsPage() {
     globalThis.print();
   };
 
+  const getDateRangeForPeriod = (p: string): { startDate: string; endDate: string } => {
+    const now = new Date();
+    if (p === 'this_month') {
+      return {
+        startDate: new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0],
+        endDate: new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0],
+      };
+    }
+    if (p === 'last_month') {
+      return {
+        startDate: new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0],
+        endDate: new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0],
+      };
+    }
+    if (p === 'ytd') {
+      return {
+        startDate: new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0],
+        endDate: new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0],
+      };
+    }
+    return { startDate: '', endDate: '' };
+  };
+
   useEffect(() => {
     if (!shop?.id) {
       if (user?.id) {
@@ -76,27 +104,13 @@ export default function ReportsPage() {
 
     async function fetchAnalytics() {
       setLoading(true);
-
-      const now = new Date();
-      let startDate = '';
-      let endDate = '';
-
-      if (period === 'this_month') {
-        startDate = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-        endDate = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
-      } else if (period === 'last_month') {
-        startDate = new Date(now.getFullYear(), now.getMonth() - 1, 1).toISOString().split('T')[0];
-        endDate = new Date(now.getFullYear(), now.getMonth(), 0).toISOString().split('T')[0];
-      } else if (period === 'ytd') {
-        startDate = new Date(now.getFullYear(), 0, 1).toISOString().split('T')[0];
-        endDate = new Date(now.getFullYear(), 11, 31).toISOString().split('T')[0];
-      }
+      const { startDate, endDate } = getDateRangeForPeriod(period);
 
       let url = `/shops/${shop?.id}/analytics`;
       const queryParams: string[] = [];
       if (startDate && endDate) queryParams.push(`start_date=${startDate}`, `end_date=${endDate}`);
       if (selectedBranchId !== null) queryParams.push(`branch_id=${selectedBranchId}`);
-      
+
       if (queryParams.length > 0) url += `?${queryParams.join('&')}`;
 
       try {
@@ -111,6 +125,32 @@ export default function ReportsPage() {
 
     fetchAnalytics();
   }, [shop?.id, period, user?.id, selectedBranchId]);
+
+  // Branch performance comparison — owner-only strategic view, only worth
+  // fetching once there's actually more than one branch to compare.
+  useEffect(() => {
+    if (!shop?.id || !isShopOwner || branches.length < 2) return;
+
+    async function fetchBranchComparison() {
+      setBranchComparisonLoading(true);
+      const { startDate, endDate } = getDateRangeForPeriod(period);
+
+      let url = `/shops/${shop?.id}/analytics/branches`;
+      if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
+
+      try {
+        const res = await api.get(url);
+        setBranchComparison(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch branch comparison', err);
+      } finally {
+        setBranchComparisonLoading(false);
+      }
+    }
+
+    fetchBranchComparison();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop?.id, period, isShopOwner, branches.length]);
 
   // ─── Derived chart data ──────────────────────────────────────────────────
 
@@ -209,6 +249,14 @@ export default function ReportsPage() {
             outstandingRate={outstandingRate}
             balancePieData={balancePieData}
           />
+
+          {isShopOwner && branches.length > 1 && (
+            <BranchComparisonTable data={branchComparison} loading={branchComparisonLoading} />
+          )}
+
+          {data?.outstanding_balances && (
+            <OutstandingBalancesList rows={data.outstanding_balances} />
+          )}
         </div>
       </SubscriptionGate>
     </div>

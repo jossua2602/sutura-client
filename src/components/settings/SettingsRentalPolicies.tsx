@@ -11,6 +11,7 @@ export interface ShopSettingsData {
   email: string;
   booking_policy: string;
   booking_questions: string[];
+  max_appointments_per_day: number | null;
   latitude: string;
   longitude: string;
   social_links: { label: string; url: string }[];

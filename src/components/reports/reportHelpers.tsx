@@ -20,6 +20,17 @@ export interface AnalyticsData {
   completion_rate?: number;
   revenue_data?: { month: string; revenue: number }[];
   jobs_by_status?: { status: string; count: number }[];
+  outstanding_balances?: OutstandingBalanceRow[];
+}
+
+export interface OutstandingBalanceRow {
+  id: number;
+  order_number: string;
+  customer: { id: number; name: string; phone?: string | null } | null;
+  total_amount: number;
+  balance: number;
+  due_date: string | null;
+  status: string;
 }
 
 export const STATUS_COLORS: Record<string, string> = {

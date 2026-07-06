@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Link from 'next/link';
-import { User, Calendar, Scissors, Check, X, Loader2 } from 'lucide-react';
+import { User, Calendar, Scissors, Check, X, Loader2, AlertTriangle, Lock } from 'lucide-react';
 import { Job as JobItem, columnsForJobs, getDueStatus, TypeBadge, FulfillmentBadge, CourierTag, ColumnIcon } from './jobHelpers';
 
 interface JobKanbanBoardProps {
@@ -12,6 +12,12 @@ interface JobKanbanBoardProps {
   readonly onReject: (id: number) => void;
 }
 
+const SUKI_TAG_CONFIG: Record<string, { label: string; cls: string }> = {
+  b2b_suki:       { label: '⭐ B2B',     cls: 'bg-amber-50 text-amber-700 border-amber-200' },
+  reseller:       { label: '🏪 Reseller', cls: 'bg-purple-50 text-purple-700 border-purple-200' },
+  walk_in_retail: { label: '🚶 Walk-in',  cls: 'bg-[#F0EAE3] text-[#827A73] border-[#EBE6E0]' },
+};
+
 export default function JobKanbanBoard({
   groupedJobs,
   activeColumns,
@@ -20,6 +26,47 @@ export default function JobKanbanBoard({
   onApprove,
   onReject,
 }: JobKanbanBoardProps) {
+  // DP gate: tracks which job card just triggered the block (shows flash warning)
+  const [dpGateJobId, setDpGateJobId] = useState<number | null>(null);
+  // Balance gate: "No Balance, No Claim" — blocks marking a job Completed/Claimed
+  // while money is still owed, so revenue can't quietly slip through the cracks.
+  const [balanceGateJobId, setBalanceGateJobId] = useState<number | null>(null);
+
+  const handleStatusChange = (job: JobItem, newStatus: string) => {
+    // Derived downpayment = total_amount minus current balance.
+    // If balance === total_amount, nothing has been paid yet.
+    const total = Number.parseFloat(String(job.total_amount ?? '0'));
+    const balance = Number.parseFloat(String(job.balance ?? '0'));
+    const noDownpayment = total > 0 && balance >= total;
+
+    const PRODUCTION_STAGES = new Set(['cutting', 'sewing', 'fitting']);
+    if (PRODUCTION_STAGES.has(newStatus) && noDownpayment) {
+      // Block the move — show flash warning on the card
+      setDpGateJobId(job.id);
+      setTimeout(() => setDpGateJobId(null), 3500);
+      return;
+    }
+
+    if (newStatus === 'completed' && balance > 0) {
+      setBalanceGateJobId(job.id);
+      setTimeout(() => setBalanceGateJobId(null), 3500);
+      return;
+    }
+    onUpdateStatus(job.id, newStatus);
+  };
+
+  const handleApprove = (job: JobItem) => {
+    const total = Number.parseFloat(String(job.total_amount ?? '0'));
+    const balance = Number.parseFloat(String(job.balance ?? '0'));
+    const noDownpayment = total > 0 && balance >= total;
+
+    if (noDownpayment) {
+      setDpGateJobId(job.id);
+      setTimeout(() => setDpGateJobId(null), 3500);
+      return;
+    }
+    onApprove(job.id);
+  };
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 items-start" style={{ minHeight: 'calc(100vh - 340px)' }}>
       {activeColumns.map(col => (
@@ -56,7 +103,7 @@ export default function JobKanbanBoard({
                     </Link>
                     <select
                       value={job.status}
-                      onChange={(e) => onUpdateStatus(job.id, e.target.value)}
+                      onChange={(e) => handleStatusChange(job, e.target.value)}
                       className="text-[10px] bg-[#F0EAE3] text-[#524A44] border border-[#D1C7BD] rounded p-1 opacity-0 group-hover:opacity-100 transition-opacity focus:outline-none cursor-pointer"
                     >
                       {columnsForJobs([job]).map(c => (
@@ -68,7 +115,14 @@ export default function JobKanbanBoard({
 
                   <Link href={`/dashboard/jobs/${job.id}`} className="block space-y-1.5">
                     <div className="flex items-center justify-between gap-2 mb-0.5">
-                      <h4 className="font-semibold text-[#2D2A26] text-sm truncate">{job.customer?.name || 'Walk-in'}</h4>
+                      <div className="min-w-0">
+                        <h4 className="font-semibold text-[#2D2A26] text-sm truncate">{job.customer?.name || 'Walk-in'}</h4>
+                        {job.customer?.suki_tag && SUKI_TAG_CONFIG[job.customer.suki_tag] && (
+                          <span className={`inline-block text-[8px] font-bold px-1.5 py-0.5 rounded border mt-0.5 ${SUKI_TAG_CONFIG[job.customer.suki_tag].cls}`}>
+                            {SUKI_TAG_CONFIG[job.customer.suki_tag].label}
+                          </span>
+                        )}
+                      </div>
                       {(() => {
                         let payBadge = 'bg-[#B26959]/15 text-[#B26959] border-[#B26959]/20';
                         if (job.payment_status === 'paid') payBadge = 'bg-[#7A8B76]/15 text-[#7A8B76] border-[#7A8B76]/20';
@@ -119,6 +173,45 @@ export default function JobKanbanBoard({
                     )}
                   </div>
 
+                  {/* DP Gate Hard Block — flashes when owner tries to skip DP */}
+                  {dpGateJobId === job.id && (
+                    <div className="mt-3 pt-2.5 border-t border-red-100 animate-pulse">
+                      <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2">
+                        <Lock size={12} className="text-red-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-bold text-red-700 uppercase tracking-wide">🔒 No DP — Move Blocked!</p>
+                          <p className="text-[10px] text-red-600 mt-0.5">50% downpayment must be collected before production starts. Log DP first.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Balance Gate Hard Block — flashes when owner tries to complete/claim with money still owed */}
+                  {balanceGateJobId === job.id && (
+                    <div className="mt-3 pt-2.5 border-t border-red-100 animate-pulse">
+                      <div className="flex items-start gap-2 bg-red-50 border border-red-300 rounded-lg px-3 py-2">
+                        <Lock size={12} className="text-red-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-bold text-red-700 uppercase tracking-wide">🔒 Balance Unpaid — Move Blocked!</p>
+                          <p className="text-[10px] text-red-600 mt-0.5">Full balance must be settled before marking as Completed/Claimed. Log payment first.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Passive DP warning — already in cutting but unpaid */}
+                  {job.status === 'cutting' && job.payment_status === 'unpaid' && dpGateJobId !== job.id && (
+                    <div className="mt-3 pt-2.5 border-t border-amber-100">
+                      <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                        <Lock size={12} className="text-amber-600 mt-0.5 shrink-0" />
+                        <div>
+                          <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wide">DP Gate: Collect Now</p>
+                          <p className="text-[10px] text-amber-600 mt-0.5">No downpayment on record. Log DP in the financials tab.</p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {/* Feasibility Review Gate (Pending only) */}
                   {job.status === 'pending' && (
                     <div className="mt-3 pt-2.5 border-t border-amber-100 flex items-center gap-2">
@@ -127,7 +220,7 @@ export default function JobKanbanBoard({
                       ) : (
                         <>
                           <button
-                            onClick={e => { e.preventDefault(); e.stopPropagation(); onApprove(job.id); }}
+                            onClick={e => { e.preventDefault(); e.stopPropagation(); handleApprove(job); }}
                             className="flex-1 flex items-center justify-center gap-1 text-[10px] font-bold py-1.5 rounded-lg bg-[#7A8B76]/15 text-[#7A8B76] border border-[#7A8B76]/25 hover:bg-[#7A8B76]/25 transition-colors"
                           >
                             <Check size={11} /> Approve
