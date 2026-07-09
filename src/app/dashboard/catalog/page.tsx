@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Plus, Image as ImageIcon, Megaphone } from 'lucide-react';
+import { Plus, Image as ImageIcon, Megaphone, Search } from 'lucide-react';
 import Link from 'next/link';
 
 import { CatalogItem, getListingTypeLabel } from '@/components/catalog/catalogHelpers';
@@ -39,6 +39,7 @@ export default function CatalogPage() {
   const [saleError, setSaleError] = useState('');
   const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
 
+  const [searchQuery, setSearchQuery] = useState('');
   const [filterListing, setFilterListing] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
   const [filterColor, setFilterColor] = useState('');
@@ -163,12 +164,13 @@ export default function CatalogPage() {
   const colorOptions = uniq(items.map(i => i.color));
   const sizeOptions = uniq(items.flatMap(i => (Array.isArray(i.sizes) ? i.sizes : [])));
   const filteredItems = items.filter(i =>
+    (!searchQuery || i.name.toLowerCase().includes(searchQuery.trim().toLowerCase())) &&
     (!filterListing || i.listing_type === filterListing) &&
     (!filterCategory || i.garment_type === filterCategory) &&
     (!filterColor || i.color === filterColor) &&
     (!filterSize || (Array.isArray(i.sizes) && i.sizes.includes(filterSize)))
   );
-  const hasActiveFilter = !!(filterListing || filterCategory || filterColor || filterSize);
+  const hasActiveFilter = !!(searchQuery || filterListing || filterCategory || filterColor || filterSize);
   const filterSelectClass = 'px-3 py-2 bg-white border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe';
 
   return (
@@ -216,6 +218,16 @@ export default function CatalogPage() {
       ) : (
         <>
           <div className="flex flex-wrap gap-3 items-center">
+            <div className="relative">
+              <Search size={15} className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A]" />
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                placeholder="Search by item name..."
+                className="pl-9 pr-3 py-2 bg-white border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe w-56"
+              />
+            </div>
             <span className="text-xs font-semibold text-[#827A73] uppercase tracking-wider">Filter</span>
             <select value={filterListing} onChange={e => setFilterListing(e.target.value)} className={filterSelectClass}>
               <option value="">All Types</option>
@@ -235,7 +247,7 @@ export default function CatalogPage() {
             </select>
             {hasActiveFilter && (
               <button
-                onClick={() => { setFilterListing(''); setFilterCategory(''); setFilterColor(''); setFilterSize(''); }}
+                onClick={() => { setSearchQuery(''); setFilterListing(''); setFilterCategory(''); setFilterColor(''); setFilterSize(''); }}
                 className="text-xs font-semibold text-[#B26959] hover:underline"
               >
                 Clear filters

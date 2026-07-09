@@ -87,10 +87,16 @@ function MeasurementsContent() {
     };
     try {
       if (editingId) {
+        // Saving an edit no longer overwrites the record in place — the
+        // backend closes out the current version and returns a brand-new
+        // one, so it has to be added alongside the old row (not replace it),
+        // or the version history this page already knows how to display
+        // would never actually accumulate.
         const res = await api.put(`/shops/${shop.id}/measurements/${editingId}`, payload);
-        setRecords(prev =>
-          prev.map(r => r.id === editingId ? { ...r, ...res.data.data } : r)
-        );
+        setRecords(prev => [
+          res.data.data,
+          ...prev.map(r => (r.id === editingId ? { ...r, superseded_at: new Date().toISOString() } : r)),
+        ]);
       } else {
         const res = await api.post(`/shops/${shop.id}/measurements`, payload);
         setRecords(prev => [res.data.data, ...prev]);

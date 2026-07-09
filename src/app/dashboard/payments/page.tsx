@@ -27,6 +27,9 @@ const getOrderStatusBadgeClass = (status: string): string => {
   return 'bg-[#F0EAE3] text-[#827A73] border-[#EBE6E0]';
 };
 
+const humanizeStatus = (status: string): string =>
+  status.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+
 export default function PaymentQueuePage() {
   const {
     activeTab,
@@ -287,39 +290,47 @@ export default function PaymentQueuePage() {
 
     return (
       <div className="divide-y divide-[#EBE6E0]">
-        <div className="grid grid-cols-12 px-5 py-2.5 text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider bg-[#FAF6F3]">
-          <div className="col-span-4">Item</div>
-          <div className="col-span-3">Customer</div>
+        <div className="grid grid-cols-12 gap-x-3 px-5 py-2.5 text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider bg-[#FAF6F3]">
+          <div className="col-span-3">Item</div>
+          <div className="col-span-2">Customer</div>
           <div className="col-span-2 text-right">Amount</div>
-          <div className="col-span-2">Payment</div>
-          <div className="col-span-1">Status</div>
+          <div className="col-span-2">Payment Status</div>
+          <div className="col-span-2">Order Status</div>
+          <div className="col-span-1" />
         </div>
         {catalogOrders.map(ord => (
-          <div key={ord.id} className="grid grid-cols-12 px-5 py-3.5 items-center hover:bg-[#FAF6F3] transition-colors">
-            <div className="col-span-4">
+          <Link
+            key={ord.id}
+            href={`/dashboard/orders?order=${ord.id}`}
+            className="grid grid-cols-12 gap-x-3 px-5 py-3.5 items-center hover:bg-[#FAF6F3] transition-colors group"
+          >
+            <div className="col-span-3">
               <p className="text-sm font-semibold text-[#2D2A26] truncate">{ord.catalog_item?.name || 'Catalog Item'}</p>
               <p className="text-[10px] text-[#A8A19A]">{new Date(ord.created_at).toLocaleDateString('en-PH')}</p>
             </div>
-            <div className="col-span-3">
-              <p className="text-sm text-[#2D2A26]">{ord.customer?.name || <span className="italic text-[#A8A19A]">Guest</span>}</p>
+            <div className="col-span-2">
+              <p className="text-sm text-[#2D2A26] truncate">{ord.customer?.name || <span className="italic text-[#A8A19A]">Guest</span>}</p>
             </div>
             <div className="col-span-2 text-right">
               <p className="text-sm font-bold text-[#2D2A26]">₱{Number(ord.total_amount).toFixed(2)}</p>
             </div>
             <div className="col-span-2">
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1.5">
                 {METHOD_ICON[ord.payment_method] ?? <CreditCard size={13} />}
-                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${getPaymentStatusBadgeClass(ord.payment_status)}`}>
-                  {ord.payment_status}
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${getPaymentStatusBadgeClass(ord.payment_status)}`}>
+                  {humanizeStatus(ord.payment_status)}
                 </span>
               </div>
             </div>
-            <div className="col-span-1">
-              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${getOrderStatusBadgeClass(ord.status)}`}>
-                {ord.status}
+            <div className="col-span-2">
+              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border whitespace-nowrap ${getOrderStatusBadgeClass(ord.status)}`}>
+                {humanizeStatus(ord.status)}
               </span>
             </div>
-          </div>
+            <div className="col-span-1 flex justify-end">
+              <ExternalLink size={14} className="text-[#C5BDBA] group-hover:text-taupe transition-colors" />
+            </div>
+          </Link>
         ))}
       </div>
     );
@@ -373,7 +384,17 @@ export default function PaymentQueuePage() {
             {renderJobBalancesTab()}
           </div>
         )}
-        {activeTab === 'catalog_orders' && renderCatalogOrdersTab()}
+        {activeTab === 'catalog_orders' && (
+          <div>
+            <div className="px-5 py-3 border-b border-[#EBE6E0] bg-[#FAF6F3] text-xs text-[#827A73]">
+              Payment status only. To mark an order ready, cancel it, or manage fulfillment, go to{' '}
+              <Link href="/dashboard/orders" className="font-semibold text-taupe hover:underline">
+                Ready-to-Wear Orders
+              </Link>.
+            </div>
+            {renderCatalogOrdersTab()}
+          </div>
+        )}
       </div>
 
       {/* ── Log Payment Modal ──────────────────────────────────────────────── */}

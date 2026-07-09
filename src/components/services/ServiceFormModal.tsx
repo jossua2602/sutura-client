@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Modal from '@/components/Modal';
 import { Loader2, X, Upload, Image as ImageIcon, Plus } from 'lucide-react';
-import { Service, SERVICE_CATEGORIES, SERVICE_TYPES, SERVICE_TYPE_META, ServiceType, PricingTierInput, deriveTiersFromService, SizeChartRow } from './serviceHelpers';
+import { Service, SERVICE_CATEGORIES, SERVICE_TYPES, SERVICE_TYPE_META, ServiceType, PricingTierInput, deriveTiersFromService } from './serviceHelpers';
+import SizeChartEditor, { SizeChartValue, emptySizeChart } from '@/components/shared/SizeChartEditor';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 
@@ -42,19 +43,7 @@ export default function ServiceFormModal({
   const [tierLabelInput, setTierLabelInput] = useState('');
   const [tierAmountInput, setTierAmountInput] = useState('');
 
-  const [showSizeChartBuilder, setShowSizeChartBuilder] = useState(false);
-  const [sizeChartImageUrl, setSizeChartImageUrl] = useState<string | null>(null);
-  const [uploadingSizeChart, setUploadingSizeChart] = useState(false);
-  const [sizeChartColumns, setSizeChartColumns] = useState<string[]>([]);
-  const [sizeChartRows, setSizeChartRows] = useState<SizeChartRow[]>([]);
-  const [newColumnInput, setNewColumnInput] = useState('');
-  const [newRowSizeInput, setNewRowSizeInput] = useState('');
-  const [addingColumn, setAddingColumn] = useState(false);
-  const [addingRow, setAddingRow] = useState(false);
-  const [editingColumnIndex, setEditingColumnIndex] = useState<number | null>(null);
-  const [renameColumnValue, setRenameColumnValue] = useState('');
-  const [editingRowKey, setEditingRowKey] = useState<string | null>(null);
-  const [renameRowValue, setRenameRowValue] = useState('');
+  const [sizeChart, setSizeChart] = useState<SizeChartValue>(emptySizeChart);
 
   const { shop } = useAuthStore();
 
@@ -88,14 +77,11 @@ export default function ServiceFormModal({
         setTiers(deriveTiersFromService(editingService));
         setIsActive(editingService.is_active !== false);
         setImageUrl(editingService.image_url || null);
-        setSizeChartImageUrl(editingService.size_chart_image_url || null);
-        setSizeChartColumns(editingService.size_chart_columns || []);
-        setSizeChartRows(editingService.size_chart_rows || []);
-        setShowSizeChartBuilder(!!(editingService.size_chart_image_url || (editingService.size_chart_columns && editingService.size_chart_columns.length > 0)));
-        setAddingColumn(false);
-        setAddingRow(false);
-        setEditingColumnIndex(null);
-        setEditingRowKey(null);
+        setSizeChart({
+          image_url: editingService.size_chart_image_url || null,
+          columns: editingService.size_chart_columns || [],
+          rows: editingService.size_chart_rows || [],
+        });
       });
     } else {
       Promise.resolve().then(() => {
@@ -111,16 +97,7 @@ export default function ServiceFormModal({
         setTierAmountInput('');
         setIsActive(true);
         setImageUrl(null);
-        setSizeChartImageUrl(null);
-        setSizeChartColumns([]);
-        setSizeChartRows([]);
-        setNewColumnInput('');
-        setNewRowSizeInput('');
-        setShowSizeChartBuilder(false);
-        setAddingColumn(false);
-        setAddingRow(false);
-        setEditingColumnIndex(null);
-        setEditingRowKey(null);
+        setSizeChart(emptySizeChart);
       });
     }
   }, [editingService, editingId, isOpen]);
@@ -141,94 +118,6 @@ export default function ServiceFormModal({
     } finally {
       setUploadingImage(false);
     }
-  };
-
-  const handleSizeChartImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (!e.target.files?.[0] || !shop) return;
-    const file = e.target.files[0];
-    const fd = new FormData();
-    fd.append('file', file);
-    setUploadingSizeChart(true);
-    try {
-      const res = await api.post(`/shops/${shop.id}/upload`, fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      setSizeChartImageUrl(res.data.data?.url || res.data.url || null);
-    } catch {
-      // silently fail
-    } finally {
-      setUploadingSizeChart(false);
-    }
-  };
-
-  const addSizeChartColumn = () => {
-    const label = newColumnInput.trim();
-    if (!label || sizeChartColumns.includes(label)) return;
-    setSizeChartColumns(prev => [...prev, label]);
-    setSizeChartRows(prev => prev.map(r => ({ ...r, values: [...r.values, ''] })));
-    setNewColumnInput('');
-  };
-
-  const removeSizeChartColumn = (index: number) => {
-    setSizeChartColumns(prev => prev.filter((_, i) => i !== index));
-    setSizeChartRows(prev => prev.map(r => ({ ...r, values: r.values.filter((_, i) => i !== index) })));
-  };
-
-  const startRenameColumn = (index: number, currentName: string) => {
-    setEditingColumnIndex(index);
-    setRenameColumnValue(currentName);
-  };
-
-  const commitRenameColumn = () => {
-    const newName = renameColumnValue.trim();
-    const index = editingColumnIndex;
-    setEditingColumnIndex(null);
-    if (index === null || !newName) return;
-    // Renaming to a name that collides with another column would silently merge
-    // two distinct measurements — cancel instead of guessing which one to keep.
-    if (sizeChartColumns.some((c, i) => i !== index && c === newName)) return;
-    setSizeChartColumns(prev => prev.map((c, i) => (i === index ? newName : c)));
-  };
-
-  const addSizeChartRow = () => {
-    const size = newRowSizeInput.trim();
-    if (!size || sizeChartRows.some(r => r.size === size)) return;
-    setSizeChartRows(prev => [...prev, { size, values: sizeChartColumns.map(() => '') }]);
-    setNewRowSizeInput('');
-  };
-
-  const removeSizeChartRow = (size: string) => {
-    setSizeChartRows(prev => prev.filter(r => r.size !== size));
-  };
-
-  const startRenameRow = (size: string) => {
-    setEditingRowKey(size);
-    setRenameRowValue(size);
-  };
-
-  const commitRenameRow = () => {
-    const newName = renameRowValue.trim();
-    const originalKey = editingRowKey;
-    setEditingRowKey(null);
-    if (originalKey === null || !newName) return;
-    // Same collision guard as columns — don't silently merge two size rows.
-    if (newName !== originalKey && sizeChartRows.some(r => r.size === newName)) return;
-    setSizeChartRows(prev => prev.map(r => (r.size === originalKey ? { ...r, size: newName } : r)));
-  };
-
-  const resetSizeChartTable = () => {
-    setSizeChartColumns([]);
-    setSizeChartRows([]);
-    setNewColumnInput('');
-    setNewRowSizeInput('');
-    setAddingColumn(false);
-    setAddingRow(false);
-    setEditingColumnIndex(null);
-    setEditingRowKey(null);
-  };
-
-  const updateSizeChartCell = (rowIndex: number, colIndex: number, value: string) => {
-    setSizeChartRows(prev => prev.map((r, i) => (i === rowIndex ? { ...r, values: r.values.map((v, j) => (j === colIndex ? value : v)) } : r)));
   };
 
   const addTier = () => {
@@ -265,9 +154,9 @@ export default function ServiceFormModal({
       })),
       is_active: isActive,
       image_url: imageUrl,
-      size_chart_image_url: sizeChartImageUrl,
-      size_chart_columns: sizeChartColumns.length > 0 ? sizeChartColumns : null,
-      size_chart_rows: sizeChartRows.length > 0 ? sizeChartRows : null,
+      size_chart_image_url: sizeChart.image_url,
+      size_chart_columns: sizeChart.columns.length > 0 ? sizeChart.columns : null,
+      size_chart_rows: sizeChart.rows.length > 0 ? sizeChart.rows : null,
       base_price: basePrice.trim() === '' ? null : Number.parseFloat(basePrice),
       estimated_days: estimatedDays.trim() === '' ? null : Number.parseInt(estimatedDays, 10),
       min_order_qty: minOrderQty.trim() === '' ? 1 : Number.parseInt(minOrderQty, 10),
@@ -561,222 +450,7 @@ export default function ServiceFormModal({
           </div>
         </div>
 
-        <div className="space-y-3 pt-2 border-t border-[#EBE6E0]">
-          <div className="flex items-center justify-between gap-3">
-            <div>
-              <p className={sectionHeadingClass}>Size Chart <span className="text-[#A8A19A] normal-case font-normal">(optional)</span></p>
-              <p className="text-xs text-[#A8A19A] mt-1">
-                Show customers exactly how you measure for this service — upload your own reference chart image and/or build a size &amp; measurement table.
-              </p>
-            </div>
-            <button
-              type="button"
-              onClick={() => setShowSizeChartBuilder(prev => !prev)}
-              className="shrink-0 px-3 py-1.5 rounded-lg bg-taupe/10 text-taupe text-xs font-semibold hover:bg-taupe/20 transition-colors focus:outline-none"
-            >
-              {showSizeChartBuilder ? 'Hide' : '+ Add Size Chart'}
-            </button>
-          </div>
-
-          {showSizeChartBuilder && (
-          <div className="space-y-5">
-            <div className="max-w-xs">
-              <label className={labelClass}>Reference Chart Image</label>
-              <div className="mt-1 flex justify-center px-6 pt-5 pb-6 border-2 border-[#EBE6E0] border-dashed rounded-xl relative overflow-hidden group bg-[#FAF6F3]/50">
-                <div className="space-y-1 text-center relative z-10">
-                  {uploadingSizeChart ? (
-                    <Loader2 className="mx-auto h-8 w-8 text-[#A8A19A] animate-spin" />
-                  ) : sizeChartImageUrl ? (
-                    <div className="flex flex-col items-center">
-                      <ImageIcon className="mx-auto h-8 w-8 text-[#7A8B76] mb-2" />
-                      <span className="text-sm text-[#7A8B76] font-medium">Image uploaded</span>
-                      <button type="button" onClick={() => setSizeChartImageUrl(null)} className="mt-2 text-xs text-[#B26959] hover:text-[#91544A] font-medium focus:outline-none">Remove image</button>
-                    </div>
-                  ) : (
-                    <>
-                      <Upload className="mx-auto h-8 w-8 text-[#A8A19A]" />
-                      <div className="flex text-sm text-[#827A73] justify-center">
-                        <label htmlFor="size-chart-image" className="relative cursor-pointer bg-transparent rounded-md font-medium text-taupe hover:underline focus-within:outline-none">
-                          <span>Upload a file</span>
-                          <input id="size-chart-image" name="size-chart-image" type="file" className="sr-only" accept="image/*" onChange={handleSizeChartImageUpload} disabled={uploadingSizeChart} />
-                        </label>
-                      </div>
-                      <p className="text-xs text-[#A8A19A]">PNG, JPG up to 2MB</p>
-                    </>
-                  )}
-                </div>
-                {sizeChartImageUrl && (
-                  <img src={sizeChartImageUrl} alt="Preview" className="absolute inset-0 w-full h-full object-cover opacity-20 group-hover:opacity-10 transition-opacity" />
-                )}
-              </div>
-            </div>
-
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <label className={labelClass}>Measurement Table</label>
-                {(sizeChartColumns.length > 0 || sizeChartRows.length > 0) && (
-                  <button type="button" onClick={resetSizeChartTable} className="text-[11px] font-semibold text-[#B26959] hover:underline focus:outline-none">
-                    Clear table
-                  </button>
-                )}
-              </div>
-              <p className="text-[11px] text-[#A8A19A] mb-2">
-                Click the <strong>+</strong> at the top-right to add a measurement column (e.g. &quot;Chest (in)&quot;), or at the bottom to add a size row (e.g. &quot;Medium&quot;). Click the <strong>×</strong> next to a row or column name to remove it.
-              </p>
-
-              <div className="overflow-x-auto border border-[#EBE6E0] rounded-lg">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-[#FAF6F3]">
-                      <th className="px-2 py-1.5 text-left font-semibold text-[#827A73]">Size</th>
-                      {sizeChartColumns.map((col, ci) => (
-                        <th key={col} className="px-2 py-1.5 text-left font-semibold text-[#827A73]">
-                          {editingColumnIndex === ci ? (
-                            <input
-                              autoFocus
-                              type="text"
-                              value={renameColumnValue}
-                              onChange={(e) => setRenameColumnValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') { e.preventDefault(); commitRenameColumn(); }
-                                if (e.key === 'Escape') { setEditingColumnIndex(null); }
-                              }}
-                              onBlur={commitRenameColumn}
-                              className="w-20 px-1 py-0.5 bg-white border border-taupe rounded text-xs focus:outline-none"
-                            />
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <span
-                                className="truncate cursor-text"
-                                onDoubleClick={() => startRenameColumn(ci, col)}
-                                title="Double-click to rename"
-                              >
-                                {col}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => removeSizeChartColumn(ci)}
-                                title={`Remove ${col} column`}
-                                className="shrink-0 text-[#A8A19A] hover:text-[#B26959] focus:outline-none"
-                              >
-                                <X size={10} />
-                              </button>
-                            </div>
-                          )}
-                        </th>
-                      ))}
-                      <th className="px-2 py-1.5 w-10">
-                        {addingColumn ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={newColumnInput}
-                            onChange={(e) => setNewColumnInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') { e.preventDefault(); addSizeChartColumn(); }
-                              if (e.key === 'Escape') { setNewColumnInput(''); setAddingColumn(false); }
-                            }}
-                            onBlur={() => { if (!newColumnInput.trim()) setAddingColumn(false); }}
-                            placeholder="Chest (in)"
-                            className="w-24 px-1.5 py-1 bg-white border border-taupe rounded text-xs focus:outline-none"
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setAddingColumn(true)}
-                            title="Add column"
-                            className="w-6 h-6 flex items-center justify-center rounded bg-taupe/10 text-taupe hover:bg-taupe/20 transition-colors focus:outline-none"
-                          >
-                            <Plus size={12} />
-                          </button>
-                        )}
-                      </th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {sizeChartRows.map((row, ri) => (
-                      <tr key={row.size} className="border-t border-[#EBE6E0]">
-                        <td className="px-2 py-1 font-semibold text-[#2D2A26] whitespace-nowrap">
-                          {editingRowKey === row.size ? (
-                            <input
-                              autoFocus
-                              type="text"
-                              value={renameRowValue}
-                              onChange={(e) => setRenameRowValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') { e.preventDefault(); commitRenameRow(); }
-                                if (e.key === 'Escape') { setEditingRowKey(null); }
-                              }}
-                              onBlur={commitRenameRow}
-                              className="w-20 px-1 py-0.5 bg-white border border-taupe rounded text-xs focus:outline-none"
-                            />
-                          ) : (
-                            <div className="flex items-center gap-1">
-                              <span
-                                className="truncate cursor-text"
-                                onDoubleClick={() => startRenameRow(row.size)}
-                                title="Double-click to rename"
-                              >
-                                {row.size}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={() => removeSizeChartRow(row.size)}
-                                title={`Remove ${row.size} row`}
-                                className="shrink-0 text-[#A8A19A] hover:text-[#B26959] focus:outline-none"
-                              >
-                                <X size={10} />
-                              </button>
-                            </div>
-                          )}
-                        </td>
-                        {row.values.map((val, ci) => (
-                          <td key={`${row.size}-${ci}`} className="px-2 py-1">
-                            <input
-                              type="text"
-                              value={val}
-                              onChange={(e) => updateSizeChartCell(ri, ci, e.target.value)}
-                              className="w-16 px-1 py-0.5 bg-white border border-[#EBE6E0] rounded text-xs focus:outline-none focus:border-taupe"
-                            />
-                          </td>
-                        ))}
-                        <td></td>
-                      </tr>
-                    ))}
-                    <tr className="border-t border-[#EBE6E0]">
-                      <td className="px-2 py-1.5" colSpan={sizeChartColumns.length + 2}>
-                        {addingRow ? (
-                          <input
-                            autoFocus
-                            type="text"
-                            value={newRowSizeInput}
-                            onChange={(e) => setNewRowSizeInput(e.target.value)}
-                            onKeyDown={(e) => {
-                              if (e.key === 'Enter') { e.preventDefault(); addSizeChartRow(); }
-                              if (e.key === 'Escape') { setNewRowSizeInput(''); setAddingRow(false); }
-                            }}
-                            onBlur={() => { if (!newRowSizeInput.trim()) setAddingRow(false); }}
-                            placeholder="Medium"
-                            className="w-24 px-1.5 py-1 bg-white border border-taupe rounded text-xs focus:outline-none"
-                          />
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setAddingRow(true)}
-                            className="flex items-center gap-1 text-taupe text-xs font-semibold hover:underline focus:outline-none"
-                          >
-                            <Plus size={12} /> Add size row
-                          </button>
-                        )}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-          )}
-        </div>
+        <SizeChartEditor key={editingId ?? 'new'} mode="table" value={sizeChart} onChange={setSizeChart} shopId={shop?.id ?? 0} />
 
         <div className="flex justify-end gap-3 pt-4 border-t border-[#EBE6E0]">
           <button type="button" onClick={onClose} disabled={isSubmitting} className="px-4 py-2 text-sm font-medium text-[#524A44] hover:bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg transition-colors focus:outline-none">

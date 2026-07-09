@@ -3,7 +3,17 @@
 import React from 'react';
 import { ChevronDown, ChevronUp, Copy, Pencil, Trash2, StickyNote, RefreshCw } from 'lucide-react';
 import { MeasurementRecord } from './measurementTypes';
-import { UPPER, LOWER, MetricPill, CustomerInitial } from './measurementHelpers';
+import { METRIC_FIELDS, MetricPill, CustomerInitial } from './measurementHelpers';
+
+// Custom fields are stored verbatim (e.g. "Sleeve to Wrist"), but legacy
+// profiles still use short-code keys (e.g. "sleeve_length") from before
+// fields were freely nameable — look those up for a nicer label, otherwise
+// just title-case whatever key is actually there.
+function humanizeMetricKey(key: string): string {
+  const known = METRIC_FIELDS.find(f => f.key === key);
+  if (known) return known.label;
+  return key.replaceAll('_', ' ').replace(/\b\w/g, c => c.toUpperCase());
+}
 
 interface MeasurementListProps {
   readonly grouped: Record<string, MeasurementRecord[]>;
@@ -129,13 +139,15 @@ export default function MeasurementList({
                         >
                           <Copy size={15} />
                         </button>
-                        <button
-                          onClick={() => openEdit(activeRec)}
-                          className="p-1.5 text-[#A8A19A] hover:text-[#2D2A26] hover:bg-[#F0EAE3] rounded-lg transition-colors cursor-pointer"
-                          title="Edit"
-                        >
-                          <Pencil size={15} />
-                        </button>
+                        {activeIndex === versions.length - 1 && (
+                          <button
+                            onClick={() => openEdit(activeRec)}
+                            className="p-1.5 text-[#A8A19A] hover:text-[#2D2A26] hover:bg-[#F0EAE3] rounded-lg transition-colors cursor-pointer"
+                            title="Edit"
+                          >
+                            <Pencil size={15} />
+                          </button>
+                        )}
                         <button
                           onClick={() => openDelete(activeRec.id)}
                           className="p-1.5 text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 rounded-lg transition-colors cursor-pointer"
@@ -149,30 +161,17 @@ export default function MeasurementList({
                     {/* Expanded Metrics */}
                     {isExpanded && (
                       <div className="px-5 pb-4 pt-1 bg-[#FAF6F3]/40 border-t border-[#EBE6E0]/50 animate-fade-in">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-3">
-                          {/* Upper Body */}
-                          <div>
-                            <p className="text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider mb-2">Upper Body</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {UPPER.map(f => (
-                                <MetricPill key={f.key} label={f.label} value={activeRec.metrics?.[f.key]} />
+                        <div className="mt-3">
+                          <p className="text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider mb-2">Measurements</p>
+                          <div className="flex flex-wrap gap-1.5">
+                            {Object.entries(activeRec.metrics || {})
+                              .filter(([, v]) => v)
+                              .map(([key, value]) => (
+                                <MetricPill key={key} label={humanizeMetricKey(key)} value={value} />
                               ))}
-                              {!UPPER.some(f => activeRec.metrics?.[f.key]) && (
-                                <p className="text-xs text-[#A8A19A] italic">No upper body measurements recorded.</p>
-                              )}
-                            </div>
-                          </div>
-                          {/* Lower Body */}
-                          <div>
-                            <p className="text-[10px] font-semibold text-[#A8A19A] uppercase tracking-wider mb-2">Lower Body</p>
-                            <div className="flex flex-wrap gap-1.5">
-                              {LOWER.map(f => (
-                                <MetricPill key={f.key} label={f.label} value={activeRec.metrics?.[f.key]} />
-                              ))}
-                              {!LOWER.some(f => activeRec.metrics?.[f.key]) && (
-                                <p className="text-xs text-[#A8A19A] italic">No lower body measurements recorded.</p>
-                              )}
-                            </div>
+                            {Object.values(activeRec.metrics || {}).every(v => !v) && (
+                              <p className="text-xs text-[#A8A19A] italic">No measurements recorded.</p>
+                            )}
                           </div>
                         </div>
                         {activeRec.notes && (

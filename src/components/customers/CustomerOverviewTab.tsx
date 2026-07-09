@@ -103,7 +103,7 @@ export default function CustomerOverviewTab({
           <div className="flex justify-between items-center">
             <div>
               <h2 className="text-base font-bold text-[#2D2A26]">Body Measurements</h2>
-              <p className="text-[10px] text-[#A8A19A] mt-0.5">All sizes in cm</p>
+              <p className="text-[10px] text-[#A8A19A] mt-0.5">All values in inches (″)</p>
             </div>
             <button
               onClick={() => setActiveTab('measurements')}
@@ -144,7 +144,7 @@ export default function CustomerOverviewTab({
                       {entries.slice(0, 8).map(([k, v]) => (
                         <div key={k} className="bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-2.5 py-2 text-center">
                           <p className="text-[9px] text-[#A8A19A] font-bold uppercase">{KNOWN_LABELS[k] ?? k.replace(/_/g, ' ')}</p>
-                          <p className="text-sm font-bold text-[#2D2A26] mt-0.5">{String(v)}<span className="text-[9px] font-normal text-[#A8A19A] ml-0.5">cm</span></p>
+                          <p className="text-sm font-bold text-[#2D2A26] mt-0.5">{String(v)}<span className="text-[9px] font-normal text-[#A8A19A] ml-0.5">″</span></p>
                         </div>
                       ))}
                     </div>

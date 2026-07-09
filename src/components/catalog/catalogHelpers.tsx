@@ -1,6 +1,7 @@
 import React from 'react';
 import api from '@/lib/axios';
 import { BulletItem, ImageItem, CatalogFormData, CatalogItemResponse } from './catalogTypes';
+import type { SizeChartValue } from '@/components/shared/SizeChartEditor';
 export { getActiveSale } from '@/lib/salePricing';
 
 export interface CatalogItem {
@@ -25,7 +26,9 @@ export interface CatalogItem {
   reviews_avg_rating: number | null;
   reviews_count: number;
   features?: unknown;
-  fit_guide?: unknown;
+  size_chart_image_url?: string | null;
+  size_chart_columns?: string[] | null;
+  size_chart_rows?: { size: string; values: string[] }[] | null;
   care_instructions?: unknown;
   external_gallery_url?: string;
   total_revenue?: number;
@@ -116,38 +119,6 @@ export function parseFeatures(featuresInput?: unknown): { bullets: BulletItem[];
   return { bullets, imageUrl };
 }
 
-export function parseFitGuide(fitGuideInput?: unknown): { bullets: BulletItem[]; imageUrl: string } {
-  let bullets: BulletItem[] = [{ id: 'init', text: '' }];
-  let imageUrl = '';
-  if (!fitGuideInput) return { bullets, imageUrl };
-
-  let parsed: unknown = fitGuideInput;
-  if (typeof fitGuideInput === 'string') {
-    const trimmed = fitGuideInput.trim();
-    if (trimmed.startsWith('{') || trimmed.startsWith('[')) {
-      try {
-        parsed = JSON.parse(fitGuideInput);
-      } catch (e) {
-        console.error('Failed to parse fit guide JSON string', e);
-      }
-    } else {
-      return { bullets: [{ id: 'fit-0', text: fitGuideInput }], imageUrl };
-    }
-  }
-
-  if (parsed && typeof parsed === 'object') {
-    const parsedObj = parsed as Record<string, unknown>;
-    if ('bullets' in parsedObj) {
-      const bulletsArr = Array.isArray(parsedObj.bullets) ? parsedObj.bullets : [''];
-      bullets = bulletsArr.map((b: unknown, i: number) => ({ id: `fit-${i}`, text: String(b) }));
-      imageUrl = typeof parsedObj.image_url === 'string' ? parsedObj.image_url : '';
-    } else if (Array.isArray(parsedObj)) {
-      bullets = parsedObj.map((b: unknown, i: number) => ({ id: `fit-${i}`, text: String(b) }));
-    }
-  }
-  return { bullets, imageUrl };
-}
-
 export function parseCareInstructions(careInstructionsInput?: unknown): { text: string; imageUrl: string } {
   let text = '';
   let imageUrl = '';
@@ -183,7 +154,6 @@ export function parseCareInstructions(careInstructionsInput?: unknown): { text: 
 
 export function mapCatalogItemToState(item: CatalogItemResponse) {
   const { bullets: parsedFeatures, imageUrl: featuresImgUrl } = parseFeatures(item.features);
-  const { bullets: parsedFitGuide, imageUrl: fitGuideImgUrl } = parseFitGuide(item.fit_guide);
   const { text: careText, imageUrl: careImgUrl } = parseCareInstructions(item.care_instructions);
 
   const form = {
@@ -213,8 +183,11 @@ export function mapCatalogItemToState(item: CatalogItemResponse) {
   return {
     features: parsedFeatures,
     featuresImage: featuresImgUrl,
-    fitGuide: parsedFitGuide,
-    fitGuideImage: fitGuideImgUrl,
+    sizeChart: {
+      image_url: item.size_chart_image_url ?? null,
+      columns: item.size_chart_columns ?? [],
+      rows: item.size_chart_rows ?? [],
+    },
     careImage: careImgUrl,
     formData: form,
     images: imgs.length > 0 ? imgs : [{ id: 'init', url: '', angle: 'Default', is_primary: true }],
@@ -227,15 +200,13 @@ export async function uploadSectionImage({
   section,
   setUploadingSection,
   setFeaturesImage,
-  setFitGuideImage,
   setCareImage,
 }: {
   file: File;
   shopId: number;
-  section: 'specs' | 'fit' | 'care';
-  setUploadingSection: (sec: 'specs' | 'fit' | 'care' | null) => void;
+  section: 'specs' | 'care';
+  setUploadingSection: (sec: 'specs' | 'care' | null) => void;
   setFeaturesImage: (url: string) => void;
-  setFitGuideImage: (url: string) => void;
   setCareImage: (url: string) => void;
 }) {
   setUploadingSection(section);
@@ -247,7 +218,6 @@ export async function uploadSectionImage({
     });
     const url = res.data.data.url;
     if (section === 'specs') setFeaturesImage(url);
-    else if (section === 'fit') setFitGuideImage(url);
     else if (section === 'care') setCareImage(url);
   } catch (err) {
     console.error(`${section} image upload failed`, err);
@@ -298,13 +268,11 @@ export function buildSavePayload(
   formData: CatalogFormData,
   features: BulletItem[],
   featuresImage: string,
-  fitGuide: BulletItem[],
-  fitGuideImage: string,
+  sizeChart: SizeChartValue,
   careImage: string,
   images: ImageItem[]
 ) {
   const filteredFeatures = features.map(f => f.text).filter(t => t.trim() !== '');
-  const filteredFit = fitGuide.map(f => f.text).filter(t => t.trim() !== '');
   const filteredImages = images.filter(img => img.url.trim() !== '');
 
   return {
@@ -318,10 +286,9 @@ export function buildSavePayload(
       bullets: filteredFeatures,
       image_url: featuresImage,
     },
-    fit_guide: {
-      bullets: filteredFit,
-      image_url: fitGuideImage,
-    },
+    size_chart_image_url: sizeChart.image_url,
+    size_chart_columns: sizeChart.columns.length > 0 ? sizeChart.columns : null,
+    size_chart_rows: sizeChart.rows.length > 0 ? sizeChart.rows : null,
     care_instructions: JSON.stringify({
       text: formData.care_instructions,
       image_url: careImage,

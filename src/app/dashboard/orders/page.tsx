@@ -1,6 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, Suspense } from 'react';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
@@ -22,15 +23,18 @@ const STATUS_TABS: { id: StatusFilter; label: string; icon: React.ReactNode }[] 
   { id: 'cancelled',       label: 'Cancelled',   icon: <XCircle size={14} /> },
 ];
 
-export default function OrdersPage() {
+function OrdersPageContent() {
   const { shop, user } = useAuthStore();
   const toast = useToast();
+  const searchParams = useSearchParams();
+  const highlightId = searchParams.get('order');
   const [orders, setOrders] = useState<CatalogOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeTab, setTypeTab] = useState<TypeFilter>('online');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [search, setSearch] = useState('');
   const [updating, setUpdating] = useState<number | null>(null);
+  const [jumpedToHighlight, setJumpedToHighlight] = useState(false);
 
   const fetchOrders = useCallback(() => {
     if (!shop) return;
@@ -55,6 +59,22 @@ export default function OrdersPage() {
       return () => clearTimeout(timer);
     }
   }, [shop, user, fetchOrders]);
+
+  // Deep-link support: ?order=<id> from Collect Payments' Catalog Orders tab
+  // jumps straight to that order — switching to its type tab, clearing any
+  // filter that would hide it, then scrolling it into view.
+  useEffect(() => {
+    if (jumpedToHighlight || loading || !highlightId || orders.length === 0) return;
+    const target = orders.find(o => String(o.id) === highlightId);
+    if (!target) return;
+    setTypeTab(target.type === 'walkin' ? 'walkin' : 'online');
+    setStatusFilter('all');
+    setSearch('');
+    setJumpedToHighlight(true);
+    setTimeout(() => {
+      document.getElementById(`order-${target.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 150);
+  }, [jumpedToHighlight, loading, highlightId, orders]);
 
   const updateStatus = async (orderId: number, newStatus: string, extra: Record<string, string | number | boolean> = {}) => {
     if (!shop) return;
@@ -212,6 +232,7 @@ export default function OrdersPage() {
                   activeTab={typeTab}
                   updating={updating}
                   onUpdateStatus={updateStatus}
+                  highlighted={highlightId === String(order.id)}
                 />
               ))}
             </div>
@@ -219,5 +240,13 @@ export default function OrdersPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export default function OrdersPage() {
+  return (
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#9A8073]" /></div>}>
+      <OrdersPageContent />
+    </Suspense>
   );
 }

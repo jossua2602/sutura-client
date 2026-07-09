@@ -11,7 +11,9 @@ export interface CatalogItemResponse {
   sizes?: string[] | null;
   description?: string;
   features?: string;
-  fit_guide?: string;
+  size_chart_image_url?: string | null;
+  size_chart_columns?: string[] | null;
+  size_chart_rows?: { size: string; values: string[] }[] | null;
   care_instructions?: string;
   garment_type?: string;
   listing_type?: string;

@@ -54,6 +54,7 @@ export interface Job {
   service?: { name: string } | null;
   assigned_staff?: { name: string } | null;
   due_date?: string | null;
+  updated_at?: string;
 }
 
 export type Tab = 'all' | 'walk_in' | 'online';

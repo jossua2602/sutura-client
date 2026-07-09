@@ -18,6 +18,13 @@ const SUKI_TAG_CONFIG: Record<string, { label: string; cls: string }> = {
   walk_in_retail: { label: '🚶 Walk-in',  cls: 'bg-[#F0EAE3] text-[#827A73] border-[#EBE6E0]' },
 };
 
+// Completed piles up forever (unlike in-progress stages, which naturally
+// drain as jobs move on) — capping it to the most recent few, with a manual
+// expand, keeps the board scannable without hiding or deleting any job
+// order. Full history for a specific customer/date range is what the
+// Custom Jobs search bar is for; this is just about the live board view.
+const COMPLETED_COLLAPSE_AT = 5;
+
 export default function JobKanbanBoard({
   groupedJobs,
   activeColumns,
@@ -31,6 +38,7 @@ export default function JobKanbanBoard({
   // Balance gate: "No Balance, No Claim" — blocks marking a job Completed/Claimed
   // while money is still owed, so revenue can't quietly slip through the cracks.
   const [balanceGateJobId, setBalanceGateJobId] = useState<number | null>(null);
+  const [expandedColumns, setExpandedColumns] = useState<Record<string, boolean>>({});
 
   const handleStatusChange = (job: JobItem, newStatus: string) => {
     // Derived downpayment = total_amount minus current balance.
@@ -72,7 +80,12 @@ export default function JobKanbanBoard({
   };
   return (
     <div className="flex gap-4 overflow-x-auto pb-4 items-start" style={{ minHeight: 'calc(100vh - 340px)' }}>
-      {activeColumns.map(col => (
+      {activeColumns.map(col => {
+        const colJobs = groupedJobs[col.id] ?? [];
+        const isCollapsible = col.id === 'completed' && colJobs.length > COMPLETED_COLLAPSE_AT;
+        const isExpanded = expandedColumns[col.id] ?? false;
+        const visibleJobs = isCollapsible && !isExpanded ? colJobs.slice(0, COMPLETED_COLLAPSE_AT) : colJobs;
+        return (
         <div
           key={col.id}
           className={`flex-none w-72 glass-panel border ${col.border} rounded-2xl flex flex-col`}
@@ -85,13 +98,13 @@ export default function JobKanbanBoard({
               <h3 className="font-semibold text-[#2D2A26] text-sm">{col.title}</h3>
             </div>
             <span className="bg-white/70 text-[#2D2A26] text-xs px-2 py-0.5 rounded-full font-semibold shadow-sm">
-              {groupedJobs[col.id]?.length ?? 0}
+              {colJobs.length}
             </span>
           </div>
 
           {/* Cards */}
           <div className="p-3 space-y-3 overflow-y-auto flex-1">
-            {groupedJobs[col.id]?.map(job => (
+            {visibleJobs.map(job => (
               <div key={job.id}>
                 <div className={`bg-white border p-3.5 rounded-xl hover:shadow-sm transition-all group relative ${
                   job.status === 'pending' ? 'border-amber-200 hover:border-amber-300' : 'border-[#D1C7BD] hover:border-[#9A8073]/50'
@@ -243,14 +256,25 @@ export default function JobKanbanBoard({
               </div>
             ))}
 
-            {(groupedJobs[col.id]?.length ?? 0) === 0 && (
+            {isCollapsible && (
+              <button
+                type="button"
+                onClick={() => setExpandedColumns(prev => ({ ...prev, [col.id]: !isExpanded }))}
+                className="w-full text-center py-2 text-xs font-semibold text-taupe hover:underline"
+              >
+                {isExpanded ? 'Show less' : `Show all ${colJobs.length} completed`}
+              </button>
+            )}
+
+            {colJobs.length === 0 && (
               <div className="text-center py-8 text-[#827A73] border-2 border-dashed border-[#EBE6E0] rounded-xl">
                 <span className="text-xs">No orders here</span>
               </div>
             )}
           </div>
         </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

@@ -17,6 +17,8 @@ export interface MeasurementRecord {
   customer_id: number;
   source?: string;
   profile_name: string;
+  version?: number;
+  superseded_at?: string | null;
   metrics: Metrics;
   notes: string | null;
   updated_at: string;

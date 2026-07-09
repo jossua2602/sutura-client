@@ -47,7 +47,9 @@ interface CatalogItem {
   garment_type?: string;
   sizes?: string[] | null;
   features?: string[] | { bullets: string[]; image_url: string };
-  fit_guide?: string[] | { bullets: string[]; image_url: string };
+  size_chart_image_url?: string | null;
+  size_chart_columns?: string[] | null;
+  size_chart_rows?: { size: string; values: string[] }[] | null;
   care_instructions?: string;
   images: CatalogItemImage[];
   recommendations?: Recommendation[];
@@ -181,28 +183,9 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
     }
   }
 
-  let fitGuideList: string[] = [];
-  let fitGuideImage = '';
-  if (item.fit_guide) {
-    if (Array.isArray(item.fit_guide)) {
-      fitGuideList = item.fit_guide;
-    } else if (typeof item.fit_guide === 'object') {
-      fitGuideList = (item.fit_guide as { bullets: string[] }).bullets || [];
-      fitGuideImage = (item.fit_guide as { image_url: string }).image_url || '';
-    } else {
-      try {
-        const parsed = JSON.parse(item.fit_guide as unknown as string);
-        if (Array.isArray(parsed)) {
-          fitGuideList = parsed;
-        } else if (parsed && typeof parsed === 'object') {
-          fitGuideList = parsed.bullets || [];
-          fitGuideImage = parsed.image_url || '';
-        }
-      } catch {
-        // Ignored
-      }
-    }
-  }
+  const sizeChartColumns = item.size_chart_columns || [];
+  const sizeChartRows = item.size_chart_rows || [];
+  const sizeChartImage = item.size_chart_image_url || '';
 
   const activeSale = getActiveSale(item);
 
@@ -382,20 +365,35 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
               <h3 className="font-medium text-zinc-900 flex items-center gap-2 mb-4">
                 <Ruler size={18} /> Size & Fit Guide
               </h3>
-              {fitGuideList.length > 0 ? (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                  {fitGuideList.map((size: string) => (
-                    <div key={size} className="border border-zinc-200 rounded py-2 px-1 text-center text-sm font-medium text-zinc-700 bg-white truncate">
-                      {size}
-                    </div>
-                  ))}
+              {sizeChartColumns.length > 0 ? (
+                <div className="overflow-x-auto border border-zinc-200 rounded-lg bg-white">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="bg-zinc-50">
+                        <th className="px-3 py-2 text-left font-semibold text-zinc-700">Size</th>
+                        {sizeChartColumns.map(col => (
+                          <th key={col} className="px-3 py-2 text-left font-semibold text-zinc-700">{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {sizeChartRows.map(row => (
+                        <tr key={row.size} className="border-t border-zinc-200">
+                          <td className="px-3 py-2 font-semibold text-zinc-900 whitespace-nowrap">{row.size}</td>
+                          {row.values.map((val, ci) => (
+                            <td key={`${row.size}-${ci}`} className="px-3 py-2 text-zinc-700">{val || '—'}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               ) : (
                 <div className="text-sm text-[#A8A19A]">Custom tailored to your measurements.</div>
               )}
-              {fitGuideImage && (
+              {sizeChartImage && (
                 <div className="mt-4 relative w-full h-[240px] rounded-lg overflow-hidden border border-zinc-200 bg-white">
-                  <Image src={fitGuideImage} alt="Size & Fit Guide visual" className="object-cover object-center" fill unoptimized />
+                  <Image src={sizeChartImage} alt="Size & Fit Guide visual" className="object-cover object-center" fill unoptimized />
                 </div>
               )}
             </div>

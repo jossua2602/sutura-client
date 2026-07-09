@@ -138,8 +138,15 @@ export function useJobs() {
   // from vanishing because its status had no column.
   const activeColumns = columnsForJobs(filteredJobs);
 
+  // Sorted by most-recently-updated first within each column, so a job that
+  // just moved into a stage (e.g. just marked Completed) surfaces at the top
+  // instead of being buried under older cards that simply have an earlier
+  // order_number/created_at. Without this, "Completed" ordered newest-created
+  // rather than newest-completed, which two different columns don't agree on.
   const groupedJobs = activeColumns.reduce((acc, col) => {
-    acc[col.id] = filteredJobs.filter(j => j.status === col.id);
+    acc[col.id] = filteredJobs
+      .filter(j => j.status === col.id)
+      .sort((a, b) => new Date(b.updated_at ?? 0).getTime() - new Date(a.updated_at ?? 0).getTime());
     return acc;
   }, {} as Record<string, Job[]>);
 

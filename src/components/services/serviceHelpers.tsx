@@ -1,4 +1,7 @@
 import { Scissors, Users, Sparkles, Wrench, type LucideIcon } from 'lucide-react';
+import type { SizeChartRow } from '@/components/shared/SizeChartEditor';
+
+export type { SizeChartRow };
 
 export interface ServicePricing {
   id: number;
@@ -32,11 +35,6 @@ export const SERVICE_TYPE_META: Record<ServiceType, { icon: LucideIcon; text: st
   fashion_bridal:    { icon: Sparkles, text: 'text-rose-700',  bg: 'bg-rose-50',      border: 'border-rose-200' },
   alteration_repair: { icon: Wrench,   text: 'text-amber-700', bg: 'bg-amber-50',     border: 'border-amber-200' },
 };
-
-export interface SizeChartRow {
-  size: string;
-  values: string[];
-}
 
 export interface Service {
   id: number;

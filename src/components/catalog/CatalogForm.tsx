@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { BulletItem, ImageItem, CatalogFormData } from './catalogTypes';
 import { uploadSectionImage, uploadCatalogImage, buildSavePayload } from './catalogHelpers';
+import SizeChartEditor, { SizeChartValue, emptySizeChart } from '@/components/shared/SizeChartEditor';
 import api from '@/lib/axios';
 
 interface SectionImageUploadProps {
@@ -70,8 +71,7 @@ interface CatalogFormProps {
   initialData?: {
     features: BulletItem[];
     featuresImage: string;
-    fitGuide: BulletItem[];
-    fitGuideImage: string;
+    sizeChart: SizeChartValue;
     careImage: string;
     formData: CatalogFormData;
     images: ImageItem[];
@@ -122,19 +122,17 @@ export default function CatalogForm({
   };
 
   const [features, setFeatures] = useState<BulletItem[]>([{ id: 'init', text: '' }]);
-  const [fitGuide, setFitGuide] = useState<BulletItem[]>([{ id: 'init', text: '' }]);
+  const [sizeChart, setSizeChart] = useState<SizeChartValue>(emptySizeChart);
   const [images, setImages] = useState<ImageItem[]>([
     { id: 'init', url: '', angle: 'Default', is_primary: true },
   ]);
 
   const [featuresImage, setFeaturesImage] = useState<string>('');
-  const [fitGuideImage, setFitGuideImage] = useState<string>('');
   const [careImage, setCareImage] = useState<string>('');
-  const [uploadingSection, setUploadingSection] = useState<'specs' | 'fit' | 'care' | null>(null);
+  const [uploadingSection, setUploadingSection] = useState<'specs' | 'care' | null>(null);
 
   const [accordionOpen, setAccordionOpen] = useState({
     specs: false,
-    fit: false,
     care: false,
   });
 
@@ -145,15 +143,14 @@ export default function CatalogForm({
     setTimeout(() => {
       setFormData(initialData.formData);
       setFeatures(initialData.features);
-      setFitGuide(initialData.fitGuide);
+      setSizeChart(initialData.sizeChart);
       setImages(initialData.images);
       setFeaturesImage(initialData.featuresImage);
-      setFitGuideImage(initialData.fitGuideImage);
       setCareImage(initialData.careImage);
     }, 0);
   }, [initialData]);
 
-  const toggleAccordion = (section: 'specs' | 'fit' | 'care') => {
+  const toggleAccordion = (section: 'specs' | 'care') => {
     setAccordionOpen(prev => ({
       ...prev,
       [section]: !prev[section],
@@ -164,7 +161,7 @@ export default function CatalogForm({
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  const handleSectionUpload = (file: File | undefined, section: 'specs' | 'fit' | 'care') => {
+  const handleSectionUpload = (file: File | undefined, section: 'specs' | 'care') => {
     if (!file || !shop?.id) return;
     uploadSectionImage({
       file,
@@ -172,7 +169,6 @@ export default function CatalogForm({
       section,
       setUploadingSection,
       setFeaturesImage,
-      setFitGuideImage,
       setCareImage,
     });
   };
@@ -183,8 +179,7 @@ export default function CatalogForm({
       formData,
       features,
       featuresImage,
-      fitGuide,
-      fitGuideImage,
+      sizeChart,
       careImage,
       images
     );
@@ -588,71 +583,16 @@ export default function CatalogForm({
                 )}
               </div>
 
-              {/* Accordion 2: Fit & Sizing Guide */}
-              <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl overflow-hidden">
-                <button
-                  type="button"
-                  onClick={() => toggleAccordion('fit')}
-                  className="w-full flex items-center justify-between p-5 text-left font-medium text-[#2D2A26] hover:bg-[#FAF6F3]/50 transition-colors"
-                >
-                  <div>
-                    <span className="font-semibold text-sm">Fit & Sizing Guidelines</span>
-                    <p className="text-xs text-[#827A73] mt-0.5">Sizing models, measurements, and body type fit tips</p>
-                  </div>
-                  {accordionOpen.fit ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
-                </button>
-                {accordionOpen.fit && (
-                  <div className="p-5 border-t border-[#EBE6E0] bg-[#FAF6F3]/20 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-[#827A73]">Describe sizes the sample covers or measurement rules.</span>
-                      <button
-                        type="button"
-                        onClick={() => setFitGuide([...fitGuide, { id: Math.random().toString(), text: '' }])}
-                        className="text-taupe text-xs font-semibold hover:text-taupe-hover flex items-center gap-1"
-                      >
-                        <Plus size={14} /> Add Bullet
-                      </button>
-                    </div>
-                    <div className="space-y-3">
-                      {fitGuide.map((feat, idx) => (
-                        <div key={feat.id} className="flex gap-2">
-                          <input
-                            type="text"
-                            value={feat.text}
-                            onChange={e => {
-                              const newF = [...fitGuide];
-                              newF[idx] = { ...newF[idx], text: e.target.value };
-                              setFitGuide(newF);
-                            }}
-                            placeholder="e.g. Runs true to size, slim fit through waist"
-                            className="flex-1 px-4 py-2 bg-white border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe text-sm"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setFitGuide(fitGuide.filter((_, i) => i !== idx))}
-                            className="p-2 text-[#A8A19A] hover:text-[#B26959] transition-colors"
-                          >
-                            <X size={18} />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-
-                    <div className="border-t border-[#EBE6E0] pt-4 mt-4">
-                      <label htmlFor="fit-upload" className="block text-xs font-semibold text-[#524A44] mb-2">
-                        Section Visual Guide / Image (Optional)
-                      </label>
-                      <SectionImageUpload
-                        imageUrl={fitGuideImage}
-                        uploading={uploadingSection === 'fit'}
-                        uploadId="fit-upload"
-                        alt="Fit Guide"
-                        onRemove={() => setFitGuideImage('')}
-                        onChange={file => handleSectionUpload(file, 'fit')}
-                      />
-                    </div>
-                  </div>
-                )}
+              {/* Fit & Sizing Guidelines — the same Size Chart builder used on Services */}
+              <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-5">
+                <SizeChartEditor
+                  mode="table"
+                  value={sizeChart}
+                  onChange={setSizeChart}
+                  shopId={shop?.id ?? 0}
+                  title="Fit & Sizing Guidelines"
+                  description="Show customers exactly how you measure — upload your own reference chart image and/or build a size & measurement table."
+                />
               </div>
 
               {/* Accordion 3: Garment Care & Alteration FAQ */}

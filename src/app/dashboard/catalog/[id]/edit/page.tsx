@@ -8,13 +8,13 @@ import { Loader2 } from 'lucide-react';
 import CatalogForm from '@/components/catalog/CatalogForm';
 import { mapCatalogItemToState, buildSavePayload } from '@/components/catalog/catalogHelpers';
 import { BulletItem, ImageItem, CatalogFormData } from '@/components/catalog/catalogTypes';
+import type { SizeChartValue } from '@/components/shared/SizeChartEditor';
 import { useToast } from '@/context/ToastContext';
 
 interface CatalogState {
   features: BulletItem[];
   featuresImage: string;
-  fitGuide: BulletItem[];
-  fitGuideImage: string;
+  sizeChart: SizeChartValue;
   careImage: string;
   formData: CatalogFormData;
   images: ImageItem[];

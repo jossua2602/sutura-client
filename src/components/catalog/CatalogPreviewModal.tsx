@@ -15,12 +15,11 @@ import {
   Pencil
 } from 'lucide-react';
 import Link from 'next/link';
-import { 
-  CatalogItem, 
-  formatCatalogPrice, 
+import {
+  CatalogItem,
+  formatCatalogPrice,
   getListingTypeLabel,
   parseFeatures,
-  parseFitGuide,
   parseCareInstructions
 } from './catalogHelpers';
 
@@ -36,8 +35,9 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
   if (!isOpen || !item) return null;
 
   const featuresData = parseFeatures(item.features);
-  const fitGuideData = parseFitGuide(item.fit_guide);
   const careData = parseCareInstructions(item.care_instructions);
+  const sizeChartColumns = item.size_chart_columns ?? [];
+  const sizeChartRows = item.size_chart_rows ?? [];
 
   // Defensive helper: handles both string bullets and {id, text} objects
   // Fixes the [object Object] rendering bug for legacy data
@@ -51,7 +51,6 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
   };
 
   const visibleFeatureBullets = featuresData.bullets.filter(b => safeText(b).trim() !== '');
-  const visibleFitBullets = fitGuideData.bullets.filter(b => safeText(b).trim() !== '');
 
   const images = item.images && item.images.length > 0 
     ? item.images 
@@ -238,25 +237,41 @@ export default function CatalogPreviewModal({ isOpen, onClose, item }: CatalogPr
             )}
 
             {/* Sizing & Guidelines */}
-            {visibleFitBullets.length > 0 && (
+            {(sizeChartColumns.length > 0 || item.size_chart_image_url) && (
               <div className="space-y-2">
                 <h3 className="text-xs font-bold text-[#524A44] uppercase tracking-wider flex items-center gap-1.5">
                   <Ruler size={14} className="text-taupe" />
                   Fit & Sizing Guidelines
                 </h3>
-                <div className="bg-white border border-[#EBE6E0]/60 p-4 rounded-2xl space-y-2.5">
-                  <ul className="space-y-2 text-sm text-[#524A44]">
-                    {visibleFitBullets.map((bullet, idx) => (
-                      <li key={(bullet as {id?: string}).id || idx} className="flex items-start gap-2">
-                        <Check size={14} className="text-taupe mt-0.5 shrink-0" />
-                        <span>{safeText(bullet)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  {fitGuideData.imageUrl && (
-                    <div className="mt-3 aspect-video max-w-sm rounded-lg overflow-hidden border border-[#EBE6E0] bg-[#FAF6F3]">
+                <div className="bg-white border border-[#EBE6E0]/60 p-4 rounded-2xl space-y-3">
+                  {item.size_chart_image_url && (
+                    <div className="aspect-video max-w-sm rounded-lg overflow-hidden border border-[#EBE6E0] bg-[#FAF6F3]">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={fitGuideData.imageUrl} alt="Sizing Guide" className="w-full h-full object-cover" />
+                      <img src={item.size_chart_image_url} alt="Sizing Guide" className="w-full h-full object-cover" />
+                    </div>
+                  )}
+                  {sizeChartColumns.length > 0 && (
+                    <div className="overflow-x-auto border border-[#EBE6E0] rounded-lg">
+                      <table className="w-full text-xs">
+                        <thead>
+                          <tr className="bg-[#FAF6F3]">
+                            <th className="px-3 py-2 text-left font-semibold text-[#827A73]">Size</th>
+                            {sizeChartColumns.map(col => (
+                              <th key={col} className="px-3 py-2 text-left font-semibold text-[#827A73]">{col}</th>
+                            ))}
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {sizeChartRows.map(row => (
+                            <tr key={row.size} className="border-t border-[#EBE6E0]">
+                              <td className="px-3 py-2 font-semibold text-[#2D2A26] whitespace-nowrap">{row.size}</td>
+                              {row.values.map((val, ci) => (
+                                <td key={`${row.size}-${ci}`} className="px-3 py-2 text-[#524A44]">{val || '—'}</td>
+                              ))}
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   )}
                 </div>

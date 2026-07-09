@@ -10,6 +10,7 @@ interface OrderListItemProps {
   readonly activeTab: 'walkin' | 'online';
   readonly updating: number | null;
   readonly onUpdateStatus: (orderId: number, status: string, extra?: Record<string, string | number | boolean>) => Promise<void>;
+  readonly highlighted?: boolean;
 }
 
 export default function OrderListItem({
@@ -17,6 +18,7 @@ export default function OrderListItem({
   activeTab,
   updating,
   onUpdateStatus,
+  highlighted,
 }: Readonly<OrderListItemProps>) {
   const isUpdating = updating === order.id;
   const [showCourierForm, setShowCourierForm] = useState(false);
@@ -31,7 +33,12 @@ export default function OrderListItem({
   const [deductionAmount, setDeductionAmount] = useState('0');
 
   return (
-    <div className="rounded-xl border border-[#EBE6E0] bg-[#FAFAFA] hover:bg-white transition-colors text-[#2D2A26] overflow-hidden">
+    <div
+      id={`order-${order.id}`}
+      className={`rounded-xl border bg-[#FAFAFA] hover:bg-white transition-colors text-[#2D2A26] overflow-hidden ${
+        highlighted ? 'border-taupe ring-2 ring-taupe/40' : 'border-[#EBE6E0]'
+      }`}
+    >
       {order.rental_start_date && (
         <div className="px-4 pt-3 pb-2 border-b border-[#EBE6E0]/70 bg-white/50">
           <RentalStatusStepper status={order.status} />
