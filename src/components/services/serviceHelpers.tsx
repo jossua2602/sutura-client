@@ -33,20 +33,57 @@ export const SERVICE_TYPE_META: Record<ServiceType, { icon: LucideIcon; text: st
   alteration_repair: { icon: Wrench,   text: 'text-amber-700', bg: 'bg-amber-50',     border: 'border-amber-200' },
 };
 
+export interface SizeChartRow {
+  size: string;
+  values: string[];
+}
+
 export interface Service {
   id: number;
   name: string;
   description: string;
-  category: string;
-  service_type?: ServiceType | null;
+  categories: string[];
+  service_types?: ServiceType[];
   base_price: string | null;
+  sale_price?: string | number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   estimated_days: number;
   min_order_qty?: number;
   is_active: boolean;
   image_url?: string | null;
+  size_chart_image_url?: string | null;
+  size_chart_columns?: string[] | null;
+  size_chart_rows?: SizeChartRow[] | null;
   custom_fields?: ServiceField[] | null;
   pricing?: ServicePricing[];
   tags?: string[];
+}
+
+export interface PricingTierInput {
+  label: string;
+  amount: string;
+}
+
+/**
+ * A service's priced line items live in `pricing`, but older/auto-populated
+ * services may only have `tags` (no price yet) — fall back to those so the
+ * edit form always has something to show instead of an empty required list.
+ */
+export function deriveTiersFromService(service: Service): PricingTierInput[] {
+  if (service.pricing && service.pricing.length > 0) {
+    return service.pricing.map(p => ({ label: p.label, amount: p.amount ? String(Number(p.amount)) : '' }));
+  }
+  return (service.tags || []).map(tag => ({ label: tag, amount: '' }));
+}
+
+export interface ServicePackage {
+  id: number;
+  name: string;
+  description: string | null;
+  bundle_price: string | null;
+  is_active: boolean;
+  services: Service[];
 }
 
 export const SERVICE_CATEGORIES = [
@@ -57,11 +94,14 @@ export const SERVICE_CATEGORIES = [
     'Suit & Tuxedo Tailoring',
     'Custom Bridal Tailoring',
   ]},
-  { group: 'Custom Apparel & Printing', items: [
+  { group: 'Custom Apparel, Printing & Embroidery', items: [
     'Custom Jersey Printing',
     'Uniform Sublimation Printing',
     'Corporate & Team Uniforms',
     'Custom T-shirt Printing',
+    'Embroidered Logos & Team Names',
+    'Monogramming & Personalization',
+    'Custom Patch Application',
   ]},
   { group: 'Institutional & Uniform Wear', items: [
     'School Uniforms',
@@ -86,7 +126,6 @@ export const SERVICE_CATEGORIES = [
     'General Clothing Alterations',
     'Gown & Suit Sizing Adjustment',
     'Hemming & Sleeve Shortening',
-    'Embroidery & Custom Accents',
   ]},
   { group: 'Design & Consultation', items: [
     'Design Consultation',

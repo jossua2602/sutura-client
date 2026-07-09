@@ -1,5 +1,5 @@
-import React from 'react';
-import { X, Loader2 } from 'lucide-react';
+import React, { useState } from 'react';
+import { X, Loader2, ChevronDown, ChevronRight, Lock } from 'lucide-react';
 import { useBranch } from '@/context/BranchContext';
 
 interface StaffFormModalProps {
@@ -14,6 +14,7 @@ interface StaffFormModalProps {
     password: string;
     phone: string;
     role: string;
+    additional_roles: string[];
     specialization: string;
     hired_at: string;
     is_active: boolean;
@@ -26,6 +27,7 @@ interface StaffFormModalProps {
     password: string;
     phone: string;
     role: string;
+    additional_roles: string[];
     specialization: string;
     hired_at: string;
     is_active: boolean;
@@ -33,6 +35,22 @@ interface StaffFormModalProps {
     is_branch_manager: boolean;
   }>>;
 }
+
+const ROLE_OPTIONS = [
+  { value: 'tailor', label: 'Tailor' },
+  { value: 'head_tailor', label: 'Head Tailor' },
+  { value: 'cutter', label: 'Cutter' },
+  { value: 'seamstress', label: 'Seamstress' },
+  { value: 'designer', label: 'Fashion Designer' },
+  { value: 'pattern_maker', label: 'Pattern Maker' },
+  { value: 'assistant', label: 'Assistant' },
+  { value: 'receptionist', label: 'Receptionist' },
+  { value: 'quality_control', label: 'Quality Control' },
+  { value: 'subcontractor', label: 'Subcontractor (Partner Shop)' },
+  { value: 'sublimation_specialist', label: 'Sublimation Specialist' },
+  { value: 'senior_designer', label: 'Senior Designer' },
+  { value: 'cutter_sewer', label: 'Cutter/Sewer' },
+];
 
 export default function StaffFormModal({
   isOpen,
@@ -44,10 +62,24 @@ export default function StaffFormModal({
   setFormData,
 }: StaffFormModalProps) {
   const { branches } = useBranch();
+  const [showPortalSection, setShowPortalSection] = useState(false);
   if (!isOpen) return null;
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
+
+  // Email + password are collapsed by default so the form reads as a roster
+  // entry, not an account signup. They're still required server-side to
+  // create a StaffProfile (no login = no record), so a first submit while
+  // collapsed just reveals the section instead of failing silently.
+  const handleFormSubmit = (e: React.SyntheticEvent<HTMLFormElement>) => {
+    if (!editingId && !showPortalSection) {
+      e.preventDefault();
+      setShowPortalSection(true);
+      return;
+    }
+    onSubmit(e);
   };
 
   return (
@@ -62,7 +94,7 @@ export default function StaffFormModal({
           </button>
         </div>
 
-        <form onSubmit={onSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleFormSubmit} className="p-6 space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label htmlFor="staff_name" className="block text-sm font-medium text-[#524A44] mb-1">
@@ -93,34 +125,56 @@ export default function StaffFormModal({
             </div>
           </div>
 
-          <div>
-            <label htmlFor="staff_email" className="block text-sm font-medium text-[#524A44] mb-1">
-              Email
-            </label>
-            <input
-              id="staff_email"
-              required
-              type="email"
-              name="email"
-              value={formData.email}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
-            />
-          </div>
+          <div className="border border-[#EBE6E0] rounded-lg overflow-hidden">
+            <button
+              type="button"
+              onClick={() => setShowPortalSection(p => !p)}
+              className="w-full flex items-center justify-between px-4 py-2.5 bg-[#FAF6F3] hover:bg-[#F0EAE3] transition-colors text-left"
+            >
+              <span className="flex items-center gap-2 text-sm font-medium text-[#524A44]">
+                <Lock size={14} className="text-[#A8A19A]" />
+                Portal Login Access
+                {!editingId && <span className="text-xs font-normal text-[#A8A19A]">(required)</span>}
+              </span>
+              {showPortalSection ? <ChevronDown size={16} className="text-[#827A73]" /> : <ChevronRight size={16} className="text-[#827A73]" />}
+            </button>
 
-          <div>
-            <label htmlFor="staff_password" className="block text-sm font-medium text-[#524A44] mb-1">
-              Password{editingId ? <>{' '}<span className="text-xs text-[#A8A19A]">(Leave blank to keep current)</span></> : null}
-            </label>
-            <input
-              id="staff_password"
-              required={!editingId}
-              type="password"
-              name="password"
-              value={formData.password}
-              onChange={handleInputChange}
-              className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
-            />
+            {showPortalSection && (
+              <div className="p-4 space-y-4 border-t border-[#EBE6E0]">
+                <p className="text-xs text-[#A8A19A] -mt-1">
+                  This email and password let the staff member log in to view their own assigned jobs and schedule.
+                </p>
+                <div>
+                  <label htmlFor="staff_email" className="block text-sm font-medium text-[#524A44] mb-1">
+                    Email
+                  </label>
+                  <input
+                    id="staff_email"
+                    required
+                    type="email"
+                    name="email"
+                    value={formData.email}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
+                  />
+                </div>
+
+                <div>
+                  <label htmlFor="staff_password" className="block text-sm font-medium text-[#524A44] mb-1">
+                    Password{editingId ? <>{' '}<span className="text-xs text-[#A8A19A]">(Leave blank to keep current)</span></> : null}
+                  </label>
+                  <input
+                    id="staff_password"
+                    required={!editingId}
+                    type="password"
+                    name="password"
+                    value={formData.password}
+                    onChange={handleInputChange}
+                    className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -135,16 +189,9 @@ export default function StaffFormModal({
                 onChange={handleInputChange}
                 className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
               >
-                <option value="tailor">Tailor</option>
-                <option value="head_tailor">Head Tailor</option>
-                <option value="cutter">Cutter</option>
-                <option value="seamstress">Seamstress</option>
-                <option value="designer">Fashion Designer</option>
-                <option value="pattern_maker">Pattern Maker</option>
-                <option value="assistant">Assistant</option>
-                <option value="receptionist">Receptionist</option>
-                <option value="quality_control">Quality Control</option>
-                <option value="subcontractor">Subcontractor (Partner Shop)</option>
+                {ROLE_OPTIONS.map(r => (
+                  <option key={r.value} value={r.value}>{r.label}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -161,6 +208,59 @@ export default function StaffFormModal({
                 className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
               />
             </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between mb-1">
+              <span className="block text-sm font-medium text-[#524A44]">Additional Roles (Optional)</span>
+              {formData.additional_roles.length < ROLE_OPTIONS.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    const next = ROLE_OPTIONS.find(r => r.value !== formData.role && !formData.additional_roles.includes(r.value));
+                    if (next) setFormData(prev => ({ ...prev, additional_roles: [...prev.additional_roles, next.value] }));
+                  }}
+                  className="text-xs font-medium text-taupe hover:text-taupe/80 transition-colors"
+                >
+                  + Add another role
+                </button>
+              )}
+            </div>
+            <p className="text-xs text-[#A8A19A] mb-2">
+              For a staff member who covers more than one role (e.g. a head tailor who also does sublimation work) — instead of a separate account per role. Listed in order: first is their 2nd role overall, then 3rd, and so on.
+            </p>
+            {formData.additional_roles.length === 0 ? (
+              <p className="text-xs text-[#A8A19A] italic">No additional roles added.</p>
+            ) : (
+              <div className="space-y-2">
+                {formData.additional_roles.map((role, idx) => (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-[#A8A19A] w-14 shrink-0">Rank {idx + 2}</span>
+                    <select
+                      value={role}
+                      onChange={(e) => {
+                        const next = [...formData.additional_roles];
+                        next[idx] = e.target.value;
+                        setFormData(prev => ({ ...prev, additional_roles: next }));
+                      }}
+                      className="flex-1 px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:border-taupe text-sm"
+                    >
+                      {ROLE_OPTIONS.filter(r => r.value === role || (r.value !== formData.role && !formData.additional_roles.includes(r.value))).map(r => (
+                        <option key={r.value} value={r.value}>{r.label}</option>
+                      ))}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={() => setFormData(prev => ({ ...prev, additional_roles: prev.additional_roles.filter((_, i) => i !== idx) }))}
+                      className="text-[#A8A19A] hover:text-[#B26959] transition-colors"
+                      title="Remove this role"
+                    >
+                      <X size={16} />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>

@@ -13,19 +13,23 @@ interface Review {
 }
 
 export default function RecentReviews() {
-  const { shop } = useAuthStore();
+  const { shop, user } = useAuthStore();
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
+  // Reviews management is owner-only (matches the shop_owner-only
+  // /shops/{shop}/reviews route) — staff/branch managers share this
+  // dashboard now, and shouldn't 403 on a widget they can't act on anyway.
+  const isShopOwner = user?.roles?.[0]?.name === 'shop_owner';
 
   useEffect(() => {
-    if (!shop) return;
+    if (!shop || !isShopOwner) { setLoading(false); return; }
     api.get(`/shops/${shop.id}/reviews?per_page=3`)
       .then(res => {
         setReviews(res.data.data.data);
       })
       .catch(console.error)
       .finally(() => setLoading(false));
-  }, [shop]);
+  }, [shop, isShopOwner]);
 
   if (loading) {
     return (
@@ -42,8 +46,8 @@ export default function RecentReviews() {
           <MessageSquare size={16} className="text-[#9A8073]" />
           Recent Reviews
         </h3>
-        <Link 
-          href="/dashboard/reviews"
+        <Link
+          href={shop?.slug ? `/shop/${shop.slug}?tab=reviews` : '/dashboard/reviews'}
           className="text-xs font-medium text-taupe hover:text-[#524A44] transition-colors"
         >
           View All

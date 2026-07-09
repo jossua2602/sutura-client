@@ -2,9 +2,10 @@
 
 import { useEffect, useState, use } from 'react';
 import api from '@/lib/axios';
-import { Ruler, Info, ShieldCheck, Calendar as CalendarIcon, ArrowLeft } from 'lucide-react';
+import { Ruler, Info, ShieldCheck, Calendar as CalendarIcon, ArrowLeft, Star, MessageSquare } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getActiveSale } from '@/components/catalog/catalogHelpers';
 
 interface CatalogItemImage {
   id: number;
@@ -24,20 +25,48 @@ interface Recommendation {
   recommendedItem?: RecommendedItem;
 }
 
+interface CatalogItemReview {
+  id: number;
+  rating: number;
+  comment: string | null;
+  created_at: string;
+  user: { name: string } | null;
+}
+
 interface CatalogItem {
   id: number;
   name: string;
   price: string | number;
+  sale_price?: string | number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   description?: string;
   listing_type: string;
   material?: string;
+  color?: string;
+  garment_type?: string;
+  sizes?: string[] | null;
   features?: string[] | { bullets: string[]; image_url: string };
   fit_guide?: string[] | { bullets: string[]; image_url: string };
   care_instructions?: string;
   images: CatalogItemImage[];
   recommendations?: Recommendation[];
   external_gallery_url?: string;
+  reviews_avg_rating?: number | null;
+  reviews_count?: number;
+  reviews?: CatalogItemReview[];
 }
+
+const LISTING_TYPE_LABELS: Record<string, string> = {
+  made_to_order: 'Made to Order',
+  bulk_order: 'Bulk Order',
+  ready_to_wear: 'Ready to Wear',
+  portfolio: 'Portfolio Showcase',
+  for_rent: 'For Rent',
+  for_sale: 'For Sale',
+  rent_or_sale: 'For Rent or Sale',
+  used_liquidated: 'Pre-Loved / Liquidated',
+};
 
 function ListingTypeBadge({ type }: Readonly<{ type: string }>) {
   const styles: Record<string, string> = {
@@ -50,19 +79,9 @@ function ListingTypeBadge({ type }: Readonly<{ type: string }>) {
     rent_or_sale: 'bg-pink-50 text-pink-700 border-pink-200',
   };
 
-  const labels: Record<string, string> = {
-    made_to_order: 'Made to Order',
-    bulk_order: 'Bulk Order',
-    ready_to_wear: 'Ready to Wear',
-    portfolio: 'Portfolio Showcase',
-    for_rent: 'For Rent',
-    for_sale: 'For Sale',
-    rent_or_sale: 'For Rent or Sale',
-  };
-
   return (
     <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold border ${styles[type] || 'bg-zinc-100 text-zinc-800 border-zinc-200'}`}>
-      {labels[type] || type}
+      {LISTING_TYPE_LABELS[type] || type}
     </span>
   );
 }
@@ -74,7 +93,9 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
 
   const [selectedImage, setSelectedImage] = useState<string>('');
   const [selectedVariation, setSelectedVariation] = useState<string>('');
+  const [selectedSize, setSelectedSize] = useState<string>('');
   const [showFAQ, setShowFAQ] = useState(false);
+  const [rentalDates, setRentalDates] = useState<{ start: string; end: string }[]>([]);
 
   useEffect(() => {
     api.get(`/catalog/${shopId}/${itemId}`)
@@ -86,12 +107,27 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
           setSelectedVariation(primary.view_angle || '');
         }
         setLoading(false);
+        // Real customer view — fire-and-forget, no need to block or reflect
+        // this locally since the owner reads views_count from their own
+        // dashboard/analytics, not from this page.
+        api.post(`/catalog/${shopId}/${itemId}/view`).catch(() => {
+          // Non-critical — a failed view count shouldn't affect the shopper's page.
+        });
       })
       .catch(err => {
         console.error(err);
         setLoading(false);
       });
   }, [shopId, itemId]);
+
+  useEffect(() => {
+    if (!item || (item.listing_type !== 'for_rent' && item.listing_type !== 'rent_or_sale')) return;
+    api.get(`/catalog/${shopId}/${itemId}/rental-dates`)
+      .then(res => setRentalDates(res.data.data || []))
+      .catch(() => {
+        // Fall back silently — booked-dates list just won't show
+      });
+  }, [shopId, itemId, item]);
 
   if (loading) {
     return <div className="py-32 text-center text-[#A8A19A] animate-pulse">Loading garment details...</div>;
@@ -167,6 +203,8 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
       }
     }
   }
+
+  const activeSale = getActiveSale(item);
 
   let careText = '';
   let careImage = '';
@@ -244,8 +282,54 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
             </div>
           )}
           <h1 className="text-3xl font-serif font-semibold text-zinc-900">{item.name}</h1>
-          <p className="text-xl text-[#827A73] mt-3">₱{Number(item.price).toLocaleString()} <span className="text-sm text-[#827A73] font-normal">PHP</span></p>
-          
+          {!!item.reviews_count && (
+            <div className="flex items-center gap-1.5 mt-2 text-sm">
+              <div className="flex items-center gap-0.5 text-amber-500">
+                {[1, 2, 3, 4, 5].map(n => (
+                  <Star key={n} size={14} fill={n <= Math.round(item.reviews_avg_rating || 0) ? 'currentColor' : 'none'} />
+                ))}
+              </div>
+              <span className="font-semibold text-zinc-900">{item.reviews_avg_rating?.toFixed(1)}</span>
+              <span className="text-[#A8A19A]">({item.reviews_count} review{item.reviews_count === 1 ? '' : 's'})</span>
+            </div>
+          )}
+          {activeSale ? (
+            <p className="mt-3 flex items-center gap-2 flex-wrap">
+              <span className="text-lg text-[#A8A19A] line-through">₱{activeSale.original.toLocaleString()}</span>
+              <span className="text-xl font-bold text-rose-600">₱{activeSale.sale.toLocaleString()}</span>
+              <span className="text-xs font-bold text-white bg-rose-600 px-2 py-0.5 rounded-full uppercase tracking-wider">{activeSale.percentOff}% Off</span>
+            </p>
+          ) : (
+            <p className="text-xl text-[#827A73] mt-3">₱{Number(item.price).toLocaleString()} <span className="text-sm text-[#827A73] font-normal">PHP</span></p>
+          )}
+
+          {item.sizes && item.sizes.length > 0 && (
+            <div className="mt-8 pt-8 border-t border-zinc-200">
+              <h3 className="text-sm font-semibold text-zinc-900 mb-3">
+                Select Size <span className="text-[#B26959]">*</span>
+              </h3>
+              <div className="flex flex-wrap gap-2">
+                {item.sizes.map(size => (
+                  <button
+                    key={size}
+                    type="button"
+                    onClick={() => setSelectedSize(size)}
+                    className={`px-4 py-2 rounded-lg border text-sm font-semibold transition-all ${
+                      selectedSize === size
+                        ? 'border-zinc-900 bg-zinc-900 text-white'
+                        : 'border-zinc-300 text-zinc-700 hover:border-zinc-500'
+                    }`}
+                  >
+                    {size}
+                  </button>
+                ))}
+              </div>
+              {!selectedSize && (
+                <p className="text-xs text-[#B26959] mt-2">Please select a size to continue.</p>
+              )}
+            </div>
+          )}
+
           <div className="mt-8 pt-8 border-t border-zinc-200">
             <p className="text-[#827A73] leading-relaxed">
               {item.description}
@@ -257,12 +341,36 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
               <h3 className="font-medium text-zinc-900 flex items-center gap-2 mb-4">
                 <Info size={18} /> Specifications
               </h3>
-              <ul className="space-y-2 text-sm text-[#827A73]">
-                {item.material && <li>• {item.material}</li>}
-                {featuresList.map((feat: string) => (
-                  <li key={feat}>• {feat}</li>
-                ))}
-              </ul>
+              {(() => {
+                const specRows: [string, string][] = [];
+                if (item.garment_type) specRows.push(['Garment Type', item.garment_type]);
+                if (item.material) specRows.push(['Material', item.material]);
+                if (item.color) specRows.push(['Color', item.color]);
+                if (item.sizes && item.sizes.length > 0) specRows.push(['Sizes Available', item.sizes.join(', ')]);
+                specRows.push(['Listing Type', LISTING_TYPE_LABELS[item.listing_type] || item.listing_type]);
+                return specRows.length > 0 ? (
+                  <table className="w-full text-sm">
+                    <tbody>
+                      {specRows.map(([label, value]) => (
+                        <tr key={label} className="border-b border-zinc-100 last:border-0">
+                          <td className="py-2 pr-4 text-[#A8A19A] font-medium w-2/5 align-top">{label}</td>
+                          <td className="py-2 text-zinc-800">{value}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                ) : null;
+              })()}
+              {featuresList.length > 0 && (
+                <div className="mt-4 pt-4 border-t border-zinc-200">
+                  <h4 className="text-xs font-semibold text-[#A8A19A] uppercase tracking-wider mb-2">Additional Details</h4>
+                  <ul className="space-y-2 text-sm text-[#827A73]">
+                    {featuresList.map((feat: string) => (
+                      <li key={feat}>• {feat}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
               {featuresImage && (
                 <div className="mt-4 relative w-full h-[240px] rounded-lg overflow-hidden border border-zinc-200 bg-white">
                   <Image src={featuresImage} alt="Specifications visual guide" className="object-cover object-center" fill unoptimized />
@@ -296,26 +404,33 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
             {(item.listing_type === 'for_rent' || item.listing_type === 'rent_or_sale') && (
               <div className="bg-emerald-50 border border-emerald-100 p-6 rounded-xl space-y-4">
                 <h3 className="font-semibold text-emerald-950 flex items-center gap-2">
-                  <CalendarIcon size={18} /> Rental Availability Calendar
+                  <CalendarIcon size={18} /> Rental Availability
                 </h3>
                 <p className="text-xs text-emerald-700">
-                  This item is available for rentals in Davao City. Below are the upcoming reserved dates:
+                  You choose your own pickup and return dates when booking. Below are the currently reserved dates:
                 </p>
                 <div className="bg-white rounded-lg p-3 border border-emerald-100 text-xs space-y-2">
-                  <div className="flex justify-between">
-                    <span className="text-[#827A73]">Standard Period:</span>
-                    <span className="font-semibold text-zinc-950">3 Days (Extendable)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#827A73]">Security Deposit:</span>
-                    <span className="font-semibold text-zinc-950">₱1,500.00 (Refundable)</span>
-                  </div>
+                  {item.listing_type === 'for_rent' && (
+                    <div className="flex justify-between">
+                      <span className="text-[#827A73]">Security Deposit:</span>
+                      <span className="font-semibold text-zinc-950">₱{(Number(item.price) * 0.5).toLocaleString(undefined, { minimumFractionDigits: 2 })} (Refundable)</span>
+                    </div>
+                  )}
                   <div className="pt-2 border-t border-zinc-100">
                     <span className="font-semibold text-emerald-800 block mb-1">Booked Dates:</span>
                     <div className="flex gap-1.5 flex-wrap">
-                      <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded border border-red-100 font-mono text-[10px]">June 26 - June 28</span>
-                      <span className="bg-red-50 text-red-700 px-2 py-0.5 rounded border border-red-100 font-mono text-[10px]">July 04 - July 06</span>
-                      <span className="text-[10px] text-emerald-600 font-semibold self-center ml-auto text-right w-full">✓ All other dates open</span>
+                      {rentalDates.length === 0 ? (
+                        <span className="text-[10px] text-emerald-600 font-semibold">✓ No dates currently reserved — fully open</span>
+                      ) : (
+                        <>
+                          {rentalDates.map(d => (
+                            <span key={`${d.start}-${d.end}`} className="bg-red-50 text-red-700 px-2 py-0.5 rounded border border-red-100 font-mono text-[10px]">
+                              {new Date(d.start).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })} – {new Date(d.end).toLocaleDateString('en-PH', { month: 'short', day: 'numeric' })}
+                            </span>
+                          ))}
+                          <span className="text-[10px] text-emerald-600 font-semibold self-center ml-auto text-right w-full">✓ All other dates open</span>
+                        </>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -362,14 +477,66 @@ export default function PublicProductDetailPage({ params }: Readonly<{ params: P
             </a>
           )}
 
-          <Link
-            href={`/shop/${shopId}/book?item_id=${item.id}&intent=${item.listing_type}${selectedVariation ? `&variation=${encodeURIComponent(selectedVariation)}` : ''}`}
-            className="w-full bg-[#2D2A26] hover:bg-black text-white font-medium tracking-wide py-4 mt-4 transition-colors flex items-center justify-center rounded-xl shadow-lg uppercase"
-          >
-            {getButtonText()}
-          </Link>
+          {item.sizes && item.sizes.length > 0 && !selectedSize ? (
+            <button
+              type="button"
+              disabled
+              className="w-full bg-zinc-300 text-white font-medium tracking-wide py-4 mt-4 rounded-xl uppercase cursor-not-allowed"
+            >
+              Select a Size to Continue
+            </button>
+          ) : (
+            <Link
+              href={`/shop/${shopId}/book?item_id=${item.id}&intent=${item.listing_type}${selectedVariation ? `&variation=${encodeURIComponent(selectedVariation)}` : ''}${selectedSize ? `&selected_size=${encodeURIComponent(selectedSize)}` : ''}`}
+              className="w-full bg-[#2D2A26] hover:bg-black text-white font-medium tracking-wide py-4 mt-4 transition-colors flex items-center justify-center rounded-xl shadow-lg uppercase"
+            >
+              {getButtonText()}
+            </Link>
+          )}
         </div>
       </div>
+
+      {/* Ratings & Reviews */}
+      {!!item.reviews_count && (
+        <div className="mt-24 pt-16 border-t border-zinc-200 max-w-3xl">
+          <h2 className="text-2xl font-serif font-semibold text-zinc-900 mb-2">Ratings &amp; Reviews</h2>
+          <div className="flex items-center gap-2 mb-8">
+            <div className="flex items-center gap-0.5 text-amber-500">
+              {[1, 2, 3, 4, 5].map(n => (
+                <Star key={n} size={16} fill={n <= Math.round(item.reviews_avg_rating || 0) ? 'currentColor' : 'none'} />
+              ))}
+            </div>
+            <span className="font-semibold text-zinc-900">{item.reviews_avg_rating?.toFixed(1)}</span>
+            <span className="text-[#A8A19A] text-sm">out of 5 · {item.reviews_count} review{item.reviews_count === 1 ? '' : 's'}</span>
+          </div>
+
+          <div className="space-y-6">
+            {(item.reviews || []).map(review => (
+              <div key={review.id} className="pb-6 border-b border-zinc-100 last:border-0">
+                <div className="flex items-center justify-between mb-1.5">
+                  <span className="text-sm font-semibold text-zinc-900">{review.user?.name || 'Anonymous Customer'}</span>
+                  <span className="text-xs text-[#A8A19A]">
+                    {new Date(review.created_at).toLocaleDateString('en-PH', { year: 'numeric', month: 'short', day: 'numeric' })}
+                  </span>
+                </div>
+                <div className="flex items-center gap-0.5 text-amber-500 mb-2">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <Star key={n} size={12} fill={n <= review.rating ? 'currentColor' : 'none'} />
+                  ))}
+                </div>
+                {review.comment && (
+                  <p className="text-sm text-[#524A44] leading-relaxed">{review.comment}</p>
+                )}
+              </div>
+            ))}
+            {(item.reviews || []).length === 0 && (
+              <p className="text-sm text-[#A8A19A] flex items-center gap-2">
+                <MessageSquare size={14} /> No written reviews yet.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Recommendations / Also Suggested */}
       {item.recommendations && item.recommendations.length > 0 && (

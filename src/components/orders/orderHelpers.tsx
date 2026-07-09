@@ -3,6 +3,7 @@ import { ShoppingBag, Truck, CheckCircle, Clock, Calendar, Search, XCircle } fro
 export interface CatalogOrder {
   id: number;
   catalog_item_id: number;
+  selected_size: string | null;
   customer_id: number | null;
   type: string;
   status: string;

@@ -12,6 +12,11 @@ export interface CustomField {
   options?: string[];
 }
 
+export interface SizeChartRow {
+  size: string;
+  values: string[];
+}
+
 export interface ServiceDetailModalItem {
   id: number;
   name: string;
@@ -19,10 +24,15 @@ export interface ServiceDetailModalItem {
   base_price?: string | number;
   estimated_days?: number;
   description?: string;
-  category?: string;
+  categories?: string[];
   image_url?: string | null;
+  size_chart_image_url?: string | null;
+  size_chart_columns?: string[] | null;
+  size_chart_rows?: SizeChartRow[] | null;
   custom_fields?: CustomField[];
   tags?: string[];
+  /** Packages and services share this modal but need different booking-link params. */
+  kind?: 'service' | 'package';
 }
 
 interface ServiceDetailModalProps {
@@ -101,7 +111,8 @@ export default function ServiceDetailModal({
     return text;
   };
 
-  const bookingUrl = shopId ? `/shop/${shopId}/book?service_id=${service.id}` : '#';
+  const bookingParam = service.kind === 'package' ? 'package_id' : 'service_id';
+  const bookingUrl = shopId ? `/shop/${shopId}/book?${bookingParam}=${service.id}` : '#';
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs animate-fade-in">
@@ -138,11 +149,15 @@ export default function ServiceDetailModal({
             </div>
           )}
           {/* Category Tag Overlay */}
-          {service.category && (
-            <span className="absolute bottom-4 left-4 inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#9A8073] px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-sm animate-fade-in">
-              <Tag size={12} />
-              {service.category}
-            </span>
+          {service.categories && service.categories.length > 0 && (
+            <div className="absolute bottom-4 left-4 flex flex-wrap gap-1.5">
+              {service.categories.map(cat => (
+                <span key={cat} className="inline-flex items-center gap-1.5 text-xs font-bold text-white bg-[#9A8073] px-3.5 py-1.5 rounded-full uppercase tracking-wider shadow-sm animate-fade-in">
+                  <Tag size={12} />
+                  {cat}
+                </span>
+              ))}
+            </div>
           )}
         </div>
 
@@ -190,6 +205,46 @@ export default function ServiceDetailModal({
                   </span>
                 ))}
               </div>
+            </div>
+          )}
+
+          {/* Size Chart */}
+          {(service.size_chart_image_url || (service.size_chart_columns && service.size_chart_columns.length > 0)) && (
+            <div className="space-y-3 pt-2 border-t border-[#EBE6E0]">
+              <h4 className="text-xs font-bold text-[#2D2A26] uppercase tracking-wider">Size Chart</h4>
+              {service.size_chart_image_url && (
+                /* eslint-disable-next-line @next/next/no-img-element */
+                <img
+                  src={service.size_chart_image_url}
+                  alt="Size chart"
+                  className="w-full rounded-xl border border-[#EBE6E0]"
+                />
+              )}
+              {service.size_chart_columns && service.size_chart_columns.length > 0 && service.size_chart_rows && service.size_chart_rows.length > 0 && (
+                <div className="overflow-x-auto border border-[#EBE6E0] rounded-xl">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="bg-[#FAF6F3]">
+                        <th className="px-3 py-2 text-left font-bold text-[#827A73] uppercase tracking-wide">Size</th>
+                        {service.size_chart_columns.map(col => (
+                          <th key={col} className="px-3 py-2 text-left font-bold text-[#827A73] uppercase tracking-wide">{col}</th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {service.size_chart_rows.map(row => (
+                        <tr key={row.size} className="border-t border-[#EBE6E0]">
+                          <td className="px-3 py-2 font-semibold text-[#2D2A26] whitespace-nowrap">{row.size}</td>
+                          {row.values.map((val, i) => (
+                            <td key={`${row.size}-${i}`} className="px-3 py-2 text-[#524A44]">{val || '—'}</td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-[11px] text-[#A8A19A]">Follow this shop&apos;s own size chart when submitting measurements — sizing can vary between shops.</p>
             </div>
           )}
 

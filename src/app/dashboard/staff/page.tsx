@@ -31,6 +31,7 @@ export default function StaffPage() {
     password: '',
     phone: '',
     role: 'tailor',
+    additional_roles: [] as string[],
     specialization: '',
     hired_at: new Date().toISOString().split('T')[0],
     is_active: true,
@@ -73,6 +74,7 @@ export default function StaffPage() {
         email: string;
         phone: string;
         role: string;
+        additional_roles: string[];
         specialization: string[];
         hired_at: string;
         password?: string;
@@ -84,6 +86,10 @@ export default function StaffPage() {
         email: formData.email,
         phone: formData.phone,
         role: formData.role,
+        // Sent even when empty so clearing all secondary roles on an existing
+        // profile actually takes — the backend uses request->only(), which
+        // only touches keys present in the payload.
+        additional_roles: formData.additional_roles.filter(r => r && r !== formData.role),
         specialization: formData.specialization
           ? formData.specialization.split(',').map(s => s.trim()).filter(Boolean)
           : [],
@@ -115,6 +121,7 @@ export default function StaffPage() {
         password: '',
         phone: '',
         role: 'tailor',
+        additional_roles: [],
         specialization: '',
         hired_at: new Date().toISOString().split('T')[0],
         is_active: true,
@@ -138,7 +145,8 @@ export default function StaffPage() {
       password: '',
       phone: member.user?.phone || '',
       role: member.role || 'tailor',
-      specialization: Array.isArray(member.specialization) 
+      additional_roles: member.additional_roles || [],
+      specialization: Array.isArray(member.specialization)
         ? member.specialization.join(', ') 
         : (member.specialization || ''),
       hired_at: member.hired_at || new Date().toISOString().split('T')[0],
@@ -191,6 +199,7 @@ export default function StaffPage() {
               password: '',
               phone: '',
               role: 'tailor',
+              additional_roles: [],
               specialization: '',
               hired_at: new Date().toISOString().split('T')[0],
               is_active: true,

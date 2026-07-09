@@ -46,7 +46,7 @@ export default function JobProductionTimeline({
   };
   let STAGES: Array<{ key: string; label: string; emoji: string }> = [];
   
-  if (job.intake_channel === 'online' || job.fulfillment_type === 'shipping' || job.fulfillment_type === 'delivery') {
+  if (job.fulfillment_type === 'shipping' || job.fulfillment_type === 'delivery') {
     let dispatchedLabel = 'Shipped';
     let dispatchedEmoji = '🚚';
     if (fulfillmentType === 'pickup') {
@@ -57,22 +57,28 @@ export default function JobProductionTimeline({
       dispatchedEmoji = '🛵';
     }
     STAGES = [
-      { key: 'pending',          label: 'Pending',     emoji: '🕐' },
-      { key: 'cutting',          label: 'Cutting',     emoji: '✂️' },
-      { key: 'sewing',           label: 'Sewing',      emoji: '🧵' },
-      { key: 'fitting',          label: 'Fitting',     emoji: '📐' },
-      { key: 'packed',           label: 'Packed',      emoji: '📦' },
-      { key: 'handed_to_courier',label: dispatchedLabel, emoji: dispatchedEmoji },
-      { key: 'completed',        label: 'Completed',   emoji: '✅' },
+      { key: 'pending',          label: 'Pending',        emoji: '🕐' },
+      { key: 'design',           label: 'Design',         emoji: '🎨' },
+      { key: 'pattern_making',   label: 'Pattern Making',  emoji: '📏' },
+      { key: 'cutting',          label: 'Cutting',        emoji: '✂️' },
+      { key: 'sewing',           label: 'Sewing',         emoji: '🧵' },
+      { key: 'fitting',          label: 'Fitting',        emoji: '📐' },
+      { key: 'finishing',        label: 'Finishing',      emoji: '✨' },
+      { key: 'packed',           label: 'Packed',         emoji: '📦' },
+      { key: 'handed_to_courier',label: dispatchedLabel,  emoji: dispatchedEmoji },
+      { key: 'completed',        label: 'Completed',      emoji: '🏁' },
     ];
   } else {
     STAGES = [
-      { key: 'pending',          label: 'Pending',     emoji: '🕐' },
-      { key: 'cutting',          label: 'Cutting',     emoji: '✂️' },
-      { key: 'sewing',           label: 'Sewing',      emoji: '🧵' },
-      { key: 'fitting',          label: 'Fitting',     emoji: '📐' },
-      { key: 'ready_for_pickup', label: 'Ready',       emoji: '📦' },
-      { key: 'completed',        label: 'Completed',   emoji: '✅' },
+      { key: 'pending',          label: 'Pending',        emoji: '🕐' },
+      { key: 'design',           label: 'Design',         emoji: '🎨' },
+      { key: 'pattern_making',   label: 'Pattern Making',  emoji: '📏' },
+      { key: 'cutting',          label: 'Cutting',        emoji: '✂️' },
+      { key: 'sewing',           label: 'Sewing',         emoji: '🧵' },
+      { key: 'fitting',          label: 'Fitting',        emoji: '📐' },
+      { key: 'finishing',        label: 'Finishing',      emoji: '✨' },
+      { key: 'ready_for_pickup', label: 'Ready',          emoji: '📦' },
+      { key: 'completed',        label: 'Completed',      emoji: '🏁' },
     ];
   }
 
@@ -93,8 +99,12 @@ export default function JobProductionTimeline({
         ) : (
           <div className="flex items-center">
             {STAGES.map((stage, idx) => {
-              const isDone = idx < currentIdx;
               const isCurrent = idx === currentIdx;
+              // The last stage has no later stage to compare against, so
+              // `idx < currentIdx` can never mark it done — treat reaching
+              // it as done in its own right instead of leaving it stuck
+              // looking "current" forever.
+              const isDone = idx < currentIdx || (isCurrent && stage.key === 'completed');
               let iconClass = 'bg-[#F0EAE3] border-[#EBE6E0] text-[#A8A19A] group-hover:border-[#9A8073]/40';
               if (isDone) {
                 iconClass = 'bg-[#7A8B76] border-[#7A8B76] text-white';
@@ -152,13 +162,16 @@ export default function JobProductionTimeline({
             className="w-full px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
           >
             <option value="pending">Pending</option>
+            <option value="design">Design</option>
+            <option value="pattern_making">Pattern Making</option>
             <option value="cutting">Cutting</option>
             <option value="sewing">Sewing</option>
             <option value="fitting">Fitting</option>
-            {(job.intake_channel === 'walk_in' && job.fulfillment_type === 'pickup') && (
+            <option value="finishing">Finishing</option>
+            {job.fulfillment_type === 'pickup' && (
               <option value="ready_for_pickup">Ready for Pickup</option>
             )}
-            {(job.intake_channel === 'online' || job.fulfillment_type === 'shipping' || job.fulfillment_type === 'delivery') && (
+            {(job.fulfillment_type === 'shipping' || job.fulfillment_type === 'delivery') && (
               <>
                 <option value="packed">Packed</option>
                 <option value="handed_to_courier">
@@ -184,6 +197,47 @@ export default function JobProductionTimeline({
           >
             ↩ Revert to Previous Stage ({prevStage.label})
           </button>
+        )}
+
+        {job.material_source === 'customer_supplied' && (
+          <div className="bg-red-50 border-2 border-red-300 rounded-xl p-3 flex items-center gap-2">
+            <span className="text-lg">⚠</span>
+            <p className="text-xs font-bold text-red-700 uppercase tracking-wide">
+              Customer-supplied fabric/garment — do not cut from shop stock
+            </p>
+          </div>
+        )}
+
+        {((job.reference_images && job.reference_images.length > 0) || job.reference_link) && (
+          <div className="space-y-1.5 border-t border-[#EBE6E0] pt-4">
+            <span className="text-sm font-medium text-[#524A44] flex items-center gap-1.5">
+              <Camera size={15} className="text-[#9A8073]" />
+              Design Reference
+            </span>
+            <p className="text-[11px] text-[#A8A19A]">
+              What the customer wants — attached at booking, or by the shop for a walk-in custom order.
+            </p>
+            {job.reference_images && job.reference_images.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-1">
+                {job.reference_images.map((url) => (
+                  <a key={url} href={url} target="_blank" rel="noopener noreferrer">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={url} alt="Design reference" className="h-20 w-20 object-cover rounded-lg border border-[#EBE6E0] hover:opacity-80 transition-opacity" />
+                  </a>
+                ))}
+              </div>
+            )}
+            {job.reference_link && (
+              <a
+                href={job.reference_link}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block text-xs text-[#9A8073] hover:underline mt-1 truncate max-w-full"
+              >
+                {job.reference_link}
+              </a>
+            )}
+          </div>
         )}
 
         <div className="space-y-1">

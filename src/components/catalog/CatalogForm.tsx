@@ -102,13 +102,24 @@ export default function CatalogForm({
     listing_type: 'made_to_order',
     rental_price: '',
     rental_deposit: '',
-    sizes: '',
+    sizes: [],
     external_gallery_url: '',
     is_active: true,
   });
 
   const [fabricImageUploading, setFabricImageUploading] = useState(false);
   const fabricImageInputRef = useRef<HTMLInputElement>(null);
+  const [sizeInput, setSizeInput] = useState('');
+
+  const addSize = () => {
+    const size = sizeInput.trim();
+    if (!size || formData.sizes.includes(size)) return;
+    setFormData(prev => ({ ...prev, sizes: [...prev.sizes, size] }));
+    setSizeInput('');
+  };
+  const removeSize = (size: string) => {
+    setFormData(prev => ({ ...prev, sizes: prev.sizes.filter(s => s !== size) }));
+  };
 
   const [features, setFeatures] = useState<BulletItem[]>([{ id: 'init', text: '' }]);
   const [fitGuide, setFitGuide] = useState<BulletItem[]>([{ id: 'init', text: '' }]);
@@ -457,17 +468,38 @@ export default function CatalogForm({
 
                     <div className="md:col-span-2">
                       <label htmlFor="catalog-sizes" className="block text-xs font-semibold text-[#524A44] uppercase tracking-wider mb-2">
-                        Available Sizes <span className="text-[#A8A19A] normal-case">— comma separated</span>
+                        Available Sizes <span className="text-[#A8A19A] normal-case">— customers pick one of these when booking; leave blank for made-to-order</span>
                       </label>
-                      <input
-                        id="catalog-sizes"
-                        type="text"
-                        name="sizes"
-                        value={formData.sizes}
-                        onChange={handleChange}
-                        placeholder="e.g. XS, S, M, L, XL, XXL — or leave blank for made-to-order"
-                        className="w-full px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
-                      />
+                      {formData.sizes.length > 0 && (
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          {formData.sizes.map(size => (
+                            <span key={size} className="flex items-center gap-1 px-3 py-1 bg-taupe text-white text-sm rounded-full">
+                              {size}
+                              <button type="button" onClick={() => removeSize(size)} className="hover:text-white/70 focus:outline-none">
+                                <X size={14} />
+                              </button>
+                            </span>
+                          ))}
+                        </div>
+                      )}
+                      <div className="flex gap-2">
+                        <input
+                          id="catalog-sizes"
+                          type="text"
+                          value={sizeInput}
+                          onChange={(e) => setSizeInput(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addSize(); } }}
+                          placeholder="e.g. S, then press Enter"
+                          className="flex-1 px-4 py-2.5 bg-white border border-[#EBE6E0] rounded-xl text-[#2D2A26] placeholder-[#A8A19A] focus:outline-none focus:border-taupe text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={addSize}
+                          className="shrink-0 px-4 rounded-xl bg-taupe/10 text-taupe hover:bg-taupe/20 transition-colors text-sm font-semibold"
+                        >
+                          Add
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}

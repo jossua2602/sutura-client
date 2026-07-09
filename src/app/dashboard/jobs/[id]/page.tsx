@@ -1,7 +1,7 @@
 'use client';
 
-import React from 'react';
-import { ArrowLeft, Loader2, Save, Trash2, ShoppingBag, Store, Printer, Truck, CreditCard, AlertTriangle, Scissors } from 'lucide-react';
+import React, { useState } from 'react';
+import { ArrowLeft, Loader2, Save, Trash2, ShoppingBag, Store, Printer, Truck, CreditCard, AlertTriangle, Scissors, X, HelpCircle } from 'lucide-react';
 import Modal from '@/components/Modal';
 import Link from 'next/link';
 import JobProductionTimeline from '@/components/jobs/JobProductionTimeline';
@@ -14,6 +14,7 @@ import { RosterItem } from '@/components/jobs/jobTypes';
 export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ id: string }> }>) {
   const unwrappedParams = React.use(params);
   const id = unwrappedParams.id;
+  const [showOutsourcingHelp, setShowOutsourcingHelp] = useState(false);
 
   const {
     shop,
@@ -38,6 +39,8 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
     setIsOutsourced,
     partnerShopName,
     setPartnerShopName,
+    outsourcingCost,
+    setOutsourcingCost,
     fulfillmentType,
     setFulfillmentType,
     fulfillmentProvider,
@@ -51,6 +54,7 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
     handleUpdate,
     handleUpdateStaff,
     handleChargePayment,
+    handleUpdatePayment,
     handleDelete,
   } = useJobDetail(id);
 
@@ -66,6 +70,17 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
   if (!job) {
     return <div className="text-[#A8A19A]">Job Order not found.</div>;
   }
+
+  // The 50% downpayment gate is enforced cumulatively (any partial payment
+  // counts toward it), so the banner must track progress toward that
+  // threshold rather than just "has anything been paid at all" — otherwise
+  // a token payment (e.g. ₱70 of an ₱8,000 job) silently makes the warning
+  // disappear even though production still can't legally start.
+  const jobTotalAmount = Number.parseFloat(String(job.total_amount)) || 0;
+  const jobPaidSoFar = jobTotalAmount - (Number.parseFloat(String(job.balance)) || 0);
+  const requiredDownpayment = jobTotalAmount * 0.5;
+  const downpaymentShortfall = Math.max(0, requiredDownpayment - jobPaidSoFar);
+  const showDownpaymentGate = job.status !== 'cancelled' && job.status !== 'completed' && downpaymentShortfall > 0;
 
   return (
     <>
@@ -111,7 +126,7 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
           </div>
           <div className="flex items-center gap-3">
             <Link
-              href={`/dashboard/jobs/${job.id}/print`}
+              href={`/print/jobs/${job.id}/ticket`}
               target="_blank"
               className="p-2 rounded-lg bg-white shadow-sm border border-[#EBE6E0] text-[#A8A19A] hover:text-[#524A44] transition-colors flex items-center gap-2"
               title="Print Work Ticket"
@@ -138,15 +153,23 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
           </div>
         </div>
 
-        {/* DP Gate Alert — Prominent banner for unpaid jobs */}
-        {job.payment_status === 'unpaid' && (
+        {/* DP Gate Alert — tracks progress toward the 50% threshold, not just
+            whether anything at all has been paid, so a token payment doesn't
+            silently make this look resolved. */}
+        {showDownpaymentGate && (
           <div className="bg-amber-50 border border-amber-300 rounded-2xl px-5 py-4 flex items-start gap-4">
             <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center shrink-0">
               <CreditCard size={18} className="text-amber-600" />
             </div>
             <div className="flex-1">
-              <p className="font-bold text-amber-800 text-sm">No Downpayment Recorded</p>
-              <p className="text-amber-700 text-xs mt-0.5">Per shop policy: 50% downpayment is required before cutting/production begins. Log the payment below.</p>
+              <p className="font-bold text-amber-800 text-sm">
+                {jobPaidSoFar > 0 ? 'Downpayment Incomplete' : 'No Downpayment Recorded'}
+              </p>
+              <p className="text-amber-700 text-xs mt-0.5">
+                {jobPaidSoFar > 0
+                  ? `₱${jobPaidSoFar.toFixed(2)} of the required ₱${requiredDownpayment.toFixed(2)} (50%) collected — ₱${downpaymentShortfall.toFixed(2)} more is needed before cutting/production can begin.`
+                  : `Per shop policy: a 50% downpayment (₱${requiredDownpayment.toFixed(2)}) is required before cutting/production begins. Log the payment below.`}
+              </p>
             </div>
             <a
               href="#financials"
@@ -162,6 +185,17 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
           <div className="bg-orange-50 border border-orange-200 rounded-2xl px-5 py-3 flex items-center gap-3">
             <AlertTriangle size={15} className="text-orange-500 shrink-0" />
             <p className="text-orange-700 text-sm font-semibold">⚡ Rush Order — This job is on an expedited production schedule.</p>
+          </div>
+        )}
+
+        {/* Cancellation Reason */}
+        {job.status === 'cancelled' && job.rejection_reason && (
+          <div className="bg-[#B26959]/10 border border-[#B26959]/25 rounded-2xl px-5 py-3 flex items-start gap-3">
+            <X size={15} className="text-[#B26959] shrink-0 mt-0.5" />
+            <div>
+              <p className="text-[#9A5C4F] text-sm font-semibold">This order was cancelled</p>
+              <p className="text-[#9A5C4F]/80 text-xs mt-0.5">Reason: {job.rejection_reason}</p>
+            </div>
           </div>
         )}
 
@@ -290,7 +324,17 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
             <div className={`shadow-sm border rounded-2xl p-6 transition-colors ${isOutsourced ? 'bg-[#9A8073]/5 border-[#9A8073]/30' : 'bg-white border-[#EBE6E0]'}`}>
               <div className="flex items-center justify-between">
                 <div>
-                  <label htmlFor="outsourced-toggle" className="text-lg font-medium text-[#2D2A26] block cursor-pointer">Outsourcing</label>
+                  <div className="flex items-center gap-1.5">
+                    <label htmlFor="outsourced-toggle" className="text-lg font-medium text-[#2D2A26] cursor-pointer">Outsourcing</label>
+                    <button
+                      type="button"
+                      onClick={() => setShowOutsourcingHelp(p => !p)}
+                      className="text-[#A8A19A] hover:text-[#9A8073] transition-colors"
+                      title="What is this?"
+                    >
+                      <HelpCircle size={15} />
+                    </button>
+                  </div>
                   <p className="text-sm text-[#827A73]">Is this order being outsourced to a partner shop?</p>
                 </div>
                 <div className="relative inline-flex items-center">
@@ -306,17 +350,59 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
                   </label>
                 </div>
               </div>
+
+              {showOutsourcingHelp && (
+                <div className="mt-3 p-3 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-xs text-[#524A44] leading-relaxed">
+                  Turn this on when you&apos;re subcontracting this job — or part of it, like beadwork or embroidery — to another shop or freelance artisan, usually because you&apos;re overbooked or don&apos;t have that skill or machine in-house. The customer still pays your full Total Amount either way — enter what <strong>you</strong> pay the partner below so you can see your real profit on this job, not just what the customer paid.
+                </div>
+              )}
+
               {isOutsourced && (
-                <div className="mt-4">
-                  <label htmlFor="partnerShopName" className="block text-sm font-medium text-[#524A44] mb-1">Partner Shop Name</label>
-                  <input
-                    id="partnerShopName"
-                    type="text"
-                    value={partnerShopName}
-                    onChange={(e) => setPartnerShopName(e.target.value)}
-                    placeholder="e.g. Maria's Tailoring"
-                    className="w-full px-4 py-2 bg-white border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                  />
+                <div className="mt-4 space-y-3">
+                  <div>
+                    <label htmlFor="partnerShopName" className="block text-sm font-medium text-[#524A44] mb-1">Partner Shop Name <span className="text-[#B26959]">*</span></label>
+                    <input
+                      id="partnerShopName"
+                      type="text"
+                      required
+                      value={partnerShopName}
+                      onChange={(e) => setPartnerShopName(e.target.value)}
+                      placeholder="e.g. Maria's Tailoring"
+                      className="w-full px-4 py-2 bg-white border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                    />
+                  </div>
+
+                  <div>
+                    <label htmlFor="outsourcingCost" className="block text-sm font-medium text-[#524A44] mb-1">
+                      What You&apos;re Paying Them <span className="text-xs font-normal text-[#A8A19A]">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A] font-medium text-sm">₱</span>
+                      <input
+                        id="outsourcingCost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={outsourcingCost}
+                        onChange={(e) => setOutsourcingCost(e.target.value)}
+                        placeholder="0.00"
+                        className="w-full pl-7 pr-3 py-2 bg-white border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  {Number.parseFloat(outsourcingCost || '0') > 0 && (() => {
+                    const total = Number.parseFloat(String(job.total_amount)) || 0;
+                    const cost = Number.parseFloat(outsourcingCost) || 0;
+                    const profit = total - cost;
+                    const isLoss = profit <= 0;
+                    return (
+                      <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm ${isLoss ? 'bg-red-50 border-red-200 text-red-600' : 'bg-[#7A8B76]/10 border-[#7A8B76]/20 text-[#7A8B76]'}`}>
+                        <span className="font-medium">{isLoss ? "You're losing money on this job" : 'Your profit on this job'}</span>
+                        <span className="font-bold">₱{profit.toFixed(2)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -364,6 +450,7 @@ export default function JobDetailPage({ params }: Readonly<{ params: Promise<{ i
                 job={job}
                 saving={saving}
                 onCharge={handleChargePayment}
+                onUpdatePayment={handleUpdatePayment}
               />
             </div>
           </div>

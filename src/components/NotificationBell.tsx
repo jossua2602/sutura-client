@@ -73,6 +73,12 @@ const TYPE_CONFIG: Record<
     color: 'text-emerald-600',
     label: 'Payment',
   },
+  new_catalog_order: {
+    icon: Package,
+    bg: 'bg-violet-50',
+    color: 'text-violet-600',
+    label: 'New Order',
+  },
   default: {
     icon: Info,
     bg: 'bg-[#F0EAE3]',

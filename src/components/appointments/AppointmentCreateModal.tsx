@@ -7,6 +7,7 @@ import {
   Appointment, CustomerData, ServiceData, BranchData, StaffData, AppointmentType,
   APPOINTMENT_TYPES, TYPE_CONFIG, TYPES_REQUIRING_SERVICE, JobOrderData
 } from './appointmentHelpers';
+import { roleLabel } from '@/components/staff/staffHelpers';
 
 interface AppointmentCreateModalProps {
   readonly isOpen: boolean;
@@ -41,8 +42,8 @@ export default function AppointmentCreateModal({
   useEffect(() => {
     if (editingApt) {
       const d = new Date(editingApt.scheduled_at);
-      const custId = customers.find(c => c.name === editingApt.customer?.name)?.id?.toString() || '';
-      const servId = services.find(s => s.name === editingApt.service?.name)?.id?.toString() || '';
+      const custId = editingApt.customer?.id?.toString() || '';
+      const servId = editingApt.service?.id?.toString() || '';
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setFormData({
         customer_id: custId,
@@ -104,12 +105,19 @@ export default function AppointmentCreateModal({
         <div>
           <span className="block text-sm font-medium text-[#524A44] mb-1">Appointment Type <span className="text-rose-500">*</span></span>
           <div className="grid grid-cols-4 gap-2">
-            {APPOINTMENT_TYPES.filter(t => t !== 'pickup').map(t => {
+            {APPOINTMENT_TYPES.map(t => {
               const tc = TYPE_CONFIG[t];
               return (
                 <button
                   type="button" key={t}
-                  onClick={() => setFormData({ ...formData, appointment_type: t })}
+                  onClick={() => setFormData({
+                    ...formData,
+                    appointment_type: t,
+                    // Pickup is a quick hand-off, not a sit-down session — default
+                    // it to a short slot instead of inheriting whatever duration
+                    // was previously selected for another appointment type.
+                    duration_minutes: t === 'pickup' ? '15' : formData.duration_minutes,
+                  })}
                   className={`flex flex-col items-center gap-1 py-2 px-1 rounded-lg border text-[10px] font-semibold transition-all ${
                     formData.appointment_type === t
                       ? `${tc.bg} ${tc.border} ${tc.text} ring-2 ring-offset-1 ${tc.border.replace('border-', 'ring-')}`
@@ -309,6 +317,51 @@ export default function AppointmentCreateModal({
             </div>
           )}
 
+          {/* Pickup Flow */}
+          {formData.appointment_type === 'pickup' && (
+            <div>
+              <label htmlFor="job_order_id" className="block text-sm font-medium text-[#524A44] mb-1">
+                Link to Job Order <span className="text-rose-500">*</span>
+              </label>
+              <select
+                id="job_order_id"
+                required
+                disabled={!formData.customer_id}
+                value={formData.job_order_id}
+                onChange={e => setFormData({ ...formData, job_order_id: e.target.value })}
+                className="w-full bg-[#FAF6F3] disabled:opacity-60 disabled:cursor-not-allowed border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
+                {!formData.customer_id ? (
+                  <option value="">Select a customer first...</option>
+                ) : (
+                  <>
+                    <option value="" disabled>Choose order ready for pickup...</option>
+                    {jobOrders
+                      .filter(job => {
+                        const targetCustomer = customers.find(c => c.id.toString() === formData.customer_id);
+                        if (!targetCustomer) return false;
+
+                        if (job.customer_id !== undefined && job.customer_id !== null) {
+                          if (job.customer_id !== targetCustomer.id) return false;
+                        } else {
+                          if (job.customer?.name !== targetCustomer.name) return false;
+                        }
+
+                        return job.status === 'ready_for_pickup';
+                      })
+                      .map(j => (
+                        <option key={j.id} value={j.id}>
+                          {j.order_number || `Order #${j.id}`}
+                        </option>
+                      ))}
+                  </>
+                )}
+              </select>
+              <p className="text-[11px] text-[#827A73] mt-1.5 font-medium">
+                💡 Only orders already marked &quot;Ready for Pickup&quot; are shown — confirming which one avoids handing over the wrong garment.
+              </p>
+            </div>
+          )}
+
         {/* Garment Category Selector */}
         <div>
           <label htmlFor="garment_category" className="block text-sm font-medium text-[#524A44] mb-1">
@@ -396,7 +449,15 @@ export default function AppointmentCreateModal({
             <select id="assigned_staff_id" value={formData.assigned_staff_id} onChange={e => setFormData({ ...formData, assigned_staff_id: e.target.value })}
               className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-4 py-2 text-[#2D2A26] focus:outline-none focus:border-[#9A8073]">
               <option value="">Unassigned</option>
-              {staff.map(s => <option key={s.user_id} value={s.user_id}>{s.user?.name || `Staff #${s.user_id}`}</option>)}
+              {staff.map(s => {
+                const roles = [s.role, ...(s.additional_roles || [])].filter((r): r is string => Boolean(r)).map(roleLabel).join(', ');
+                const name = s.user?.name || `Staff #${s.user_id}`;
+                return (
+                  <option key={s.user_id} value={s.user_id}>
+                    {roles ? `[${roles}] ${name}` : name}
+                  </option>
+                );
+              })}
             </select>
           </div>
         )}

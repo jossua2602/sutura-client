@@ -2,25 +2,34 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ShoppingBag, Package } from 'lucide-react';
+import { ShoppingBag, Package, BarChart3 } from 'lucide-react';
 
 const TABS = [
   { label: 'Design Catalog', href: '/dashboard/catalog', icon: ShoppingBag },
   { label: 'Ready-to-Wear Orders', href: '/dashboard/orders', icon: Package },
+  { label: 'Analytics', href: '/dashboard/catalog/analytics', icon: BarChart3 },
 ];
 
 /**
- * Module-level tabs that unite the Design Catalog (product listings) and the
- * Ready-to-Wear Orders (sales fulfillment) under one module, so RTW is no longer
- * a separate sidebar item.
+ * Module-level tabs that unite the Design Catalog (product listings), the
+ * Ready-to-Wear Orders (sales fulfillment), and Analytics under one module,
+ * so RTW is no longer a separate sidebar item.
  */
 export default function CatalogModuleTabs() {
   const pathname = usePathname();
 
+  // Pick whichever tab's href is the longest matching prefix, so a sub-route
+  // like /dashboard/catalog/analytics doesn't also light up the Design
+  // Catalog tab just because it shares the same /dashboard/catalog prefix.
+  const activeHref = TABS
+    .map(t => t.href)
+    .filter(href => pathname === href || pathname.startsWith(`${href}/`))
+    .sort((a, b) => b.length - a.length)[0];
+
   return (
     <div className="flex items-center gap-1 border-b border-[#EBE6E0]">
       {TABS.map(tab => {
-        const active = pathname === tab.href || pathname.startsWith(`${tab.href}/`);
+        const active = tab.href === activeHref;
         const Icon = tab.icon;
         return (
           <Link

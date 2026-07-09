@@ -2,6 +2,7 @@ export interface Staff {
   id: number;
   user: { name: string; email: string; phone?: string; last_seen_at?: string | null };
   role: string;
+  additional_roles?: string[] | null;
   is_active: boolean;
   hired_at: string;
   specialization?: string | string[];
@@ -10,6 +11,14 @@ export interface Staff {
   shop_branch_id?: number | null;
   is_branch_manager?: boolean;
   branch?: { id: number; name: string } | null;
+}
+
+/** Turns a raw role value (e.g. "head_tailor") into a display label ("Head Tailor"). */
+export function roleLabel(role: string): string {
+  return role
+    .split('_')
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ');
 }
 
 /**

@@ -3,7 +3,7 @@
 import React from 'react';
 import {
   CreditCard, Check, X, ExternalLink, Calendar, ShoppingBag,
-  CheckCircle2, Banknote, Smartphone, Scissors, Loader2, XCircle,
+  CheckCircle2, Banknote, Smartphone, Scissors, Loader2, XCircle, Receipt,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -50,6 +50,10 @@ export default function PaymentQueuePage() {
     setPayNotes,
     payReference,
     setPayReference,
+    payReceiptPath,
+    setPayReceiptPath,
+    payReceiptUploading,
+    handlePayReceiptUpload,
     paySubmitting,
     catalogOrders,
     catalogLoading,
@@ -145,8 +149,10 @@ export default function PaymentQueuePage() {
                   </a>
                 </div>
               ) : (
-                <div className="h-32 rounded-xl border border-dashed border-[#EBE6E0] flex items-center justify-center text-xs text-[#A8A19A]">
-                  No receipt uploaded
+                <div className="aspect-3/4 rounded-xl border-2 border-dashed border-[#EBE6E0] bg-[#FAF6F3]/60 flex flex-col items-center justify-center gap-2 text-[#A8A19A]">
+                  <Receipt size={28} className="text-[#C5BDBA]" />
+                  <p className="text-xs font-medium">No receipt screenshot uploaded</p>
+                  <p className="text-[10px] text-[#C5BDBA] px-6 text-center">The customer&apos;s GCash/bank transfer proof would appear here</p>
                 </div>
               )}
               <div className="flex gap-2">
@@ -397,7 +403,7 @@ export default function PaymentQueuePage() {
                     max={logPaymentJob.balance}
                     value={payAmount}
                     onChange={e => setPayAmount(e.target.value)}
-                    className="w-full pl-7 pr-4 py-2.5 border border-[#D1C7BD] rounded-lg focus:outline-none focus:border-taupe text-[#2D2A26]"
+                    className="w-full pl-7 pr-4 py-2.5 border border-[#D1C7BD] rounded-lg focus:outline-none focus:border-taupe text-[#2D2A26] [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   />
                 </div>
               </div>
@@ -429,6 +435,35 @@ export default function PaymentQueuePage() {
                   />
                 </div>
               )}
+              {(payMethod === 'gcash' || payMethod === 'bank_transfer') && (
+                <div>
+                  <label htmlFor="pay-receipt-upload" className="text-xs font-medium text-[#524A44] block mb-1">
+                    Receipt Screenshot (optional)
+                  </label>
+                  {payReceiptPath ? (
+                    <div className="flex items-center justify-between px-3 py-2.5 border border-[#D1C7BD] rounded-lg text-sm">
+                      <span className="flex items-center gap-1.5 text-[#7A8B76] font-medium"><Check size={14} /> Screenshot attached</span>
+                      <button type="button" onClick={() => setPayReceiptPath('')} className="text-[#B26959] text-xs font-medium hover:underline">Remove</button>
+                    </div>
+                  ) : (
+                    <label
+                      htmlFor="pay-receipt-upload"
+                      className="flex items-center justify-center gap-2 px-3 py-3 border border-dashed border-[#D1C7BD] rounded-lg text-sm text-[#827A73] cursor-pointer hover:bg-[#FAF6F3] transition-colors"
+                    >
+                      {payReceiptUploading ? <Loader2 size={15} className="animate-spin" /> : <Receipt size={15} />}
+                      {payReceiptUploading ? 'Uploading…' : 'Attach GCash/bank screenshot'}
+                      <input
+                        id="pay-receipt-upload"
+                        type="file"
+                        accept="image/*"
+                        className="hidden"
+                        disabled={payReceiptUploading}
+                        onChange={e => { if (e.target.files?.[0]) handlePayReceiptUpload(e.target.files[0]); }}
+                      />
+                    </label>
+                  )}
+                </div>
+              )}
               <div>
                 <label htmlFor="pay-notes-input" className="text-xs font-medium text-[#524A44] block mb-1">Notes (optional)</label>
                 <input
@@ -443,7 +478,7 @@ export default function PaymentQueuePage() {
             </div>
             <div className="p-6 pt-0 flex gap-3">
               <button
-                onClick={() => { setLogPaymentJob(null); setPayAmount(''); setPayNotes(''); setPayReference(''); }}
+                onClick={() => { setLogPaymentJob(null); setPayAmount(''); setPayNotes(''); setPayReference(''); setPayReceiptPath(''); }}
                 className="flex-1 py-2.5 border border-[#EBE6E0] rounded-xl text-sm font-medium text-[#524A44] hover:bg-[#FAF6F3] transition-colors"
               >
                 Cancel

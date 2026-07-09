@@ -7,6 +7,7 @@ interface ServiceDeleteModalProps {
   readonly onClose: () => void;
   readonly onConfirm: () => Promise<void>;
   readonly isSubmitting: boolean;
+  readonly label?: string;
 }
 
 export default function ServiceDeleteModal({
@@ -14,12 +15,13 @@ export default function ServiceDeleteModal({
   onClose,
   onConfirm,
   isSubmitting,
+  label = 'service',
 }: ServiceDeleteModalProps) {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Confirm Deletion">
       <div className="space-y-4">
         <p className="text-[#524A44] text-sm">
-          Are you sure you want to delete this service? This action cannot be undone.
+          Are you sure you want to delete this {label}? This action cannot be undone.
         </p>
         <div className="pt-4 flex justify-end gap-3">
           <button 

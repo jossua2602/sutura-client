@@ -27,15 +27,20 @@ interface BranchContextValue {
 const BranchContext = createContext<BranchContextValue | undefined>(undefined);
 
 export function BranchProvider({ children }: { readonly children: React.ReactNode }) {
-  const { shop } = useAuthStore();
+  const { shop, user } = useAuthStore();
   const shopId = shop?.id;
+  // Branch management/switching is an owner-only concept (matches the
+  // shop_owner-only /shops/{shop}/branches route) — staff and branch managers
+  // share the same dashboard now, so this must not fire for them or every
+  // page load 403s and surfaces a console error/toast for no reason.
+  const isShopOwner = user?.roles?.[0]?.name === 'shop_owner';
   const [branches, setBranches] = useState<Branch[]>([]);
   const [selectedBranchId, setSelectedBranchId] = useState<number | null>(null);
   const [loadingBranches, setLoadingBranches] = useState(false);
 
   const refreshBranches = useCallback(async () => {
     await Promise.resolve();
-    if (!shopId) {
+    if (!shopId || !isShopOwner) {
       setBranches([]);
       setSelectedBranchId(null);
       return;
@@ -73,7 +78,7 @@ export function BranchProvider({ children }: { readonly children: React.ReactNod
     } finally {
       setLoadingBranches(false);
     }
-  }, [shopId]);
+  }, [shopId, isShopOwner]);
 
   useEffect(() => {
     Promise.resolve().then(() => {

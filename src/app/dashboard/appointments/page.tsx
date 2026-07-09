@@ -205,6 +205,7 @@ export default function AppointmentsPage() {
               onDetailsClick={(apt) => { setViewApt(apt); setShowViewModal(true); }}
               onEditClick={(apt) => { setEditingApt(apt); setShowCreateModal(true); }}
               onCancelClick={(apt) => { setCancelApt(apt); setShowCancelModal(true); }}
+              onNoShowClick={(apt) => { if (window.confirm(`Mark the appointment for ${apt.customer?.name} as No-Show? The customer will be notified.`)) updateStatus(apt.id, 'no_show'); }}
             />
           </>
         ) : (
@@ -224,6 +225,7 @@ export default function AppointmentsPage() {
             onStartClick={(id) => updateStatus(id, 'in_progress')}
             onCompleteClick={(apt) => { setCompleteApt(apt); setShowCompleteModal(true); }}
             onCreateJobClick={handleCreateJob}
+            onNoShowClick={(apt) => { if (window.confirm(`Mark the appointment for ${apt.customer?.name} as No-Show? The customer will be notified.`)) updateStatus(apt.id, 'no_show'); }}
             onDetailsClick={(apt) => { setViewApt(apt); setShowViewModal(true); }}
             onAddClick={() => {
               setEditingApt(null);

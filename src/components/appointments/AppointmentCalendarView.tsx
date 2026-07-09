@@ -1,7 +1,7 @@
 import React from 'react';
 import {
   ChevronLeft, ChevronRight, ArrowLeft, Clock, Eye, Play, CheckSquare, Scissors, Loader2,
-  Calendar as CalendarIcon
+  Calendar as CalendarIcon, UserX
 } from 'lucide-react';
 import {
   Appointment, AppointmentType, TYPE_CONFIG, STATUS_CONFIG,
@@ -27,6 +27,7 @@ interface AppointmentCalendarViewProps {
   readonly onCompleteClick: (apt: Appointment) => void;
   readonly onCreateJobClick: (apt: Appointment) => void;
   readonly onDetailsClick: (apt: Appointment) => void;
+  readonly onNoShowClick: (apt: Appointment) => void;
   readonly onAddClick: (dayStr: string, defaultTime: string) => void;
 }
 
@@ -34,7 +35,7 @@ export default function AppointmentCalendarView({
   appointments, currentDate, setCurrentDate, selectedDay, setSelectedDay,
   calSubMode, setCalSubMode, hoveredAptId, setHoveredAptId, actionLoadingId,
   isOwnerOrManager,
-  onReviewClick, onStartClick, onCompleteClick, onCreateJobClick, onDetailsClick, onAddClick
+  onReviewClick, onStartClick, onCompleteClick, onCreateJobClick, onDetailsClick, onNoShowClick, onAddClick
 }: AppointmentCalendarViewProps) {
 
   const year = currentDate.getFullYear();
@@ -281,7 +282,6 @@ export default function AppointmentCalendarView({
             const isPending = event.status === 'pending';
             const isConfirmed = event.status === 'confirmed';
             const isInProg = event.status === 'in_progress';
-            const isCompleted = event.status === 'completed';
             const isClosed = ['cancelled', 'no_show'].includes(event.status);
 
             return (
@@ -351,10 +351,16 @@ export default function AppointmentCalendarView({
                             <CheckSquare size={10} /> Complete
                           </button>
                         )}
-                        {isCompleted && isOwnerOrManager && (
+                        {isConfirmed && isOwnerOrManager && (
                           <button type="button" onClick={e => { e.stopPropagation(); onCreateJobClick(event); }}
                             className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-[#9A8073]/10 text-[#9A8073] hover:bg-[#FAF6F3] border border-[#9A8073]/20 transition-colors">
                             <Scissors size={10} /> Create Job
+                          </button>
+                        )}
+                        {isConfirmed && isOwnerOrManager && (
+                          <button type="button" onClick={e => { e.stopPropagation(); onNoShowClick(event); }}
+                            className="flex items-center gap-0.5 text-[10px] font-semibold px-2 py-0.5 rounded bg-[#B26959]/10 text-[#B26959] hover:bg-[#B26959]/20 border border-[#B26959]/20 transition-colors">
+                            <UserX size={10} /> No Show
                           </button>
                         )}
                         <button type="button" onClick={e => { e.stopPropagation(); onDetailsClick(event); }}

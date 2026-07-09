@@ -5,6 +5,17 @@ export interface RosterItem {
   size: string;
 }
 
+export interface Payment {
+  id: number;
+  amount: string | number;
+  payment_method: string;
+  reference?: string | null;
+  receipt_path?: string | null;
+  created_at: string;
+  notes?: string;
+  recorded_by?: { name: string; id: number };
+}
+
 export interface Job {
   id: number;
   order_number: string;
@@ -25,24 +36,23 @@ export interface Job {
   assigned_staff?: { name: string; id: number };
   staff_stages?: { id: number; pivot: { stage: string; completed_at?: string } }[];
   custom_order_data?: Record<string, unknown> | null;
-  payments?: {
-    id: number;
-    amount: string | number;
-    payment_method: string;
-    created_at: string;
-    notes?: string;
-    recorded_by?: { name: string; id: number };
-  }[];
+  payments?: Payment[];
   is_outsourced?: boolean;
   partner_shop_name?: string | null;
+  outsourcing_cost?: number | string | null;
   is_rush?: boolean;
   rush_fee?: number | string;
   completion_photo_url?: string | null;
+  reference_images?: string[] | null;
+  reference_link?: string | null;
+  material_source?: 'shop_supplied' | 'customer_supplied' | null;
+  rejection_reason?: string | null;
 }
 
 export interface Staff {
   id: number;
   role: string;
+  additional_roles?: string[] | null;
   specialization?: string | string[];
   user: {
     id: number;

@@ -1,6 +1,7 @@
 import React from 'react';
 import { Save, Loader2 } from 'lucide-react';
 import { Staff } from './jobTypes';
+import { roleLabel } from '@/components/staff/staffHelpers';
 
 interface JobStaffAssignmentCardProps {
   readonly allStaff: Staff[];
@@ -23,7 +24,7 @@ export default function JobStaffAssignmentCard({
     <div className="bg-white shadow-sm border border-[#EBE6E0] rounded-2xl p-6">
       <h2 className="text-lg font-medium text-[#2D2A26] mb-4">Multi-Stage Staff Assignment</h2>
       <div className="space-y-4">
-        {['design', 'pattern_making', 'cutting', 'sewing', 'finishing'].map(stage => (
+        {['design', 'pattern_making', 'cutting', 'sewing', 'fitting', 'finishing'].map(stage => (
           <div key={stage} className="space-y-1">
             <div className="flex items-center justify-between">
               <label className="text-sm font-medium text-[#524A44] capitalize">
@@ -46,7 +47,7 @@ export default function JobStaffAssignmentCard({
             >
               <option value="">Unassigned</option>
               {allStaff.map(staff => {
-                const roleLabel = staff.role ? staff.role.charAt(0).toUpperCase() + staff.role.slice(1).replace('_', ' ') : 'Staff';
+                const roleLabels = [staff.role, ...(staff.additional_roles || [])].filter(Boolean).map(roleLabel).join(', ') || 'Staff';
                 let specArray: string[] = [];
                 if (Array.isArray(staff.specialization)) {
                   specArray = staff.specialization;
@@ -56,7 +57,7 @@ export default function JobStaffAssignmentCard({
                 const specLabel = specArray.length > 0 ? ` - ${specArray.join(', ')}` : '';
                 return (
                   <option key={staff.id} value={staff.user.id}>
-                    [{roleLabel}] {staff.user.name}{specLabel}
+                    [{roleLabels}] {staff.user.name}{specLabel}
                   </option>
                 );
               })}

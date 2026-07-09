@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import QRCode from 'qrcode';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
+import { usePrintAuthGuard } from '@/hooks/usePrintAuthGuard';
 
 interface RosterItem { name?: string; print_name?: string; number?: string | number; size?: string; }
 
@@ -15,7 +16,6 @@ interface Job {
   intake_channel: string;
   is_rush?: boolean;
   total_amount: string | number;
-  downpayment?: string | number;
   balance?: string | number;
   due_date?: string;
   notes?: string;
@@ -30,9 +30,12 @@ interface Job {
   };
   custom_order_data?: Record<string, unknown>;
   completion_photo_url?: string | null;
+  reference_images?: string[] | null;
+  material_source?: 'shop_supplied' | 'customer_supplied' | null;
 }
 
 export default function PrintWorkTicketPage() {
+  usePrintAuthGuard();
   const { id } = useParams<{ id: string }>();
   const { shop } = useAuthStore();
   const [job, setJob] = useState<Job | null>(null);
@@ -65,22 +68,25 @@ export default function PrintWorkTicketPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <p className="text-gray-500 text-sm animate-pulse">Preparing work ticket...</p>
       </div>
     );
   }
   if (!job) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <p className="text-gray-500 text-sm">Job not found.</p>
       </div>
     );
   }
 
   const total       = Number.parseFloat(String(job.total_amount || 0));
-  const dp          = Number.parseFloat(String(job.downpayment  || 0));
   const balance     = Number.parseFloat(String(job.balance      || 0));
+  // job_orders has no standalone "downpayment" column — the amount paid so
+  // far is always total minus the current balance, same as everywhere else
+  // in the app (JobFinancialsCard, the downpayment gate banner, etc.).
+  const dp          = total - balance;
   const roster      = (job.custom_order_data?.team_roster || job.custom_order_data?.roster) as RosterItem[] | undefined;
   const poNumber    = job.custom_order_data?.po_number as string | undefined;
 
@@ -107,7 +113,7 @@ export default function PrintWorkTicketPage() {
           body { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
           .no-print { display: none !important; }
         }
-        body { font-family: 'Arial', sans-serif; }
+        body { font-family: 'Arial', sans-serif; background: #fff; }
       `}</style>
 
       {/* Screen back button */}
@@ -116,8 +122,13 @@ export default function PrintWorkTicketPage() {
         <button onClick={() => window.print()} className="bg-[#9A8073] text-white text-sm px-4 py-2 rounded-lg font-medium hover:bg-[#7A6560]">🖨 Print</button>
       </div>
 
-      {/* ─── TICKET BODY ────────────────────────────────────────────── */}
-      <div className="max-w-[780px] mx-auto p-8 text-[#1A1714] text-sm leading-relaxed">
+      {/*
+        ─── TICKET BODY ────────────────────────────────────────────────────
+        globals.css's @media print rule hides `body *` by default and only
+        un-hides #receipt-print-area (a pattern shared with OrderReceiptModal) —
+        without this id, this whole standalone page prints/PDFs as a blank sheet.
+      */}
+      <div id="receipt-print-area" className="max-w-[780px] mx-auto p-8 text-[#1A1714] text-sm leading-relaxed">
 
         {/* Header */}
         <div className="flex justify-between items-start border-b-2 border-[#2D2A26] pb-4 mb-6">
@@ -173,6 +184,23 @@ export default function PrintWorkTicketPage() {
             </table>
           </div>
         </div>
+
+        {/* Customer-supplied material warning — do not cut from shop stock */}
+        {job.material_source === 'customer_supplied' && (
+          <div className="bg-red-50 border-2 border-red-400 rounded-lg p-4 mb-6">
+            <p className="text-sm font-black text-red-700 uppercase tracking-wide">
+              ⚠ Customer-Supplied Fabric/Garment — Do Not Cut From Shop Stock
+            </p>
+            {job.reference_images && job.reference_images.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-3">
+                {job.reference_images.map((url) => (
+                  /* eslint-disable-next-line @next/next/no-img-element */
+                  <img key={url} src={url} alt="Customer's fabric/garment" width={88} height={88} className="border border-red-200 rounded object-cover" />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* Production Instructions (Cut Sheet) */}
         <div className="bg-amber-50 border border-amber-300 rounded-lg p-4 mb-6">

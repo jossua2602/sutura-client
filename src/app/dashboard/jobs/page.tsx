@@ -141,14 +141,14 @@ export default function JobOrdersPage() {
         {tab === 'online' && (
           <div className="px-5 py-2.5 bg-blue-50/60 border-b border-blue-100 flex items-center gap-2 text-xs text-blue-700">
             <Truck size={13} />
-            <span>Online production flow: <strong>Pending → Cutting → Sewing → Fitting → Ready for Pickup → Completed</strong>.</span>
+            <span>Online production flow: <strong>{activeColumns.map(c => c.title).join(' → ')}</strong>. Depends on each order&apos;s Fulfillment Method — Store Pickup ends at &quot;Ready for Pickup&quot;, Shipping/Local Delivery ends at &quot;Handed Over&quot;.</span>
           </div>
         )}
 
         {tab === 'walk_in' && (
           <div className="px-5 py-2.5 bg-[#FAF6F3] border-b border-[#EBE6E0] flex items-center gap-2 text-xs text-[#827A73]">
             <Scissors size={13} />
-            <span>Walk-in production flow: <strong>Pending → Cutting → Sewing → Fitting → Ready for Pickup → Completed</strong>.</span>
+            <span>Walk-in production flow: <strong>{activeColumns.map(c => c.title).join(' → ')}</strong>. Depends on each order&apos;s Fulfillment Method — Store Pickup ends at &quot;Ready for Pickup&quot;, Shipping/Local Delivery ends at &quot;Handed Over&quot;.</span>
           </div>
         )}
       </div>

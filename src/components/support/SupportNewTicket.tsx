@@ -1,6 +1,16 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { ArrowLeft, AlertTriangle, Paperclip, ImageIcon, FileVideo, Trash2, Loader2, Send } from 'lucide-react';
 import { UploadItem } from './supportHelpers';
+
+// Matches the dashboard's own sidebar + profile-dropdown sections, so an
+// owner can point straight at "which part of the app" instead of typing a
+// subject from scratch every time.
+const SUBJECT_OPTIONS = [
+  'Home', 'Appointments', 'Collect Payments', 'Custom Jobs', 'Customers',
+  'Design Catalog', 'Services', 'Coupons', 'Staff', 'Reports & Insights',
+  'Branches', 'My Storefront', 'Billing & Plans', 'Account Settings',
+  'Log Out', 'Notifications',
+];
 
 interface SupportNewTicketProps {
   onBack: () => void;
@@ -65,6 +75,12 @@ export default function SupportNewTicket({
   submitting,
 }: Readonly<SupportNewTicketProps>) {
   const newTicketFileInputRef = useRef<HTMLInputElement>(null);
+  // Whether the subject picker is showing the free-text fallback — starts
+  // open only if the subject already holds a custom value (e.g. re-opening
+  // the form) that isn't one of the predefined sections.
+  const [isCustomSubject, setIsCustomSubject] = useState(
+    form.subject !== '' && !SUBJECT_OPTIONS.includes(form.subject)
+  );
   const handleRemoveNewTicketUpload = (id: string) => setNewTicketUploads(prev => prev.filter(u => u.id !== id));
 
   return (
@@ -113,18 +129,49 @@ export default function SupportNewTicket({
 
         <div>
           <label htmlFor="subject" className="block text-sm font-medium text-[#2D2A26] mb-1.5">Subject <span className="text-red-500">*</span></label>
-          <input
-            type="text"
-            id="subject"
-            placeholder="Brief summary of your issue..."
-            value={form.subject}
-            onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
-            className="w-full border border-[#EBE6E0] rounded-lg px-3 py-2.5 text-sm text-[#2D2A26] placeholder:text-[#A8A19A] bg-white focus:outline-none focus:ring-2 focus:ring-[#9A8073]/40"
-          />
+          {isCustomSubject ? (
+            <div className="space-y-1.5">
+              <input
+                type="text"
+                id="subject"
+                placeholder="Brief summary of your issue..."
+                value={form.subject}
+                onChange={e => setForm(p => ({ ...p, subject: e.target.value }))}
+                className="w-full border border-[#EBE6E0] rounded-lg px-3 py-2.5 text-sm text-[#2D2A26] placeholder:text-[#A8A19A] bg-white focus:outline-none focus:ring-2 focus:ring-[#9A8073]/40"
+              />
+              <button
+                type="button"
+                onClick={() => { setIsCustomSubject(false); setForm(p => ({ ...p, subject: '' })); }}
+                className="inline-flex items-center text-xs font-medium text-taupe border border-taupe/40 rounded-full px-3 py-1 hover:bg-taupe/10 transition-colors"
+              >
+                Choose from a list instead
+              </button>
+            </div>
+          ) : (
+            <select
+              id="subject"
+              value={form.subject}
+              onChange={e => {
+                if (e.target.value === '__other__') {
+                  setIsCustomSubject(true);
+                  setForm(p => ({ ...p, subject: '' }));
+                } else {
+                  setForm(p => ({ ...p, subject: e.target.value }));
+                }
+              }}
+              className="w-full border border-[#EBE6E0] rounded-lg px-3 py-2.5 text-sm text-[#2D2A26] bg-white focus:outline-none focus:ring-2 focus:ring-[#9A8073]/40"
+            >
+              <option value="" disabled>Which part of the app is this about?</option>
+              {SUBJECT_OPTIONS.map(opt => (
+                <option key={opt} value={opt}>{opt}</option>
+              ))}
+              <option value="__other__">Other (type my own)</option>
+            </select>
+          )}
         </div>
 
         <div>
-          <label htmlFor="message" className="block text-sm font-medium text-[#2D2A26] mb-1.5">Message <span className="text-red-500">*</span></label>
+          <label htmlFor="message" className="block text-sm font-medium text-[#2D2A26] mb-1.5">Details <span className="text-red-500">*</span></label>
           <textarea
             rows={6}
             id="message"

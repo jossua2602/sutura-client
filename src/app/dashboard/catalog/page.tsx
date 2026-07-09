@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { Plus, Image as ImageIcon } from 'lucide-react';
+import { Plus, Image as ImageIcon, Megaphone } from 'lucide-react';
 import Link from 'next/link';
 
 import { CatalogItem, getListingTypeLabel } from '@/components/catalog/catalogHelpers';
@@ -11,7 +11,9 @@ import CatalogItemCard from '@/components/catalog/CatalogItemCard';
 import CatalogRatingModal from '@/components/catalog/CatalogRatingModal';
 import CatalogDeleteModal from '@/components/catalog/CatalogDeleteModal';
 import CatalogPreviewModal from '@/components/catalog/CatalogPreviewModal';
+import CatalogSaleModal from '@/components/catalog/CatalogSaleModal';
 import CatalogModuleTabs from '@/components/catalog/CatalogModuleTabs';
+import PromoPostModal from '@/components/promotions/PromoPostModal';
 import { useToast } from '@/context/ToastContext';
 
 export default function CatalogPage() {
@@ -30,6 +32,12 @@ export default function CatalogPage() {
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const [isSaleModalOpen, setIsSaleModalOpen] = useState(false);
+  const [saleItem, setSaleItem] = useState<CatalogItem | null>(null);
+  const [saleSubmitting, setSaleSubmitting] = useState(false);
+  const [saleError, setSaleError] = useState('');
+  const [isPromoModalOpen, setIsPromoModalOpen] = useState(false);
 
   const [filterListing, setFilterListing] = useState('');
   const [filterCategory, setFilterCategory] = useState('');
@@ -56,18 +64,14 @@ export default function CatalogPage() {
     fetchItems();
   }, [fetchItems]);
 
-  const handleView = async (id: number) => {
+  const handleView = (id: number) => {
+    // Owner previewing their own item in the dashboard is not a real customer
+    // view, so this only opens the modal — it must NOT increment views_count
+    // (that's tracked from the public storefront page instead).
     const matched = items.find(i => i.id === id);
     if (matched) {
       setPreviewItem(matched);
       setIsPreviewModalOpen(true);
-    }
-    if (!shop) return;
-    try {
-      await api.post(`/shops/${shop.id}/catalog/${id}/view`);
-      setItems(prev => prev.map(i => i.id === id ? { ...i, views_count: (i.views_count || 0) + 1 } : i));
-    } catch (e) {
-      console.error(e);
     }
   };
 
@@ -124,6 +128,30 @@ export default function CatalogPage() {
     setIsDeleteModalOpen(true);
   };
 
+  const openSale = (item: CatalogItem) => {
+    setSaleItem(item);
+    setSaleError('');
+    setIsSaleModalOpen(true);
+  };
+
+  const submitSale = async (payload: Record<string, unknown>) => {
+    if (!shop || !saleItem) return;
+    setSaleSubmitting(true);
+    setSaleError('');
+    try {
+      const res = await api.put(`/shops/${shop.id}/catalog/${saleItem.id}`, payload);
+      setItems(prev => prev.map(i => i.id === saleItem.id ? res.data.data : i));
+      toast.success(payload.sale_price ? 'Sale price updated.' : 'Sale removed.');
+      setIsSaleModalOpen(false);
+      setSaleItem(null);
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setSaleError(error.response?.data?.message || 'Failed to update sale price.');
+    } finally {
+      setSaleSubmitting(false);
+    }
+  };
+
   if (loading) {
     return <div className="text-[#A8A19A] py-12 text-center animate-pulse">Loading catalog...</div>;
   }
@@ -151,13 +179,23 @@ export default function CatalogPage() {
           <h1 className="text-2xl font-bold text-[#2D2A26] tracking-tight">Catalog Showcase</h1>
           <p className="text-[#827A73] text-sm mt-1">Manage the premium garments showcased to your customers.</p>
         </div>
-        <Link 
-          href="/dashboard/catalog/new"
-          className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
-        >
-          <Plus size={18} />
-          Create New Item
-        </Link>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsPromoModalOpen(true)}
+            title="Generate Promo Post"
+            className="flex items-center gap-2 bg-[#FAF6F3] border border-[#EBE6E0] text-[#524A44] hover:bg-[#F0EAE3] px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+          >
+            <Megaphone size={18} />
+            Generate Promo Post
+          </button>
+          <Link
+            href="/dashboard/catalog/new"
+            className="flex items-center gap-2 bg-taupe hover:bg-taupe/90 text-white px-4 py-2 rounded-lg font-medium transition-colors text-sm"
+          >
+            <Plus size={18} />
+            Create New Item
+          </Link>
+        </div>
       </div>
 
       {items.length === 0 ? (
@@ -220,6 +258,7 @@ export default function CatalogPage() {
                   onView={handleView}
                   onOpenRating={openRating}
                   onOpenDelete={openDelete}
+                  onOpenSale={openSale}
                 />
               ))}
             </div>
@@ -256,6 +295,23 @@ export default function CatalogPage() {
           setPreviewItem(null);
         }}
         item={previewItem}
+      />
+
+      <CatalogSaleModal
+        isOpen={isSaleModalOpen}
+        onClose={() => {
+          setIsSaleModalOpen(false);
+          setSaleItem(null);
+        }}
+        item={saleItem}
+        onSubmit={submitSale}
+        isSubmitting={saleSubmitting}
+        error={saleError}
+      />
+
+      <PromoPostModal
+        isOpen={isPromoModalOpen}
+        onClose={() => setIsPromoModalOpen(false)}
       />
     </div>
   );

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-  Calendar as CalendarIcon, Clock, Loader2, Eye, Play, Scissors, CheckSquare, RefreshCw, Pencil, Trash2
+  Calendar as CalendarIcon, Clock, Loader2, Eye, Play, Scissors, CheckSquare, RefreshCw, Pencil, Trash2, UserX
 } from 'lucide-react';
 import {
   Appointment, formatScheduled, StatusBadge, TypeBadge
@@ -21,11 +21,12 @@ interface AppointmentListViewProps {
   readonly onDetailsClick: (apt: Appointment) => void;
   readonly onEditClick: (apt: Appointment) => void;
   readonly onCancelClick: (apt: Appointment) => void;
+  readonly onNoShowClick: (apt: Appointment) => void;
 }
 
 export default function AppointmentListView({
   filtered, loading, actionLoadingId, isOwnerOrManager,
-  onReviewClick, onStartClick, onCreateJobClick, onCompleteClick, onRescheduleClick, onDetailsClick, onEditClick, onCancelClick
+  onReviewClick, onStartClick, onCreateJobClick, onCompleteClick, onRescheduleClick, onDetailsClick, onEditClick, onCancelClick, onNoShowClick
 }: AppointmentListViewProps) {
 
   const renderTableBody = () => {
@@ -159,6 +160,18 @@ export default function AppointmentListView({
                       className="flex items-center gap-1 text-xs font-semibold px-2.5 py-1.5 rounded-lg bg-emerald-50 text-emerald-700 hover:bg-emerald-100 border border-emerald-200 transition-colors"
                     >
                       <CheckSquare size={13} /> Complete
+                    </button>
+                  )}
+
+                  {/* Confirmed → No Show */}
+                  {isConfirmed && isOwnerOrManager && (
+                    <button
+                      type="button"
+                      onClick={() => onNoShowClick(apt)}
+                      title="Mark as No-Show"
+                      className="p-1.5 text-[#A8A19A] hover:text-[#B26959] hover:bg-[#B26959]/10 rounded-lg transition-colors"
+                    >
+                      <UserX size={14} />
                     </button>
                   )}
 

@@ -80,9 +80,14 @@ export function useJobs() {
       if (!job) return;
       await api.put(`/shops/${shop.id}/jobs/${jobId}`, { status: 'cutting', payment_status: job.payment_status, balance: job.balance });
       toast.success('Job order approved into production.');
-    } catch {
+    } catch (err: unknown) {
       setJobs(old);
-      toast.error('Failed to approve order.');
+      // Approving moves the job straight to "cutting", which the backend
+      // rejects if the 50% downpayment gate isn't met yet — that's the most
+      // common case for a freshly-reviewed job, so a generic failure message
+      // here would hide the one thing the owner actually needs to do next.
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Failed to approve order.');
     } finally {
       setActionLoadingId(null);
     }
@@ -110,9 +115,10 @@ export function useJobs() {
       setRejectModalOpen(false);
       setRejectingJobId(null);
       toast.success('Job order rejected.');
-    } catch {
+    } catch (err: unknown) {
       setJobs(old);
-      toast.error('Failed to reject order.');
+      const error = err as { response?: { data?: { message?: string } } };
+      toast.error(error.response?.data?.message || 'Failed to reject order.');
     } finally {
       setActionLoadingId(null);
     }

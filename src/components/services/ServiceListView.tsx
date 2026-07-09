@@ -6,6 +6,7 @@ import {
   Image as ImageIcon, CheckSquare, Square, Check, Clock, Tag, Layers,
 } from 'lucide-react';
 import { Service, SERVICE_TYPES, SERVICE_TYPE_META } from './serviceHelpers';
+import { getActiveSale } from '@/lib/salePricing';
 
 interface ServiceListViewProps {
   readonly filteredServices: Service[];
@@ -19,7 +20,7 @@ interface ServiceListViewProps {
   readonly onDuplicate: (service: Service) => Promise<void>;
   readonly onEdit: (service: Service) => void;
   readonly onDelete: (id: number) => void;
-  readonly onManagePricing: (service: Service) => void;
+  readonly onOpenSale: (service: Service) => void;
   readonly onBulkDelete?: (ids: number[]) => void;
 }
 
@@ -35,7 +36,7 @@ export default function ServiceListView({
   onDuplicate,
   onEdit,
   onDelete,
-  onManagePricing,
+  onOpenSale,
   onBulkDelete,
 }: ServiceListViewProps) {
   const [selected, setSelected] = useState<Set<number>>(new Set());
@@ -236,40 +237,54 @@ export default function ServiceListView({
                   {/* Name + category */}
                   <div>
                     <h3 className="font-semibold text-[#2D2A26] text-sm leading-tight line-clamp-1">{service.name}</h3>
-                    {service.category && (
-                      <div className="flex items-center gap-1 mt-1">
-                        <Tag size={10} className="text-[#A8A19A]" />
-                        <span className="text-[11px] text-[#A8A19A] truncate">{service.category}</span>
+                    {service.categories && service.categories.length > 0 && (
+                      <div className="flex items-center gap-1 mt-1 flex-wrap">
+                        <Tag size={10} className="text-[#A8A19A] shrink-0" />
+                        <span className="text-[11px] text-[#A8A19A] truncate">{service.categories.join(', ')}</span>
                       </div>
                     )}
-                    {service.service_type && (() => {
-                      const meta = SERVICE_TYPE_META[service.service_type];
-                      const TypeIcon = meta.icon;
-                      return (
-                        <span className={`inline-flex items-center gap-1 mt-1.5 px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.bg} ${meta.text} border ${meta.border}`}>
-                          <TypeIcon size={10} />
-                          {SERVICE_TYPES.find(t => t.value === service.service_type)?.label || service.service_type}
-                        </span>
-                      );
-                    })()}
+                    {service.service_types && service.service_types.length > 0 && (
+                      <div className="flex flex-wrap gap-1 mt-1.5">
+                        {service.service_types.map(st => {
+                          const meta = SERVICE_TYPE_META[st];
+                          const TypeIcon = meta.icon;
+                          return (
+                            <span key={st} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium ${meta.bg} ${meta.text} border ${meta.border}`}>
+                              <TypeIcon size={10} />
+                              {SERVICE_TYPES.find(t => t.value === st)?.label || st}
+                            </span>
+                          );
+                        })}
+                      </div>
+                    )}
                   </div>
 
                   {/* Price / turnaround / min-qty stats */}
-                  {(service.base_price || service.estimated_days || (service.service_type === 'bulk_sublimation' && service.min_order_qty && service.min_order_qty > 1)) && (
+                  {(service.base_price || service.estimated_days || (service.service_types?.includes('bulk_sublimation') && service.min_order_qty && service.min_order_qty > 1)) && (
                     <div className="flex items-center flex-wrap gap-x-3 gap-y-1 text-[11px] text-[#524A44] font-medium">
-                      {service.base_price && (
-                        <span className="flex items-center gap-1">
-                          <DollarSign size={11} className="text-[#7A8B76]" />
-                          ₱{Number.parseFloat(service.base_price).toLocaleString()}
-                        </span>
-                      )}
+                      {service.base_price && (() => {
+                        const activeSale = getActiveSale({ price: service.base_price ?? 0, sale_price: service.sale_price, sale_starts_at: service.sale_starts_at, sale_ends_at: service.sale_ends_at });
+                        return activeSale ? (
+                          <span className="flex items-center gap-1.5">
+                            <DollarSign size={11} className="text-rose-600" />
+                            <span className="line-through text-[#A8A19A]">₱{activeSale.original.toLocaleString()}</span>
+                            <span className="text-rose-600 font-bold">₱{activeSale.sale.toLocaleString()}</span>
+                            <span className="text-[9px] font-bold text-white bg-rose-600 px-1.5 py-0.5 rounded-full">{activeSale.percentOff}% OFF</span>
+                          </span>
+                        ) : (
+                          <span className="flex items-center gap-1">
+                            <DollarSign size={11} className="text-[#7A8B76]" />
+                            ₱{Number.parseFloat(service.base_price).toLocaleString()}
+                          </span>
+                        );
+                      })()}
                       {service.estimated_days ? (
                         <span className="flex items-center gap-1">
                           <Clock size={11} className="text-[#A8A19A]" />
                           {service.estimated_days}d turnaround
                         </span>
                       ) : null}
-                      {service.service_type === 'bulk_sublimation' && service.min_order_qty && service.min_order_qty > 1 && (
+                      {service.service_types?.includes('bulk_sublimation') && service.min_order_qty && service.min_order_qty > 1 && (
                         <span className="flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-blue-50 text-blue-700 border border-blue-200">
                           <Layers size={10} />
                           Min {service.min_order_qty} pcs
@@ -283,14 +298,17 @@ export default function ServiceListView({
                     <p className="text-[11px] text-[#827A73] line-clamp-2 leading-relaxed">{service.description}</p>
                   )}
 
-                  {/* Tags */}
+                  {/* Included services, priced where available */}
                   {service.tags && service.tags.length > 0 && (
                     <div className="flex flex-wrap gap-1.5 pt-1 border-t border-[#EBE6E0] mt-2">
-                      {service.tags.slice(0, 5).map((tag, idx) => (
-                        <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#FAF6F3] text-[#524A44] border border-[#EBE6E0]">
-                          {tag}
-                        </span>
-                      ))}
+                      {service.tags.slice(0, 5).map((tag, idx) => {
+                        const tier = service.pricing?.find(p => p.label === tag);
+                        return (
+                          <span key={idx} className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#FAF6F3] text-[#524A44] border border-[#EBE6E0]">
+                            {tag}{tier && Number(tier.amount) > 0 ? ` — ₱${Number(tier.amount).toLocaleString()}` : ''}
+                          </span>
+                        );
+                      })}
                       {service.tags.length > 5 && (
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium bg-[#EBE6E0] text-[#524A44]">
                           +{service.tags.length - 5}
@@ -320,11 +338,11 @@ export default function ServiceListView({
                           <Copy size={14} />
                         </button>
                         <button
-                          onClick={() => onManagePricing(service)}
-                          title="Manage Pricing"
-                          className="flex items-center justify-center p-1.5 text-[#A8A19A] hover:text-[#7A8B76] hover:bg-[#7A8B76]/10 rounded-lg transition-colors"
+                          onClick={() => onOpenSale(service)}
+                          title="Set Sale Price"
+                          className={`flex items-center justify-center p-1.5 rounded-lg transition-colors ${service.sale_price != null ? 'text-rose-600' : 'text-[#A8A19A] hover:text-rose-600 hover:bg-rose-50'}`}
                         >
-                          <DollarSign size={14} />
+                          <Tag size={14} />
                         </button>
                         <button
                           onClick={() => onDelete(service.id)}

@@ -2,11 +2,18 @@ import React from 'react';
 import { Truck, Store, ShoppingBag, Navigation, Scissors } from 'lucide-react';
 import { parseCourierName, formatFulfillmentLabel } from '@/lib/fulfillment';
 
+// Unified with the Multi-Stage Staff Assignment stages (design/pattern_making/
+// cutting/sewing/fitting/finishing) so the customer-facing timeline and the
+// internal "who's assigned to what" tracking describe the same production
+// process instead of two different vocabularies.
 export const ALL_COLUMNS = [
   { id: 'pending',          title: 'Pending',          color: 'bg-[#EBE6E0]/50',   border: 'border-[#D1C7BD]' },
+  { id: 'design',           title: 'Design',           color: 'bg-pink-50/50',      border: 'border-pink-200/50' },
+  { id: 'pattern_making',   title: 'Pattern Making',   color: 'bg-sky-50/50',       border: 'border-sky-200/50' },
   { id: 'cutting',          title: 'Cutting',          color: 'bg-amber-50/50',     border: 'border-amber-200/50' },
   { id: 'sewing',           title: 'Sewing',           color: 'bg-orange-50/50',    border: 'border-orange-200/50' },
   { id: 'fitting',          title: 'Fitting',          color: 'bg-violet-50/50',    border: 'border-violet-200/50' },
+  { id: 'finishing',        title: 'Finishing',        color: 'bg-fuchsia-50/50',   border: 'border-fuchsia-200/50' },
   { id: 'ready_for_pickup', title: 'Ready for Pickup', color: 'bg-emerald-50/50',   border: 'border-emerald-200/50' },
   { id: 'packed',           title: 'Packed',           color: 'bg-indigo-50/50',    border: 'border-indigo-200/50' },
   { id: 'handed_to_courier',title: 'Handed Over',      color: 'bg-cyan-50/50',      border: 'border-cyan-200/50' },

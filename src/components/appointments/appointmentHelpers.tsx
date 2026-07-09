@@ -1,19 +1,19 @@
 import React from 'react';
-import { MessageSquare, Ruler, ShirtIcon, Scissors, Package } from 'lucide-react';
+import { MessageSquare, Ruler, ShirtIcon, Scissors, Package, Users } from 'lucide-react';
 
-export const APPOINTMENT_TYPES = ['consultation', 'measurement', 'fitting', 'alteration', 'pickup'] as const;
+export const APPOINTMENT_TYPES = ['consultation', 'measurement', 'fitting', 'alteration', 'pickup', 'bulk_custom'] as const;
 export type AppointmentType = typeof APPOINTMENT_TYPES[number];
 
 export type AppointmentStatus = 'pending' | 'confirmed' | 'in_progress' | 'completed' | 'cancelled' | 'no_show';
 
-export const TYPES_REQUIRING_SERVICE = new Set<AppointmentType>(['measurement', 'fitting', 'alteration']);
+export const TYPES_REQUIRING_SERVICE = new Set<AppointmentType>(['measurement', 'alteration']);
 
 export interface Appointment {
   id: number;
   appointment_type: AppointmentType;
   intake_channel?: 'walkin' | 'online';
-  customer: { name: string; email: string };
-  service: { name: string } | null;
+  customer: { id: number; name: string; email: string };
+  service: { id: number; name: string } | null;
   branch: { id: number; name: string } | null;
   scheduled_at: string;
   duration_minutes: number;
@@ -21,6 +21,8 @@ export interface Appointment {
   assigned_staff?: { name: string } | null;
   status: AppointmentStatus;
   notes: string;
+  reference_images?: string[] | null;
+  reference_link?: string | null;
   shop_branch_id?: number | null;
   job_order_id?: number | null;
   job_order?: { id: number; order_number: string } | null;
@@ -33,7 +35,7 @@ export interface Appointment {
 export interface ServiceData  { id: number; name: string }
 export interface CustomerData { id: number; name: string }
 export interface BranchData   { id: number; name: string }
-export interface StaffData    { id: number; user_id: number; user?: { id: number; name: string } }
+export interface StaffData    { id: number; user_id: number; role?: string; additional_roles?: string[] | null; user?: { id: number; name: string } }
 export interface JobOrderData { id: number; customer_id?: number; title?: string; order_number?: string; status?: string; customer?: { name: string } }
 
 export const TYPE_CONFIG: Record<AppointmentType, {
@@ -64,6 +66,11 @@ export const TYPE_CONFIG: Record<AppointmentType, {
     label: 'Pickup', icon: <Package size={12} />,
     bg: 'bg-emerald-50', border: 'border-emerald-200', dot: 'bg-emerald-500',
     text: 'text-emerald-900', badgeBg: 'bg-emerald-50', badgeBorder: 'border-emerald-200', badgeText: 'text-emerald-700',
+  },
+  bulk_custom: {
+    label: 'Bulk/Custom Order', icon: <Users size={12} />,
+    bg: 'bg-teal-50', border: 'border-teal-200', dot: 'bg-teal-500',
+    text: 'text-teal-900', badgeBg: 'bg-teal-50', badgeBorder: 'border-teal-200', badgeText: 'text-teal-700',
   },
 };
 

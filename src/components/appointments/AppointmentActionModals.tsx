@@ -41,8 +41,8 @@ interface AppointmentActionModalsProps {
   readonly actionLoadingId: number | null;
 
   // Async triggers
-  readonly onConfirmReview: (aptId: number) => Promise<void>;
-  readonly onRejectReview: (aptId: number) => Promise<void>;
+  readonly onConfirmReview: (aptId: number) => Promise<boolean>;
+  readonly onRejectReview: (aptId: number) => Promise<boolean>;
   readonly onRescheduleSubmit: (aptId: number, date: string, time: string, notes: string) => Promise<void>;
   readonly onCompleteSubmit: (aptId: number, notes: string, jobOrderId: string, measurementAction: 'none' | 'record', outcome: string) => Promise<void>;
   readonly onCancelConfirm: (aptId: number) => Promise<void>;
@@ -199,7 +199,10 @@ export default function AppointmentActionModals({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onRejectReview(reviewApt.id)}
+                  onClick={async () => {
+                    const ok = await onRejectReview(reviewApt.id);
+                    if (ok) { setShowReviewModal(false); setReviewApt(null); }
+                  }}
                   disabled={actionLoadingId === reviewApt.id}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium text-rose-600 hover:bg-rose-50 border border-rose-200 transition-colors"
                 >
@@ -207,7 +210,14 @@ export default function AppointmentActionModals({
                 </button>
                 <button
                   type="button"
-                  onClick={() => onConfirmReview(reviewApt.id)}
+                  onClick={async () => {
+                    // Only close on success — a rejection (e.g. a double-
+                    // booking conflict) needs to stay visible here so the
+                    // owner can immediately react (e.g. Propose New Time)
+                    // instead of it silently vanishing.
+                    const ok = await onConfirmReview(reviewApt.id);
+                    if (ok) { setShowReviewModal(false); setReviewApt(null); }
+                  }}
                   disabled={actionLoadingId === reviewApt.id}
                   className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-semibold text-white bg-[#7A8B76] hover:bg-[#7A8B76]/90 transition-colors"
                 >
@@ -462,6 +472,29 @@ export default function AppointmentActionModals({
               <div>
                 <p className="text-xs text-[#A8A19A] font-semibold uppercase tracking-wider">Notes</p>
                 <div className="bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg p-3 text-xs mt-1 whitespace-pre-wrap text-[#2D2A26]">{viewApt.notes}</div>
+              </div>
+            )}
+
+            {viewApt.reference_images && viewApt.reference_images.length > 0 && (
+              <div>
+                <p className="text-xs text-[#A8A19A] font-semibold uppercase tracking-wider mb-2">Design Reference Images</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {viewApt.reference_images.map((url) => (
+                    <a key={url} href={url} target="_blank" rel="noopener noreferrer" className="block aspect-square rounded-lg overflow-hidden border border-[#EBE6E0] bg-zinc-100 hover:opacity-80 transition-opacity">
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={url} alt="Reference" className="w-full h-full object-cover" />
+                    </a>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {viewApt.reference_link && (
+              <div>
+                <p className="text-xs text-[#A8A19A] font-semibold uppercase tracking-wider">Reference Link</p>
+                <a href={viewApt.reference_link} target="_blank" rel="noopener noreferrer" className="text-[#6B7FA8] hover:underline text-xs break-all">
+                  {viewApt.reference_link}
+                </a>
               </div>
             )}
 

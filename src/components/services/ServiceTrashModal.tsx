@@ -29,7 +29,9 @@ export default function ServiceTrashModal({ isOpen, onClose, shopId, onRestored 
   }, [shopId]);
 
   useEffect(() => {
-    if (isOpen) loadTrashed();
+    if (isOpen) {
+      Promise.resolve().then(() => loadTrashed());
+    }
   }, [isOpen, loadTrashed]);
 
   const handleRestore = async (service: Service) => {
@@ -73,7 +75,7 @@ export default function ServiceTrashModal({ isOpen, onClose, shopId, onRestored 
               >
                 <div className="min-w-0">
                   <p className="font-semibold text-sm text-[#2D2A26] truncate">{service.name}</p>
-                  <p className="text-[11px] text-[#A8A19A] truncate">{service.category || 'Uncategorized'}</p>
+                  <p className="text-[11px] text-[#A8A19A] truncate">{service.categories && service.categories.length > 0 ? service.categories.join(', ') : 'Uncategorized'}</p>
                 </div>
                 <button
                   type="button"

@@ -25,6 +25,10 @@ import { useBranch } from '@/context/BranchContext';
 export default function DashboardPage() {
   const { shop, user } = useAuthStore();
   const { selectedBranchId } = useBranch();
+  const roleName = user?.roles?.[0]?.name;
+  const isShopOwner = roleName === 'shop_owner';
+  // Matches the backend's role:shop_owner,branch_manager gate on GET /analytics
+  const canViewAnalytics = isShopOwner || roleName === 'branch_manager';
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
   const [quickModalOpen, setQuickModalOpen] = useState(false);
@@ -45,7 +49,9 @@ export default function DashboardPage() {
   const [onlineStaff, setOnlineStaff] = useState<StaffPresence[]>([]);
 
   const fetchOnlineStaff = useCallback(() => {
-    if (!shop?.id) return;
+    // Staff list/management is owner-only (matches GET /shops/{shop}/staff) —
+    // staff/branch managers share this dashboard now and shouldn't 403 on it.
+    if (!shop?.id || !isShopOwner) return;
     api.get(`/shops/${shop.id}/staff`)
       .then(res => {
         const raw: StaffPresence[] = (res.data.data || []);
@@ -61,7 +67,7 @@ export default function DashboardPage() {
         setOnlineStaff(online);
       })
       .catch(() => {});
-  }, [shop]);
+  }, [shop, isShopOwner]);
 
   useEffect(() => {
     if (shop?.id) {
@@ -70,13 +76,22 @@ export default function DashboardPage() {
       if (selectedBranchId !== null) {
         params.branch_id = selectedBranchId;
       }
-      
-      api.get(`/shops/${shop.id}/analytics`, { params })
-        .then(res => { setData(res.data.data); setLoading(false); })
-        .catch(() => setLoading(false));
-      api.get(`/shops/${shop.id}`)
-        .then(res => setShopVisible(res.data.data?.is_visible ?? true))
-        .catch(() => {});
+
+      if (canViewAnalytics) {
+        api.get(`/shops/${shop.id}/analytics`, { params })
+          .then(res => { setData(res.data.data); setLoading(false); })
+          .catch(() => setLoading(false));
+      } else {
+        // Deferred (not called synchronously) so it resolves after the
+        // setLoading(true) scheduled above, instead of being clobbered by it.
+        setTimeout(() => setLoading(false), 0);
+      }
+      // Shop visibility toggle is owner-only (matches PUT /shops/{shop})
+      if (isShopOwner) {
+        api.get(`/shops/${shop.id}`)
+          .then(res => setShopVisible(res.data.data?.is_visible ?? true))
+          .catch(() => {});
+      }
       api.get(`/shops/${shop.id}/jobs`, { params: { per_page: 200, ...params } })
         .then(res => {
           const rawData = res.data.data;
@@ -95,7 +110,7 @@ export default function DashboardPage() {
       const timer = setTimeout(() => setLoading(false), 0);
       return () => clearTimeout(timer);
     }
-  }, [shop?.id, user?.id, selectedBranchId, fetchOnlineStaff]);
+  }, [shop?.id, user?.id, selectedBranchId, fetchOnlineStaff, canViewAnalytics, isShopOwner]);
 
   useEffect(() => {
     if (!shop?.id) return;
@@ -163,7 +178,7 @@ export default function DashboardPage() {
       label: 'Pending Deposits',
       sub: 'No payment received yet',
       icon: CreditCard,
-      href: '/dashboard/payments',
+      href: '/dashboard/payments?tab=job_balances',
       color: 'bg-amber-50 border-amber-200 text-amber-800',
       iconColor: 'bg-amber-100 text-amber-600',
     },

@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
-import { ArrowLeft, Loader2, Store, ShoppingBag, Truck, Navigation, User, FileText, Receipt, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Store, ShoppingBag, Truck, Navigation, User, Users, FileText, Receipt, Trash2, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { serializeCourierName } from '@/lib/fulfillment';
 import { SERVICE_TYPE_META, SERVICE_TYPES } from '@/components/services/serviceHelpers';
+import { roleLabel } from '@/components/staff/staffHelpers';
 
 const COURIER_OPTIONS = [
   // Same-Day / Local Delivery
@@ -39,6 +40,8 @@ const COURIER_OPTIONS = [
 interface CustomerData {
   id: number;
   name: string;
+  email?: string;
+  phone?: string;
 }
 
 interface ServiceField {
@@ -67,6 +70,7 @@ interface StaffData {
     name: string;
   };
   role: string;
+  additional_roles?: string[] | null;
 }
 
 interface CustomerMeasurement {
@@ -122,8 +126,53 @@ export default function JobCreateForm() {
   const [supportedCouriers, setSupportedCouriers] = useState<string[]>([]);
   const [customerMeasurements, setCustomerMeasurements] = useState<CustomerMeasurement[]>([]);
   const [appointmentId, setAppointmentId] = useState<string | null>(null);
+  const [referenceImages, setReferenceImages] = useState<string[]>([]);
+  const [referenceLink, setReferenceLink] = useState('');
+  const [uploadingReference, setUploadingReference] = useState(false);
+  // When arriving pre-filled from a confirmed appointment/booking, the customer
+  // is already known — skip making the owner search the dropdown again and just
+  // show who it is. Manual "New Job" creation (no pre-fill) keeps the dropdown.
+  const [customerLocked, setCustomerLocked] = useState(false);
   const [isTotalAmountCustom, setIsTotalAmountCustom] = useState(false);
-  
+
+  // Coupon — applied directly to total_amount so the downpayment/balance math
+  // below (computed fresh from total_amount at submit time) stays consistent.
+  const [couponCodeInput, setCouponCodeInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<{ code: string; discount_amount: number } | null>(null);
+  const [couponError, setCouponError] = useState('');
+  const [couponValidating, setCouponValidating] = useState(false);
+
+  const handleApplyCoupon = async () => {
+    if (!shop || !couponCodeInput.trim()) return;
+    const currentTotal = Number.parseFloat(formData.total_amount) || 0;
+    setCouponValidating(true);
+    setCouponError('');
+    try {
+      const res = await api.post(`/shops/${shop.id}/coupons/validate`, {
+        code: couponCodeInput.trim(),
+        context: 'services',
+        amount: currentTotal,
+      });
+      const { code, discount_amount, new_total } = res.data.data;
+      setAppliedCoupon({ code, discount_amount });
+      setIsTotalAmountCustom(true);
+      setFormData((prev) => ({ ...prev, total_amount: new_total.toFixed(2) }));
+    } catch (err) {
+      const error = err as { response?: { data?: { message?: string } } };
+      setCouponError(error.response?.data?.message || 'Invalid coupon code.');
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    if (!appliedCoupon) return;
+    const currentTotal = Number.parseFloat(formData.total_amount) || 0;
+    setFormData((prev) => ({ ...prev, total_amount: (currentTotal + appliedCoupon.discount_amount).toFixed(2) }));
+    setAppliedCoupon(null);
+    setCouponCodeInput('');
+  };
+
   // Bulk Team Roster State
   const [isBulkOrder, setIsBulkOrder] = useState(false);
   const [teamName, setTeamName] = useState('');
@@ -139,7 +188,6 @@ export default function JobCreateForm() {
     intake_channel: 'walk_in',
     customer_id: '',
     service_id: '',
-    assigned_staff_id: '',
     measurement_id: '',
     total_amount: '',
     downpayment: '',
@@ -149,9 +197,18 @@ export default function JobCreateForm() {
     shipping_address: '',
     is_outsourced: false,
     partner_shop_name: '',
+    outsourcing_cost: '',
     is_rush: false,
     rush_fee: '',
+    material_source: 'shop_supplied' as 'shop_supplied' | 'customer_supplied',
   });
+  // Same stage model as the Job Detail page's Multi-Stage Staff Assignment
+  // — replaces the old single "Assigned Staff" field so Create and View show
+  // the same staffing concept instead of two disconnected ones.
+  const [staffStageAssignments, setStaffStageAssignments] = useState<Record<string, string>>({
+    design: '', pattern_making: '', cutting: '', sewing: '', fitting: '', finishing: '',
+  });
+  const [showOutsourcingHelp, setShowOutsourcingHelp] = useState(false);
 
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string>>({});
 
@@ -463,6 +520,22 @@ export default function JobCreateForm() {
           const qAptId = searchParams.get('appointment_id') || '';
 
           setAppointmentId(qAptId || null);
+          setCustomerLocked(!!qCust);
+
+          // The design-reference photos/link a customer attached at booking live
+          // on the Appointment, not passed through the URL — fetch them here so
+          // the owner can see what was requested while filling in the job (the
+          // backend also inherits these automatically from appointment_id on
+          // submit, this is purely so they're visible/editable in the form too).
+          if (qAptId && shop) {
+            api.get(`/shops/${shop.id}/appointments`)
+              .then(res => {
+                const apt = (res.data.data || []).find((a: { id: number }) => a.id === Number(qAptId));
+                if (apt?.reference_images?.length) setReferenceImages(apt.reference_images);
+                if (apt?.reference_link) setReferenceLink(apt.reference_link);
+              })
+              .catch(() => { /* non-critical — job can still be created without the preview */ });
+          }
 
           setFormData((prev) => ({
             ...prev,
@@ -571,11 +644,9 @@ export default function JobCreateForm() {
       return;
     }
 
-    if (downPay > totalAmt) {
-      setError(`Downpayment (₱${downPay.toFixed(2)}) cannot be greater than the Total Amount (₱${totalAmt.toFixed(2)}).`);
-      setSubmitting(false);
-      return;
-    }
+    // Cash tendered can exceed the total (change is handed back at the
+    // counter) — only cap what's actually applied to the job's own balance.
+    const appliedDownPay = Math.min(downPay, totalAmt);
 
     const selectedForSubmit = services.find((s) => s.id.toString() === formData.service_id);
 
@@ -591,7 +662,7 @@ export default function JobCreateForm() {
       return;
     }
 
-    const balance = totalAmt - downPay;
+    const balance = totalAmt - appliedDownPay;
     const { addressVal, courierNameVal, courierTrackingVal } = getFulfillmentValues();
 
     try {
@@ -600,12 +671,16 @@ export default function JobCreateForm() {
         fulfillment_type: fulfillmentType,
         customer_id: formData.customer_id,
         service_id: formData.service_id,
-        assigned_staff_id: formData.assigned_staff_id || null,
+        staff_stages: Object.entries(staffStageAssignments)
+          .filter(([, userId]) => userId)
+          .map(([stage, userId]) => ({ stage, user_id: Number(userId) })),
         measurement_id: formData.measurement_id
           ? Number(formData.measurement_id)
           : null,
         total_amount: formData.total_amount,
         balance: balance,
+        coupon_code: appliedCoupon?.code ?? null,
+        discount_amount: appliedCoupon?.discount_amount ?? null,
         due_date: formData.due_date || null,
         notes: formData.notes,
         shipping_address: addressVal,
@@ -624,7 +699,11 @@ export default function JobCreateForm() {
         },
         is_outsourced: formData.is_outsourced,
         partner_shop_name: formData.is_outsourced ? formData.partner_shop_name : null,
+        outsourcing_cost: formData.is_outsourced && formData.outsourcing_cost ? Number.parseFloat(formData.outsourcing_cost) : null,
         appointment_id: appointmentId ? Number(appointmentId) : null,
+        reference_images: referenceImages.length > 0 ? referenceImages : null,
+        reference_link: referenceLink.trim() || null,
+        material_source: formData.material_source,
         is_rush: formData.is_rush,
         rush_fee: formData.is_rush ? Number(formData.rush_fee) : 0,
       });
@@ -709,6 +788,105 @@ export default function JobCreateForm() {
             </button>
           </div>
         )}
+
+        <div className="mb-6 space-y-1.5">
+          <span className="text-sm font-medium text-[#524A44]">Fabric / Material Source</span>
+          <p className="text-[11px] text-[#A8A19A]">
+            Some walk-ins bring their own fabric or an existing garment instead of using shop stock — flagging it here keeps it from getting mixed up with other jobs during cutting.
+          </p>
+          <div className="flex gap-2 mt-1">
+            <button
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, material_source: 'shop_supplied' }))}
+              className={`flex-1 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                formData.material_source === 'shop_supplied'
+                  ? 'border-taupe bg-taupe/10 text-taupe'
+                  : 'border-[#EBE6E0] text-[#827A73] hover:bg-[#FAF6F3]'
+              }`}
+            >
+              Shop-Supplied
+            </button>
+            <button
+              type="button"
+              onClick={() => setFormData(prev => ({ ...prev, material_source: 'customer_supplied' }))}
+              className={`flex-1 px-3 py-2 rounded-lg border text-xs font-semibold transition-colors ${
+                formData.material_source === 'customer_supplied'
+                  ? 'border-taupe bg-taupe/10 text-taupe'
+                  : 'border-[#EBE6E0] text-[#827A73] hover:bg-[#FAF6F3]'
+              }`}
+            >
+              Customer&apos;s Own Fabric/Garment
+            </button>
+          </div>
+          {formData.material_source === 'customer_supplied' && (
+            <p className="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-1.5">
+              ⚠ Add a photo below of the fabric/garment they brought — it'll print on the Work Ticket so whoever cuts/sews this doesn't reach for shop stock instead.
+            </p>
+          )}
+        </div>
+
+        <div className="mb-6 space-y-1.5">
+          <span className="text-sm font-medium text-[#524A44] flex items-center gap-1.5">
+            Design Reference <span className="text-xs font-normal text-[#A8A19A]">(optional)</span>
+          </span>
+          <p className="text-[11px] text-[#A8A19A]">
+            {appointmentId
+              ? 'Photos/link the customer attached when booking — carries over automatically to this job.'
+              : 'A photo the customer showed you, or a link to what they want made (e.g. a jersey design or gown reference).'}
+          </p>
+          {referenceImages.length > 0 && (
+            <div className="flex flex-wrap gap-2 mt-1">
+              {referenceImages.map((url) => (
+                <div key={url} className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src={url} alt="Design reference" className="h-20 w-20 object-cover rounded-lg border border-[#EBE6E0]" />
+                  <button
+                    type="button"
+                    onClick={() => setReferenceImages(prev => prev.filter(u => u !== url))}
+                    className="absolute -top-2 -right-2 bg-white border border-[#EBE6E0] text-[#827A73] hover:text-[#B26959] rounded-full p-1 shadow-sm"
+                  >
+                    <Trash2 size={12} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+          <label className="inline-flex items-center gap-2 cursor-pointer text-xs text-[#827A73] hover:text-[#9A8073] transition-colors mt-1">
+            {uploadingReference ? <Loader2 size={14} className="animate-spin text-taupe" /> : null}
+            <span>{uploadingReference ? 'Uploading...' : '+ Add reference photo'}</span>
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              disabled={uploadingReference || referenceImages.length >= 10}
+              onChange={async e => {
+                const file = e.target.files?.[0];
+                if (!file || !shop) return;
+                setUploadingReference(true);
+                const fd = new FormData();
+                fd.append('file', file);
+                try {
+                  const res = await api.post(`/shops/${shop.id}/upload`, fd, {
+                    headers: { 'Content-Type': 'multipart/form-data' },
+                  });
+                  const url = res.data?.data?.url || res.data?.url;
+                  if (url) setReferenceImages(prev => [...prev, url]);
+                } catch {
+                  alert('Failed to upload reference photo.');
+                } finally {
+                  setUploadingReference(false);
+                }
+              }}
+            />
+          </label>
+          <input
+            type="text"
+            value={referenceLink}
+            onChange={e => setReferenceLink(e.target.value)}
+            placeholder="Reference link (Pinterest, Facebook post, Google Drive, etc.)"
+            className="w-full mt-1.5 px-4 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe text-sm"
+          />
+        </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Section 1: Customer & Service Selection */}
@@ -798,24 +976,54 @@ export default function JobCreateForm() {
                 >
                   Customer <span className="text-[#B26959]">*</span>
                 </label>
-                <select
-                  id="customer_id"
-                  required
-                  value={formData.customer_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, customer_id: e.target.value })
-                  }
-                  className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                >
-                  <option value="" disabled>
-                    Select a customer
-                  </option>
-                  {customers.map((c) => (
-                    <option key={c.id} value={c.id}>
-                      {c.name}
+                {customerLocked && formData.customer_id ? (
+                  (() => {
+                    const lockedCustomer = customers.find((c) => c.id.toString() === formData.customer_id);
+                    return (
+                      <div className="flex items-center justify-between gap-3 bg-[#FAF6F3] border border-taupe/30 rounded-lg px-3 py-2">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-taupe/15 text-taupe flex items-center justify-center text-xs font-bold shrink-0">
+                            {(lockedCustomer?.name || '?').charAt(0).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold text-[#2D2A26] truncate">
+                              {lockedCustomer?.name || `Customer #${formData.customer_id}`}
+                            </p>
+                            {lockedCustomer?.email && (
+                              <p className="text-[11px] text-[#A8A19A] truncate">{lockedCustomer.email}</p>
+                            )}
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setCustomerLocked(false)}
+                          className="text-taupe hover:underline text-xs font-semibold shrink-0"
+                        >
+                          Change
+                        </button>
+                      </div>
+                    );
+                  })()
+                ) : (
+                  <select
+                    id="customer_id"
+                    required
+                    value={formData.customer_id}
+                    onChange={(e) =>
+                      setFormData({ ...formData, customer_id: e.target.value })
+                    }
+                    className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                  >
+                    <option value="" disabled>
+                      Select a customer
                     </option>
-                  ))}
-                </select>
+                    {customers.map((c) => (
+                      <option key={c.id} value={c.id}>
+                        {c.name}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
 
               <div>
@@ -829,87 +1037,61 @@ export default function JobCreateForm() {
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label
-                  htmlFor="service_id"
-                  className="block text-xs font-semibold text-[#827A73] mb-1 uppercase tracking-wider"
-                >
-                  Type of Service <span className="text-[#B26959]">*</span>
-                </label>
-                <select
-                  id="service_id"
-                  required
-                  value={formData.service_id}
-                  onChange={(e) => {
-                    const val = e.target.value;
-                    setIsTotalAmountCustom(false); // Reset custom price flag on service change
-                    setFormData({ ...formData, service_id: val });
-                    const selected = services.find(
-                      (s) => s.id.toString() === val
-                    );
-                    const fields = selected?.custom_fields || [];
-                    const initialValues: Record<string, string> = {};
-                    fields.forEach((f) => {
-                      initialValues[f.label] = '';
-                    });
-                    setCustomFieldValues(initialValues);
+            <div>
+              <label
+                htmlFor="service_id"
+                className="block text-xs font-semibold text-[#827A73] mb-1 uppercase tracking-wider"
+              >
+                Type of Service <span className="text-[#B26959]">*</span>
+              </label>
+              <select
+                id="service_id"
+                required
+                value={formData.service_id}
+                onChange={(e) => {
+                  const val = e.target.value;
+                  setIsTotalAmountCustom(false); // Reset custom price flag on service change
+                  setFormData({ ...formData, service_id: val });
+                  const selected = services.find(
+                    (s) => s.id.toString() === val
+                  );
+                  const fields = selected?.custom_fields || [];
+                  const initialValues: Record<string, string> = {};
+                  fields.forEach((f) => {
+                    initialValues[f.label] = '';
+                  });
+                  setCustomFieldValues(initialValues);
 
-                    // Bulk/team-order services always need the roster; fall back to
-                    // name-sniffing for older services that predate service_type.
-                    if (selected) {
-                      const name = selected.name.toLowerCase();
-                      const looksBulk =
-                        name.includes('jersey') ||
-                        name.includes('sublimation') ||
-                        name.includes('uniform') ||
-                        name.includes('esports');
-                      if (selected.service_type === 'bulk_sublimation' || looksBulk) {
-                        setIsBulkOrder(true);
-                      }
+                  // Bulk/team-order services always need the roster; fall back to
+                  // name-sniffing for older services that predate service_type.
+                  if (selected) {
+                    const name = selected.name.toLowerCase();
+                    const looksBulk =
+                      name.includes('jersey') ||
+                      name.includes('sublimation') ||
+                      name.includes('uniform') ||
+                      name.includes('esports');
+                    if (selected.service_type === 'bulk_sublimation' || looksBulk) {
+                      setIsBulkOrder(true);
                     }
-                  }}
-                  className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                >
-                  <option value="" disabled>
-                    Select a service
-                  </option>
-                  {services.map((s) => {
-                    const label = s.tags && s.tags.length > 0 
-                      ? `${s.name} (${s.tags.slice(0, 3).join(', ')}${s.tags.length > 3 ? '...' : ''})` 
-                      : s.name;
-                    return (
-                      <option key={s.id} value={s.id}>
-                        {label}
-                      </option>
-                    );
-                  })}
-                </select>
-              </div>
-
-              <div>
-                <label
-                  htmlFor="assigned_staff_id"
-                  className="block text-xs font-semibold text-[#827A73] mb-1 uppercase tracking-wider"
-                >
-                  Assigned Staff
-                </label>
-                <select
-                  id="assigned_staff_id"
-                  value={formData.assigned_staff_id}
-                  onChange={(e) =>
-                    setFormData({ ...formData, assigned_staff_id: e.target.value })
                   }
-                  className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                >
-                  <option value="">Unassigned</option>
-                  {staff.map((s) => (
-                    <option key={s.id} value={s.user.id}>
-                      {s.user.name} ({s.role})
+                }}
+                className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+              >
+                <option value="" disabled>
+                  Select a service
+                </option>
+                {services.map((s) => {
+                  const label = s.tags && s.tags.length > 0
+                    ? `${s.name} (${s.tags.slice(0, 3).join(', ')}${s.tags.length > 3 ? '...' : ''})`
+                    : s.name;
+                  return (
+                    <option key={s.id} value={s.id}>
+                      {label}
                     </option>
-                  ))}
-                </select>
-              </div>
+                  );
+                })}
+              </select>
             </div>
           </div>
 
@@ -1195,41 +1377,98 @@ export default function JobCreateForm() {
               <h3 className="text-sm font-bold text-[#524A44]">Production & Fulfillment</h3>
             </div>
 
-            {/* Outsourcing Details */}
+            {/* Outsourcing Details — same design as the Job Detail page's
+                Outsourcing card, so this doesn't feel like a different
+                feature depending on whether you're creating or viewing. */}
             <div>
-              <label className="flex items-center gap-2 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={formData.is_outsourced}
-                  onChange={(e) =>
-                    setFormData({ ...formData, is_outsourced: e.target.checked })
-                  }
-                  className="rounded border-[#EBE6E0] text-taupe focus:ring-taupe"
-                />
-                <span className="text-sm font-semibold text-[#524A44]">
-                  Outsource this production (Sent to external shop/tailor)
-                </span>
-              </label>
+              <div className="flex items-center gap-2">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={formData.is_outsourced}
+                    onChange={(e) =>
+                      setFormData({ ...formData, is_outsourced: e.target.checked })
+                    }
+                    className="rounded border-[#EBE6E0] text-taupe focus:ring-taupe"
+                  />
+                  <span className="text-sm font-semibold text-[#524A44]">
+                    Outsource this production (Sent to external shop/tailor)
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowOutsourcingHelp(p => !p)}
+                  className="text-[#A8A19A] hover:text-[#9A8073] transition-colors"
+                  title="What is this?"
+                >
+                  <HelpCircle size={14} />
+                </button>
+              </div>
+
+              {showOutsourcingHelp && (
+                <div className="mt-2 max-w-md p-3 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-xs text-[#524A44] leading-relaxed">
+                  Turn this on when you&apos;re subcontracting this job — or part of it, like beadwork or embroidery — to another shop or freelance artisan, usually because you&apos;re overbooked or don&apos;t have that skill or machine in-house. The customer still pays your full Total Amount either way — enter what <strong>you</strong> pay the partner below so you can see your real profit on this job, not just what the customer paid.
+                </div>
+              )}
 
               {formData.is_outsourced && (
-                <div className="mt-3 max-w-md">
-                  <label
-                    htmlFor="partner_shop_name"
-                    className="block text-xs font-semibold text-[#827A73] mb-1"
-                  >
-                    Partner Shop / Sewer Name <span className="text-[#B26959]">*</span>
-                  </label>
-                  <input
-                    id="partner_shop_name"
-                    type="text"
-                    required
-                    value={formData.partner_shop_name}
-                    onChange={(e) =>
-                      setFormData({ ...formData, partner_shop_name: e.target.value })
-                    }
-                    placeholder="e.g. Maria's Dressmaking Shop"
-                    className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                  />
+                <div className="mt-3 max-w-md space-y-3">
+                  <div>
+                    <label
+                      htmlFor="partner_shop_name"
+                      className="block text-xs font-semibold text-[#827A73] mb-1"
+                    >
+                      Partner Shop / Sewer Name <span className="text-[#B26959]">*</span>
+                    </label>
+                    <input
+                      id="partner_shop_name"
+                      type="text"
+                      required
+                      value={formData.partner_shop_name}
+                      onChange={(e) =>
+                        setFormData({ ...formData, partner_shop_name: e.target.value })
+                      }
+                      placeholder="e.g. Maria's Dressmaking Shop"
+                      className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                    />
+                  </div>
+
+                  <div>
+                    <label
+                      htmlFor="outsourcing_cost"
+                      className="block text-xs font-semibold text-[#827A73] mb-1"
+                    >
+                      What You&apos;re Paying Them <span className="font-normal normal-case text-[#A8A19A]">(optional)</span>
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A] font-medium text-sm">₱</span>
+                      <input
+                        id="outsourcing_cost"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={formData.outsourcing_cost}
+                        onChange={(e) =>
+                          setFormData({ ...formData, outsourcing_cost: e.target.value })
+                        }
+                        placeholder="0.00"
+                        className="w-full pl-7 pr-3 py-2 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                      />
+                    </div>
+                  </div>
+
+                  {Number.parseFloat(formData.outsourcing_cost || '0') > 0 && (() => {
+                    const total = Number.parseFloat(formData.total_amount) || 0;
+                    const cost = Number.parseFloat(formData.outsourcing_cost) || 0;
+                    const profit = total - cost;
+                    const isLoss = profit <= 0;
+                    return (
+                      <div className={`flex items-center justify-between px-4 py-2.5 rounded-xl border text-sm ${isLoss ? 'bg-red-50 border-red-200 text-red-600' : 'bg-[#7A8B76]/10 border-[#7A8B76]/20 text-[#7A8B76]'}`}>
+                        <span className="font-medium">{isLoss ? "You're losing money on this job" : 'Your profit on this job'}</span>
+                        <span className="font-bold">₱{profit.toFixed(2)}</span>
+                      </div>
+                    );
+                  })()}
                 </div>
               )}
             </div>
@@ -1372,6 +1611,48 @@ export default function JobCreateForm() {
               </div>
           </div>
 
+          {/* Section: Multi-Stage Staff Assignment — same model as the Job
+              Detail page's card, settable at creation time too instead of
+              only via a single generic "Assigned Staff" field afterward. */}
+          <div className="space-y-4 border-t border-[#EBE6E0] pt-6">
+            <div className="flex items-center gap-3 border-b border-[#EBE6E0] pb-3">
+              <div className="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 bg-[#9A8073]/10 border border-[#9A8073]/20">
+                <Users size={16} className="text-[#9A8073]" />
+              </div>
+              <h3 className="text-sm font-bold text-[#524A44]">Multi-Stage Staff Assignment <span className="font-normal text-[#A8A19A]">(Optional)</span></h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {['design', 'pattern_making', 'cutting', 'sewing', 'fitting', 'finishing'].map((stage) => (
+                <div key={stage}>
+                  <label
+                    htmlFor={`stage_${stage}`}
+                    className="block text-xs font-semibold text-[#827A73] mb-1 uppercase tracking-wider capitalize"
+                  >
+                    {stage.replace('_', ' ')} Staff
+                  </label>
+                  <select
+                    id={`stage_${stage}`}
+                    value={staffStageAssignments[stage]}
+                    onChange={(e) =>
+                      setStaffStageAssignments({ ...staffStageAssignments, [stage]: e.target.value })
+                    }
+                    className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                  >
+                    <option value="">Unassigned</option>
+                    {staff.map((s) => {
+                      const roles = [s.role, ...(s.additional_roles || [])].filter(Boolean).map(roleLabel).join(', ');
+                      return (
+                        <option key={s.id} value={s.user.id}>
+                          {s.user.name} ({roles})
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+              ))}
+            </div>
+          </div>
+
           {/* Section 4: Timeline & Financial Summary */}
           <div className="space-y-4 border-t border-[#EBE6E0] pt-6">
             <div className="flex items-center gap-3 border-b border-[#EBE6E0] pb-3">
@@ -1496,8 +1777,13 @@ export default function JobCreateForm() {
                       setFormData({ ...formData, total_amount: e.target.value });
                     }}
                     className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-                    placeholder="0.00"
+                    placeholder={selectedService && (selectedService.base_price === null || selectedService.base_price === undefined) ? 'Enter your quote for this job' : '0.00'}
                   />
+                  {selectedService && (selectedService.base_price === null || selectedService.base_price === undefined) && !formData.total_amount && (
+                    <p className="text-[10px] text-[#827A73] mt-1">
+                      This service has no fixed price (Custom Quote) — enter the amount you&apos;re charging for this specific job.
+                    </p>
+                  )}
                   {formData.is_rush && Number.parseFloat(formData.total_amount) < (Number.parseFloat(formData.rush_fee) || 0) && (
                     <p className="text-[10px] text-[#B26959] mt-1 font-semibold">
                       Must be ≥ Rush Fee (₱{Number.parseFloat(formData.rush_fee).toFixed(2)})
@@ -1525,9 +1811,13 @@ export default function JobCreateForm() {
                     className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
                     placeholder="0.00"
                   />
+                  {/* A customer handing over more cash than owed (e.g. ₱200 for a
+                      ₱150 total) is normal real-world change-making, not invalid
+                      data — only the amount actually applied toward the job is
+                      capped at the total; the rest is just change given back. */}
                   {(Number.parseFloat(formData.downpayment) || 0) > (Number.parseFloat(formData.total_amount) || 0) && (
-                    <p className="text-[10px] text-[#B26959] mt-1 font-semibold">
-                      Cannot exceed Total Amount (₱{Number.parseFloat(formData.total_amount || '0').toFixed(2)})
+                    <p className="text-[10px] text-[#7A8B76] mt-1 font-semibold">
+                      Change Due: ₱{((Number.parseFloat(formData.downpayment) || 0) - (Number.parseFloat(formData.total_amount) || 0)).toFixed(2)} — only ₱{Number.parseFloat(formData.total_amount || '0').toFixed(2)} will be applied to the job.
                     </p>
                   )}
                 </div>
@@ -1539,11 +1829,54 @@ export default function JobCreateForm() {
                   </span>
                   <div className="w-full bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 flex items-center justify-between h-[38px] select-none">
                     <span className="font-bold text-sm text-[#2D2A26]">
-                      ₱{Math.max(0, (Number.parseFloat(formData.total_amount) || 0) - (Number.parseFloat(formData.downpayment) || 0)).toFixed(2)}
+                      ₱{Math.max(0, (Number.parseFloat(formData.total_amount) || 0) - Math.min(Number.parseFloat(formData.downpayment) || 0, Number.parseFloat(formData.total_amount) || 0)).toFixed(2)}
                     </span>
                     {renderBalanceBadge()}
                   </div>
                 </div>
+              </div>
+
+              {/* Coupon Code */}
+              <div className="pt-2">
+                {appliedCoupon ? (
+                  <div className="bg-rose-50 border border-rose-200 rounded-lg p-3 flex items-center justify-between text-sm">
+                    <span className="text-rose-700 font-medium">
+                      &quot;{appliedCoupon.code}&quot; applied — −₱{appliedCoupon.discount_amount.toLocaleString()}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="text-xs font-semibold text-rose-600 hover:underline"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    <label htmlFor="job-coupon-code" className="block text-xs font-semibold text-[#827A73] uppercase tracking-wider mb-1">
+                      Coupon Code (Optional)
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        id="job-coupon-code"
+                        type="text"
+                        value={couponCodeInput}
+                        onChange={(e) => { setCouponCodeInput(e.target.value.toUpperCase()); setCouponError(''); }}
+                        placeholder="e.g. SAVE20"
+                        className="flex-1 bg-[#FAF6F3] border border-[#EBE6E0] rounded-lg px-3 py-2 text-sm text-[#2D2A26] font-mono focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleApplyCoupon}
+                        disabled={couponValidating || !couponCodeInput.trim()}
+                        className="shrink-0 bg-[#2D2A26] hover:bg-black text-white px-4 py-2 rounded-lg text-sm font-semibold transition-colors disabled:opacity-50"
+                      >
+                        {couponValidating ? 'Checking...' : 'Apply'}
+                      </button>
+                    </div>
+                    {couponError && <p className="text-[10px] text-[#B26959] mt-1 font-semibold">{couponError}</p>}
+                  </div>
+                )}
               </div>
             </div>
           </div>

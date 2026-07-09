@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
-import { Job } from './jobTypes';
-import { CreditCard, Banknote, Smartphone, ChevronDown, ChevronUp } from 'lucide-react';
+import Link from 'next/link';
+import { Job, Payment } from './jobTypes';
+import { CreditCard, Banknote, Smartphone, ChevronDown, ChevronUp, Pencil, X, Check, Printer } from 'lucide-react';
 
 interface JobFinancialsCardProps {
   readonly job: Job;
   readonly saving: boolean;
-  readonly onCharge: (amount: number, method: string, notes: string) => Promise<void>;
+  readonly onCharge: (amount: number, method: string, notes: string, reference?: string) => Promise<void>;
+  readonly onUpdatePayment: (paymentId: number, fields: { payment_method: string; reference?: string; notes?: string; receipt_path?: string }) => Promise<void>;
 }
 
 const METHOD_ICONS: Record<string, React.ReactNode> = {
@@ -24,10 +26,12 @@ export default function JobFinancialsCard({
   job,
   saving,
   onCharge,
+  onUpdatePayment,
 }: JobFinancialsCardProps) {
   const totalAmount       = Number.parseFloat(String(job.total_amount));
   const remainingBalance  = Number.parseFloat(String(job.balance));
   const amountPaid        = totalAmount - remainingBalance;
+  const jobIsCompleted    = job.status === 'completed';
   const [method, setMethod] = useState('cash');
   const [amount, setAmount] = useState('');
   const [reference, setReference] = useState('');
@@ -35,14 +39,19 @@ export default function JobFinancialsCard({
   const [ledgerOpen, setLedgerOpen] = useState(false);
   const [charging, setCharging] = useState(false);
 
+  const [editingPaymentId, setEditingPaymentId] = useState<number | null>(null);
+  const [editMethod, setEditMethod] = useState('cash');
+  const [editReference, setEditReference] = useState('');
+  const [editNotes, setEditNotes] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
   const handleSubmit = async (e: React.SyntheticEvent<HTMLFormElement>) => {
     e.preventDefault();
     const amt = Number.parseFloat(amount);
     if (!amt || amt <= 0) return;
     setCharging(true);
     try {
-      const noteStr = [reference ? `Ref: ${reference}` : '', notes].filter(Boolean).join(' | ');
-      await onCharge(amt, method, noteStr);
+      await onCharge(amt, method, notes, reference || undefined);
       setAmount('');
       setReference('');
       setNotes('');
@@ -50,6 +59,29 @@ export default function JobFinancialsCard({
       // handled by parent
     } finally {
       setCharging(false);
+    }
+  };
+
+  const startEditingPayment = (payment: Payment) => {
+    setEditingPaymentId(payment.id);
+    setEditMethod(payment.payment_method);
+    setEditReference(payment.reference || '');
+    setEditNotes(payment.notes || '');
+  };
+
+  const handleSaveEdit = async (paymentId: number) => {
+    setSavingEdit(true);
+    try {
+      await onUpdatePayment(paymentId, {
+        payment_method: editMethod,
+        reference: editReference || undefined,
+        notes: editNotes || undefined,
+      });
+      setEditingPaymentId(null);
+    } catch {
+      // handled by parent
+    } finally {
+      setSavingEdit(false);
     }
   };
 
@@ -94,32 +126,31 @@ export default function JobFinancialsCard({
         <form onSubmit={handleSubmit} className="space-y-2.5">
           <p className="text-xs font-semibold text-[#827A73] uppercase tracking-wider mb-2">Log a Payment</p>
 
-          {/* Amount + Method row */}
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A] font-medium text-sm">₱</span>
-              <input
-                type="number"
-                step="0.01"
-                min="0.01"
-                max={remainingBalance}
-                required
-                value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="0.00"
-                className="w-full pl-7 pr-3 py-2 bg-white border border-[#D1C7BD] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe text-sm"
-              />
-            </div>
-            <select
-              value={method}
-              onChange={e => setMethod(e.target.value)}
-              className="w-32 px-3 py-2 bg-white border border-[#D1C7BD] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
-            >
-              <option value="cash">Cash</option>
-              <option value="gcash">GCash</option>
-              <option value="bank_transfer">Bank</option>
-            </select>
+          {/* Amount — full width on its own row so larger amounts are never
+              cramped or clipped next to the method dropdown. */}
+          <div className="relative">
+            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-[#A8A19A] font-medium text-sm">₱</span>
+            <input
+              type="number"
+              step="0.01"
+              min="0.01"
+              max={remainingBalance}
+              required
+              value={amount}
+              onChange={e => setAmount(e.target.value)}
+              placeholder="0.00"
+              className="w-full pl-7 pr-3 py-2 bg-white border border-[#D1C7BD] rounded-lg text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe text-sm [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+            />
           </div>
+          <select
+            value={method}
+            onChange={e => setMethod(e.target.value)}
+            className="w-full px-3 py-2 bg-white border border-[#D1C7BD] rounded-lg text-sm text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+          >
+            <option value="cash">Cash</option>
+            <option value="gcash">GCash</option>
+            <option value="bank_transfer">Bank Transfer</option>
+          </select>
 
           {/* GCash/Bank reference number (shown only for digital methods) */}
           {(method === 'gcash' || method === 'bank_transfer') && (
@@ -163,14 +194,29 @@ export default function JobFinancialsCard({
       {/* Payment Ledger (collapsible) */}
       {job.payments && job.payments.length > 0 && (
         <div className="mt-5 pt-4 border-t border-[#EBE6E0]">
-          <button
-            type="button"
-            onClick={() => setLedgerOpen(p => !p)}
-            className="w-full flex items-center justify-between text-sm font-semibold text-[#524A44] hover:text-[#2D2A26] transition-colors"
-          >
-            <span>Payment History ({job.payments.length})</span>
-            {ledgerOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
-          </button>
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={() => setLedgerOpen(p => !p)}
+              className="flex-1 flex items-center justify-between text-sm font-semibold text-[#524A44] hover:text-[#2D2A26] transition-colors"
+            >
+              <span className="flex items-center gap-1.5">
+                Payment History ({job.payments.length})
+                {jobIsCompleted && (
+                  <span className="text-[9px] font-bold uppercase tracking-wider bg-[#F0EAE3] text-[#827A73] px-1.5 py-0.5 rounded">Locked</span>
+                )}
+              </span>
+              {ledgerOpen ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+            </button>
+            <Link
+              href={`/print/jobs/${job.id}/receipt`}
+              target="_blank"
+              title="Print full payment statement"
+              className="shrink-0 flex items-center gap-1 text-xs font-medium text-[#827A73] hover:text-[#9A8073] transition-colors"
+            >
+              <Printer size={13} /> Statement
+            </Link>
+          </div>
           {ledgerOpen && (
             <div className="space-y-2 mt-3 max-h-64 overflow-y-auto pr-1">
               {job.payments.map(payment => (
@@ -182,15 +228,84 @@ export default function JobFinancialsCard({
                         {METHOD_LABELS[payment.payment_method] ?? payment.payment_method}
                       </span>
                     </div>
-                    <span className="text-sm font-bold text-[#2D2A26]">
-                      ₱{Number.parseFloat(String(payment.amount)).toFixed(2)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-[#2D2A26]">
+                        ₱{Number.parseFloat(String(payment.amount)).toFixed(2)}
+                      </span>
+                      <Link
+                        href={`/print/jobs/${job.id}/receipt?payment=${payment.id}`}
+                        target="_blank"
+                        title="Print receipt for this payment"
+                        className="text-[#A8A19A] hover:text-[#9A8073] transition-colors"
+                      >
+                        <Printer size={12} />
+                      </Link>
+                      {editingPaymentId !== payment.id && !jobIsCompleted && (
+                        <button
+                          type="button"
+                          onClick={() => startEditingPayment(payment)}
+                          title="Edit method/reference/notes (amount is locked)"
+                          className="text-[#A8A19A] hover:text-[#9A8073] transition-colors"
+                        >
+                          <Pencil size={12} />
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <div className="text-[10px] text-[#A8A19A] space-y-0.5">
-                    <p>{new Date(payment.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
-                    {payment.recorded_by && <p>By: {payment.recorded_by.name}</p>}
-                    {payment.notes && <p className="text-[#827A73] italic">{payment.notes}</p>}
-                  </div>
+
+                  {editingPaymentId === payment.id ? (
+                    <div className="space-y-1.5 mt-2 pt-2 border-t border-[#EBE6E0]">
+                      <select
+                        value={editMethod}
+                        onChange={e => setEditMethod(e.target.value)}
+                        className="w-full px-2 py-1.5 bg-white border border-[#D1C7BD] rounded-lg text-xs text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                      >
+                        <option value="cash">Cash</option>
+                        <option value="gcash">GCash</option>
+                        <option value="bank_transfer">Bank Transfer</option>
+                      </select>
+                      {(editMethod === 'gcash' || editMethod === 'bank_transfer') && (
+                        <input
+                          type="text"
+                          value={editReference}
+                          onChange={e => setEditReference(e.target.value)}
+                          placeholder="Reference #"
+                          className="w-full px-2 py-1.5 bg-white border border-[#D1C7BD] rounded-lg text-xs text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                        />
+                      )}
+                      <input
+                        type="text"
+                        value={editNotes}
+                        onChange={e => setEditNotes(e.target.value)}
+                        placeholder="Internal notes (optional)..."
+                        className="w-full px-2 py-1.5 bg-white border border-[#D1C7BD] rounded-lg text-xs text-[#2D2A26] focus:outline-none focus:border-taupe focus:ring-1 focus:ring-taupe"
+                      />
+                      <div className="flex justify-end gap-2 pt-0.5">
+                        <button
+                          type="button"
+                          onClick={() => setEditingPaymentId(null)}
+                          className="px-2 py-1 rounded-lg text-[10px] font-medium text-[#827A73] hover:text-[#2D2A26] flex items-center gap-1"
+                        >
+                          <X size={11} /> Cancel
+                        </button>
+                        <button
+                          type="button"
+                          disabled={savingEdit}
+                          onClick={() => handleSaveEdit(payment.id)}
+                          className="px-2.5 py-1 rounded-lg text-[10px] font-semibold bg-taupe hover:bg-taupe/90 text-white flex items-center gap-1 disabled:opacity-50"
+                        >
+                          <Check size={11} /> {savingEdit ? 'Saving…' : 'Save'}
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-[10px] text-[#A8A19A] space-y-0.5">
+                      <p>{new Date(payment.created_at).toLocaleDateString('en-PH', { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</p>
+                      {payment.recorded_by && <p>By: {payment.recorded_by.name}</p>}
+                      {payment.reference && <p>Ref: {payment.reference}</p>}
+                      {payment.notes && <p className="text-[#827A73] italic">{payment.notes}</p>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

@@ -12,7 +12,6 @@ export interface AnalyticsData {
   total_collections: number;
   total_branches: number;
   total_services: number;
-  low_stock_items: number;
   // Enhanced KPIs
   today_revenue?: number;
   overdue_jobs?: number;
@@ -34,23 +33,27 @@ export interface OutstandingBalanceRow {
 }
 
 export const STATUS_COLORS: Record<string, string> = {
-  pending:          '#BCA89F',
-  cutting:          '#9A8073',
-  sewing:           '#7A8B76',
-  fitting:          '#D4B896',
-  ready_for_pickup: '#4A7C59',
-  completed:        '#2D6A4F',
-  cancelled:        '#B26959',
+  pending:           '#BCA89F',
+  cutting:           '#9A8073',
+  sewing:            '#7A8B76',
+  fitting:           '#D4B896',
+  ready_for_pickup:  '#4A7C59',
+  packed:            '#6B7CA6',
+  handed_to_courier: '#5B9AA6',
+  completed:         '#2D6A4F',
+  cancelled:         '#B26959',
 };
 
 export const STATUS_LABELS: Record<string, string> = {
-  pending:          'Pending',
-  cutting:          'Cutting',
-  sewing:           'Sewing',
-  fitting:          'Fitting',
-  ready_for_pickup: 'Ready',
-  completed:        'Completed',
-  cancelled:        'Cancelled',
+  pending:           'Pending',
+  cutting:           'Cutting',
+  sewing:            'Sewing',
+  fitting:           'Fitting',
+  ready_for_pickup:  'Ready',
+  packed:            'Packed',
+  handed_to_courier: 'Handed Over',
+  completed:         'Completed',
+  cancelled:         'Cancelled',
 };
 
 export const CustomTooltip = ({ active, payload, label }: {

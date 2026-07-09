@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useSearchParams } from 'next/navigation';
 import api from '@/lib/axios';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
@@ -77,10 +78,18 @@ interface RawJobData {
   status: string;
 }
 
+const VALID_TABS: Tab[] = ['receipts', 'job_balances', 'catalog_orders'];
+
 export function usePayments() {
   const { shop } = useAuthStore();
   const toast = useToast();
-  const [activeTab, setActiveTab] = useState<Tab>('receipts');
+  const searchParams = useSearchParams();
+  // Lets the Home dashboard's "Pending Deposits"/etc. cards deep-link
+  // straight to the relevant tab instead of always landing on Receipts.
+  const initialTab = searchParams.get('tab');
+  const [activeTab, setActiveTab] = useState<Tab>(
+    VALID_TABS.includes(initialTab as Tab) ? (initialTab as Tab) : 'receipts'
+  );
 
   // Receipts tab
   const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
@@ -90,18 +99,20 @@ export function usePayments() {
 
   // Job Balances tab
   const [jobBalances, setJobBalances] = useState<JobBalanceItem[]>([]);
-  const [balancesLoading, setBalancesLoading] = useState(false);
+  const [balancesLoading, setBalancesLoading] = useState(true);
   const [balanceSearch, setBalanceSearch] = useState('');
   const [logPaymentJob, setLogPaymentJob] = useState<JobBalanceItem | null>(null);
   const [payAmount, setPayAmount] = useState('');
   const [payMethod, setPayMethod] = useState('cash');
   const [payNotes, setPayNotes] = useState('');
   const [payReference, setPayReference] = useState('');
+  const [payReceiptPath, setPayReceiptPath] = useState('');
+  const [payReceiptUploading, setPayReceiptUploading] = useState(false);
   const [paySubmitting, setPaySubmitting] = useState(false);
 
   // Catalog Orders tab
   const [catalogOrders, setCatalogOrders] = useState<CatalogOrderItem[]>([]);
-  const [catalogLoading, setCatalogLoading] = useState(false);
+  const [catalogLoading, setCatalogLoading] = useState(true);
 
   // Fetch receipts queue
   const fetchReceipts = useCallback(async () => {
@@ -200,22 +211,18 @@ export function usePayments() {
     }
   }, [shop]);
 
+  // All three fetch on mount regardless of which tab is active — the tab
+  // pills show live counts (e.g. "Outstanding Balances 2"), so the counts
+  // have to be right immediately, not just after the owner clicks over.
   useEffect(() => {
     if (!shop) return;
     const timer = setTimeout(() => {
       fetchReceipts();
+      fetchJobBalances();
+      fetchCatalogOrders();
     }, 0);
     return () => clearTimeout(timer);
-  }, [shop, fetchReceipts]);
-
-  useEffect(() => {
-    if (!shop) return;
-    const timer = setTimeout(() => {
-      if (activeTab === 'job_balances') fetchJobBalances();
-      if (activeTab === 'catalog_orders') fetchCatalogOrders();
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [activeTab, shop, fetchJobBalances, fetchCatalogOrders]);
+  }, [shop, fetchReceipts, fetchJobBalances, fetchCatalogOrders]);
 
   // Verify receipt
   const handleVerify = async (item: ReceiptItem, status: 'paid' | 'pending' | 'rejected') => {
@@ -237,23 +244,50 @@ export function usePayments() {
   };
 
   // Log job payment
+  const handlePayReceiptUpload = async (file: File) => {
+    if (!shop) return;
+    setPayReceiptUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      const res = await api.post(`/shops/${shop.id}/upload`, fd, { headers: { 'Content-Type': 'multipart/form-data' } });
+      setPayReceiptPath(res.data.data?.url || res.data.url || '');
+    } catch {
+      toast.error('Failed to upload receipt screenshot.');
+    } finally {
+      setPayReceiptUploading(false);
+    }
+  };
+
   const handleLogPayment = async () => {
     if (!shop || !logPaymentJob) return;
     const amt = Number.parseFloat(payAmount);
     if (!amt || amt <= 0) return;
     setPaySubmitting(true);
     try {
-      const noteStr = [payReference ? `Ref: ${payReference}` : '', payNotes].filter(Boolean).join(' | ');
       await api.post(`/shops/${shop.id}/jobs/${logPaymentJob.id}/pay`, {
         amount: amt,
         payment_method: payMethod,
-        notes: noteStr || undefined,
+        reference: payReference || undefined,
+        notes: payNotes || undefined,
+        receipt_path: payReceiptPath || undefined,
       });
-      toast.success(`₱${amt.toFixed(2)} payment logged for ${logPaymentJob.order_number}`);
+      // Same shortfall-aware messaging as the Job Detail page's own payment
+      // form — a payment below the 50% downpayment threshold still counts
+      // toward it, but shouldn't read as an unqualified "done".
+      const totalAmt = Number.parseFloat(String(logPaymentJob.total_amount)) || 0;
+      const paidSoFar = (totalAmt - (Number.parseFloat(String(logPaymentJob.balance)) || 0)) + amt;
+      const requiredDp = totalAmt * 0.5;
+      if (paidSoFar < requiredDp) {
+        toast.success(`₱${amt.toFixed(2)} payment logged for ${logPaymentJob.order_number}. ₱${(requiredDp - paidSoFar).toFixed(2)} more is needed to reach the required 50% downpayment.`);
+      } else {
+        toast.success(`₱${amt.toFixed(2)} payment logged for ${logPaymentJob.order_number}`);
+      }
       setLogPaymentJob(null);
       setPayAmount('');
       setPayNotes('');
       setPayReference('');
+      setPayReceiptPath('');
       fetchJobBalances();
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };
@@ -292,6 +326,10 @@ export function usePayments() {
     setPayNotes,
     payReference,
     setPayReference,
+    payReceiptPath,
+    setPayReceiptPath,
+    payReceiptUploading,
+    handlePayReceiptUpload,
     paySubmitting,
     catalogOrders,
     catalogLoading,

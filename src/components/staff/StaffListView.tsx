@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Search, UserCircle, Wifi, Clock, Pencil, Trash2, CheckCircle2 } from 'lucide-react';
-import { Staff, formatLastSeen } from './staffHelpers';
+import { Staff, formatLastSeen, roleLabel } from './staffHelpers';
 
 interface StaffListViewProps {
   readonly staff: Staff[];
@@ -43,9 +43,16 @@ function StaffMemberRow({ member, onEdit, onDelete, onViewHistory }: StaffMember
       </td>
       <td className="px-6 py-4">
         <div className="flex flex-col gap-1 items-start">
-          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F0EAE3] text-[#524A44]">
-            {member.role?.charAt(0).toUpperCase() + member.role?.slice(1).replace('_', ' ')}
-          </span>
+          <div className="flex flex-wrap gap-1">
+            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F0EAE3] text-[#524A44]">
+              {roleLabel(member.role)}
+            </span>
+            {member.additional_roles?.map((r) => (
+              <span key={r} className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-[#F0EAE3]/50 text-[#827A73] border border-[#EBE6E0]">
+                {roleLabel(r)}
+              </span>
+            ))}
+          </div>
           {member.is_branch_manager && (
             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#9A8073]/10 text-[#9A8073] border border-[#9A8073]/20">
               Branch Manager

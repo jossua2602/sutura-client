@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useToast } from '@/context/ToastContext';
+import { refreshSubscriptionTier } from '@/hooks/useSubscriptionTier';
 import api from '@/lib/axios';
 import {
   CreditCard, CheckCircle, Zap, ShieldCheck, Loader2,
@@ -82,13 +83,21 @@ export default function BillingPage() {
         api.get('/subscriptions/plans'),
         api.get(`/shops/${shop.id}/subscription`),
       ]);
-      // Sort: basic → pro → premium
+      // Laravel serializes decimal-cast columns (price_monthly) as STRINGS in
+      // JSON (e.g. "1999.00"), not numbers — despite the Plan type saying
+      // number. Comparing/formatting those as-is compares lexicographically
+      // ("1999.00" < "799.00" as strings), which is exactly why Premium's
+      // card showed "Downgrade" while on Pro. Coerce once here so every
+      // consumer below can trust price_monthly is an actual number.
       const order = ['basic', 'pro', 'premium'];
-      const sorted = [...(plansRes.data.data ?? [])].sort(
-        (a: Plan, b: Plan) => order.indexOf(a.slug) - order.indexOf(b.slug)
-      );
+      const sorted = [...(plansRes.data.data ?? [])]
+        .map((p: Plan) => ({ ...p, price_monthly: Number(p.price_monthly) }))
+        .sort((a: Plan, b: Plan) => order.indexOf(a.slug) - order.indexOf(b.slug));
       setPlans(sorted);
-      setCurrentSubscription(subRes.data.data);
+      const sub = subRes.data.data;
+      setCurrentSubscription(
+        sub ? { ...sub, plan: { ...sub.plan, price_monthly: Number(sub.plan.price_monthly) } } : sub
+      );
     } catch (err) {
       console.error('Failed to fetch billing data', err);
     } finally {
@@ -107,6 +116,10 @@ export default function BillingPage() {
     try {
       await api.post(`/shops/${shop.id}/subscription`, { plan_id: planId, billing_cycle: 'monthly' });
       await fetchBillingData();
+      // Updates the shared tier store so the header's plan badge (and any
+      // other feature-gating check) reflects the switch immediately instead
+      // of staying stuck on the tier that was active when the page loaded.
+      await refreshSubscriptionTier(shop.id);
       toast.success('Subscription updated successfully.');
     } catch (err: unknown) {
       const error = err as { response?: { data?: { message?: string } } };

@@ -34,10 +34,12 @@ export default function JobKanbanBoard({
 
   const handleStatusChange = (job: JobItem, newStatus: string) => {
     // Derived downpayment = total_amount minus current balance.
-    // If balance === total_amount, nothing has been paid yet.
+    // Policy is 50% down, not just "something" — a ₱1 payment on a ₱10,000
+    // job shouldn't be enough to unlock production.
     const total = Number.parseFloat(String(job.total_amount ?? '0'));
     const balance = Number.parseFloat(String(job.balance ?? '0'));
-    const noDownpayment = total > 0 && balance >= total;
+    const paidSoFar = total - balance;
+    const noDownpayment = total > 0 && paidSoFar < total * 0.5;
 
     const PRODUCTION_STAGES = new Set(['cutting', 'sewing', 'fitting']);
     if (PRODUCTION_STAGES.has(newStatus) && noDownpayment) {
@@ -58,7 +60,8 @@ export default function JobKanbanBoard({
   const handleApprove = (job: JobItem) => {
     const total = Number.parseFloat(String(job.total_amount ?? '0'));
     const balance = Number.parseFloat(String(job.balance ?? '0'));
-    const noDownpayment = total > 0 && balance >= total;
+    const paidSoFar = total - balance;
+    const noDownpayment = total > 0 && paidSoFar < total * 0.5;
 
     if (noDownpayment) {
       setDpGateJobId(job.id);

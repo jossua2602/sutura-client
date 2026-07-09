@@ -9,6 +9,7 @@ import ReportKpiCards from '@/components/reports/ReportKpiCards';
 import ReportCharts from '@/components/reports/ReportCharts';
 import ReportFilters from '@/components/reports/ReportFilters';
 import BranchComparisonTable, { BranchPerformance } from '@/components/reports/BranchComparisonTable';
+import StaffProductivityTable, { StaffPerformance } from '@/components/reports/StaffProductivityTable';
 import OutstandingBalancesList from '@/components/reports/OutstandingBalancesList';
 import { useBranch } from '@/context/BranchContext';
 
@@ -21,6 +22,8 @@ export default function ReportsPage() {
   const [period, setPeriod] = useState('all_time');
   const [branchComparison, setBranchComparison] = useState<BranchPerformance[]>([]);
   const [branchComparisonLoading, setBranchComparisonLoading] = useState(false);
+  const [staffProductivity, setStaffProductivity] = useState<StaffPerformance[]>([]);
+  const [staffProductivityLoading, setStaffProductivityLoading] = useState(false);
 
   const handleExportCSV = () => {
     if (!data) return;
@@ -95,7 +98,9 @@ export default function ReportsPage() {
   };
 
   useEffect(() => {
-    if (!shop?.id) {
+    // Matches the backend's role:shop_owner,branch_manager gate on GET /analytics
+    // — plain staff can't hit this endpoint, so skip the fetch rather than 403.
+    if (!shop?.id || !(isShopOwner || user?.roles?.[0]?.name === 'branch_manager')) {
       if (user?.id) {
         setTimeout(() => setLoading(false), 0);
       }
@@ -124,7 +129,8 @@ export default function ReportsPage() {
     }
 
     fetchAnalytics();
-  }, [shop?.id, period, user?.id, selectedBranchId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop?.id, period, user?.id, selectedBranchId, isShopOwner]);
 
   // Branch performance comparison — owner-only strategic view, only worth
   // fetching once there's actually more than one branch to compare.
@@ -151,6 +157,31 @@ export default function ReportsPage() {
     fetchBranchComparison();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [shop?.id, period, isShopOwner, branches.length]);
+
+  // Individual staff productivity — owner-only strategic view.
+  useEffect(() => {
+    if (!shop?.id || !isShopOwner) return;
+
+    async function fetchStaffProductivity() {
+      setStaffProductivityLoading(true);
+      const { startDate, endDate } = getDateRangeForPeriod(period);
+
+      let url = `/shops/${shop?.id}/analytics/staff`;
+      if (startDate && endDate) url += `?start_date=${startDate}&end_date=${endDate}`;
+
+      try {
+        const res = await api.get(url);
+        setStaffProductivity(res.data.data);
+      } catch (err) {
+        console.error('Failed to fetch staff productivity', err);
+      } finally {
+        setStaffProductivityLoading(false);
+      }
+    }
+
+    fetchStaffProductivity();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shop?.id, period, isShopOwner]);
 
   // ─── Derived chart data ──────────────────────────────────────────────────
 
@@ -252,6 +283,10 @@ export default function ReportsPage() {
 
           {isShopOwner && branches.length > 1 && (
             <BranchComparisonTable data={branchComparison} loading={branchComparisonLoading} />
+          )}
+
+          {isShopOwner && (
+            <StaffProductivityTable data={staffProductivity} loading={staffProductivityLoading} />
           )}
 
           {data?.outstanding_balances && (

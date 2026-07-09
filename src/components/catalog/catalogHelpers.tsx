@@ -1,12 +1,15 @@
 import React from 'react';
 import api from '@/lib/axios';
 import { BulletItem, ImageItem, CatalogFormData, CatalogItemResponse } from './catalogTypes';
+export { getActiveSale } from '@/lib/salePricing';
 
 export interface CatalogItem {
   id: number;
   name: string;
   price: string;
   sale_price?: string | number | null;
+  sale_starts_at?: string | null;
+  sale_ends_at?: string | null;
   rental_price?: string | number | null;
   rental_deposit?: string | number | null;
   material: string;
@@ -195,7 +198,7 @@ export function mapCatalogItemToState(item: CatalogItemResponse) {
     listing_type: item.listing_type ?? 'made_to_order',
     rental_price: item.rental_price != null ? String(item.rental_price) : '',
     rental_deposit: item.rental_deposit != null ? String(item.rental_deposit) : '',
-    sizes: Array.isArray(item.sizes) ? item.sizes.join(', ') : '',
+    sizes: Array.isArray(item.sizes) ? item.sizes : [],
     external_gallery_url: item.external_gallery_url ?? '',
     is_active: item.is_active ?? true,
   };
@@ -306,9 +309,11 @@ export function buildSavePayload(
 
   return {
     ...formData,
-    sale_price: formData.price,
+    // sale_price is intentionally NOT sent here — it's managed separately via
+    // the "Set Sale" quick action on the catalog card, not the main form, so
+    // saving this form must never overwrite an existing discount.
     fabric_image_url: formData.fabric_image_url || null,
-    sizes: formData.sizes.split(',').map(s => s.trim()).filter(Boolean),
+    sizes: formData.sizes,
     features: {
       bullets: filteredFeatures,
       image_url: featuresImage,

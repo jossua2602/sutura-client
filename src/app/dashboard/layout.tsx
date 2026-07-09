@@ -4,9 +4,9 @@ import Link from 'next/link';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState, useRef } from 'react';
-import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, LogOut, User, Grip, ChevronDown, LifeBuoy, Home, Star, CreditCard, Receipt, MapPin, Store, Eye, Sparkles } from 'lucide-react';
+import { LayoutDashboard, Scissors, UserCog, Package, Settings, Users, Building2, Calendar, ShoppingBag, Grip, ChevronDown, LifeBuoy, Home, CreditCard, MapPin, Sparkles, Tag } from 'lucide-react';
 import api from '@/lib/axios';
-import NotificationBell from '@/components/NotificationBell';
+import AccountHeaderMenu from '@/components/AccountHeaderMenu';
 import BrandLogo from '@/components/BrandLogo';
 import { ToastProvider } from '@/context/ToastContext';
 import { BranchProvider, useBranch } from '@/context/BranchContext';
@@ -20,8 +20,6 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
   const pathname = usePathname();
   
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isProfileOpen, setIsProfileOpen] = useState(false);
-  const profileRef = useRef<HTMLDivElement>(null);
 
   const [prevPathname, setPrevPathname] = useState(pathname);
   
@@ -59,20 +57,12 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
           logout();
           router.push('/login');
         });
-    } else if (user && (user.roles?.[0]?.name === 'staff' || user.roles?.[0]?.name === 'branch_manager')) {
-      // This owner dashboard is gated to shop_owner — staff/branch managers
-      // have their own portal. Without this, typing the URL directly would
-      // land them on owner-only pages that only fail once the API rejects the request.
-      router.push('/staff-dashboard');
     }
   }, [isAuthenticated, user, token, router, setAuth, logout]);
 
   // Handle click outside for dropdowns
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
-      if (profileRef.current && !profileRef.current.contains(event.target as Node)) {
-        setIsProfileOpen(false);
-      }
       if (branchRef.current && !branchRef.current.contains(event.target as Node)) {
         setIsBranchOpen(false);
       }
@@ -81,21 +71,16 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const handleLogout = async () => {
-    try {
-      await api.post('/auth/logout');
-    } catch (e) {
-      console.error('Logout failed', e);
-    } finally {
-      logout();
-      router.push('/login');
-    }
-  };
-
   const roleName = user?.roles?.[0]?.name;
-  if (!mounted || !isAuthenticated || roleName === 'staff' || roleName === 'branch_manager') return null;
+  if (!mounted || !isAuthenticated) return null;
 
+  // Staff and branch managers share this same dashboard — there's no separate
+  // staff portal. What they can see/do here is scoped down by the API (and a
+  // handful of role checks below/in individual pages), not by a different route.
   const isShopOwner = roleName === 'shop_owner';
+  // Matches the backend's role:shop_owner,branch_manager gate on GET /analytics
+  // — plain staff can't hit that endpoint, so Reports & Insights would just 403.
+  const canViewAnalytics = isShopOwner || roleName === 'branch_manager';
 
   const NAV_GROUPS = [
     {
@@ -121,37 +106,34 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
       // Ready-to-Wear is folded into Design Catalog as a tab (see the catalog page).
       // "Our Expertise" was merged into Services — a service's category/type IS
       // the shop's declared expertise, so it no longer needs a separate tab.
+      // Design Catalog, Services, and Coupons are all shop_owner-only on the
+      // backend (not even branch_manager) — hidden here to match, otherwise
+      // staff/branch managers see a link that 403s the moment they click it.
       title: 'Showroom',
       items: [
-        { name: 'Design Catalog', path: '/dashboard/catalog',        icon: ShoppingBag },
-        { name: 'Services',       path: '/dashboard/services',       icon: Package },
-      ]
-    },
-    {
-      title: 'My Storefront',
-      items: [
-        { name: 'Storefront',    path: '/dashboard/profile',     icon: Store },
-        { name: 'Reviews',       path: '/dashboard/reviews',     icon: Star },
+        ...(isShopOwner ? [{ name: 'Design Catalog', path: '/dashboard/catalog', icon: ShoppingBag }] : []),
+        ...(isShopOwner ? [{ name: 'Services', path: '/dashboard/services', icon: Package }] : []),
+        ...(isShopOwner ? [{ name: 'Coupons', path: '/dashboard/coupons', icon: Tag }] : []),
       ]
     },
     {
       // "Team" is avoided here on purpose — the app also uses "Team Name"/"Team
       // Roster" for bulk sports-jersey job orders, so labeling staff as a "Team"
       // reads as if it belongs to that same sports/esports context.
+      // Branches lives here too, not in its own single-item group — staff are
+      // assigned per branch and Reports & Insights already compares performance
+      // across branches, so it's a closer fit than standing alone.
+      // Staff management is shop_owner-only on the backend (not even
+      // branch_manager) — hidden here to match.
       title: 'Staff & Performance',
       items: [
-        { name: 'Staff',  path: '/dashboard/staff',       icon: UserCog },
-        { name: 'Reports & Insights', path: '/dashboard/reports', icon: LayoutDashboard },
+        ...(isShopOwner ? [{ name: 'Staff', path: '/dashboard/staff', icon: UserCog }] : []),
+        ...(canViewAnalytics ? [{ name: 'Reports & Insights', path: '/dashboard/reports', icon: LayoutDashboard }] : []),
+        ...(isShopOwner ? [{ name: 'Branches', path: '/dashboard/branches', icon: Building2 }] : []),
       ]
     },
     // Billing & Plans and Account Settings live in the profile dropdown (top-right
     // avatar menu) instead — keeping them here too was a duplicate entry point.
-    ...(isShopOwner ? [{
-      title: 'Configuration',
-      items: [
-        { name: 'Branches', path: '/dashboard/branches', icon: Building2 },
-      ]
-    }] : [])
   ];
 
   const getNavItemClass = (path: string) => {
@@ -164,7 +146,7 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
   };
 
   return (
-    <div className="h-screen bg-[#FAF6F3] flex flex-col overflow-hidden">
+    <div className="h-screen bg-[#FAF6F3] flex flex-col overflow-hidden print:h-auto print:overflow-visible">
       {/* Top Navigation Bar */}
       <header className="print:hidden h-[64px] bg-white border-b border-[#EBE6E0] flex items-center justify-between px-6 sticky top-0 z-50">
         <div className="flex items-center gap-4">
@@ -266,54 +248,12 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
             <Grip size={20} fill="currentColor" />
           </button>
 
-          <NotificationBell />
-
-          {/* Profile Dropdown */}
-          <div className="relative" ref={profileRef}>
-            <button 
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="relative flex items-center justify-center w-10 h-10 rounded-full transition-colors"
-            >
-              <div className="w-10 h-10 rounded-full overflow-hidden bg-[#9A8073] flex items-center justify-center text-white font-semibold">
-                {user?.name?.charAt(0) || 'U'}
-              </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-[18px] h-[18px] bg-[#EBE6E0] rounded-full border-[1.5px] border-white flex items-center justify-center text-[#524A44]">
-                <ChevronDown size={12} strokeWidth={3} />
-              </div>
-            </button>
-
-            {isProfileOpen && (
-              <div className="absolute right-0 mt-3 w-56 bg-white rounded-xl shadow-[0_10px_40px_-10px_rgba(0,0,0,0.08)] py-2 z-50">
-                <div className="px-4 py-3 border-b border-[#EBE6E0] mb-2">
-                  <p className="text-sm font-semibold text-[#2D2A26] truncate">{user?.name}</p>
-                  <p className="text-xs text-[#827A73] truncate">{user?.roles?.[0]?.name?.replace('_', ' ') || 'Shop Owner'}</p>
-                </div>
-                
-                <Link href="/dashboard/profile" className="flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors" onClick={() => setIsProfileOpen(false)}>
-                  <Eye size={16} /> My Storefront
-                </Link>
-
-                <Link href="/dashboard/billing" className="flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors" onClick={() => setIsProfileOpen(false)}>
-                  <Receipt size={16} /> Billing & Plans
-                </Link>
-                <Link href="/dashboard/account-settings" className="flex items-center gap-3 px-4 py-2.5 text-[14px] text-[#524A44] hover:bg-[#F0EAE3] hover:text-[#2D2A26] transition-colors" onClick={() => setIsProfileOpen(false)}>
-                  <UserCog size={16} /> Account Settings
-                </Link>
-                <div className="h-px bg-[#EBE6E0] my-1"></div>
-                <button 
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-3 px-4 py-2.5 text-[14px] font-medium text-[#B26959] hover:bg-[#F0EAE3] transition-colors text-left"
-                >
-                  <LogOut size={16} /> Log Out
-                </button>
-              </div>
-            )}
-          </div>
+          <AccountHeaderMenu />
         </div>
       </header>
 
       {/* Main Layout Area */}
-      <div className="flex-1 flex overflow-hidden relative">
+      <div className="flex-1 flex overflow-hidden relative print:overflow-visible print:block">
         {/* Mobile Sidebar Overlay */}
         {isSidebarOpen && (
         <button
@@ -328,7 +268,7 @@ function DashboardLayoutContent({ children }: { readonly children: React.ReactNo
         <aside className={`print:hidden absolute inset-y-0 left-0 z-40 w-[280px] bg-[#FAF6F3] overflow-y-auto transform transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
           <div className="py-4 flex flex-col justify-between h-full">
             <div className="space-y-6">
-              {NAV_GROUPS.map((group) => (
+              {NAV_GROUPS.filter((group) => group.items.length > 0).map((group) => (
                 <div key={group.title} className="space-y-1.5">
                   <h3 className="px-7 text-[10px] font-bold uppercase tracking-wider text-[#A8A19A] select-none">
                     {group.title}

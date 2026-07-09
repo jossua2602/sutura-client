@@ -96,30 +96,38 @@ export function useAppointments() {
   const userRoles: string[] = user?.roles?.map(r => r.name) ?? [];
   const isOwnerOrManager = userRoles.some(r => ['shop_owner', 'branch_manager'].includes(r));
 
-  // Confirm / Reject Review
-  const handleConfirmReview = async (id: number) => {
-    if (!shop) return;
+  // Confirm / Reject Review — both return whether the action actually
+  // succeeded so the caller can decide whether to close the review modal.
+  // Closing unconditionally would hide a rejection reason (e.g. a double-
+  // booking conflict) the owner needs to see and react to right there,
+  // instead of silently vanishing as if nothing happened.
+  const handleConfirmReview = async (id: number): Promise<boolean> => {
+    if (!shop) return false;
     setActionLoadingId(id);
     try {
       await api.put(`/shops/${shop.id}/appointments/${id}`, { status: 'confirmed' });
       toast.success('Appointment confirmed!');
       fetchAppointments();
+      return true;
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to confirm appointment.'));
+      return false;
     } finally {
       setActionLoadingId(null);
     }
   };
 
-  const handleRejectReview = async (id: number) => {
-    if (!shop) return;
+  const handleRejectReview = async (id: number): Promise<boolean> => {
+    if (!shop) return false;
     setActionLoadingId(id);
     try {
       await api.put(`/shops/${shop.id}/appointments/${id}`, { status: 'cancelled' });
       toast.success('Appointment rejected.');
       fetchAppointments();
+      return true;
     } catch (err: unknown) {
       toast.error(getErrorMessage(err, 'Failed to reject appointment.'));
+      return false;
     } finally {
       setActionLoadingId(null);
     }
@@ -200,7 +208,7 @@ export function useAppointments() {
 
       if (measurementAction === 'record') {
         const targetApt = appointments.find(a => a.id === aptId);
-        const custId = customers.find(c => c.name === targetApt?.customer?.name)?.id;
+        const custId = targetApt?.customer?.id;
         if (custId) router.push(`/dashboard/measurements?customer_id=${custId}`);
       }
       setCompleteApt(null);
@@ -229,8 +237,8 @@ export function useAppointments() {
   };
 
   const handleCreateJob = async (apt: Appointment) => {
-    const custId = customers.find(c => c.name === apt.customer?.name)?.id;
-    const servId = services.find(s => s.name === apt.service?.name)?.id;
+    const custId = apt.customer?.id;
+    const servId = apt.service?.id;
     if (!custId) { toast.error('Customer not found.'); return; }
     const serviceParam = servId ? `&service_id=${servId}` : '';
     const notesParam = encodeURIComponent(`From appointment. Notes: ${apt.notes || ''}`);

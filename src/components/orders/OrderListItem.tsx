@@ -49,6 +49,9 @@ export default function OrderListItem({
         </div>
         <div>
           <h4 className="font-medium text-[#2D2A26]">{order.catalog_item?.name || 'Unknown Product'}</h4>
+          {order.selected_size && (
+            <p className="text-xs font-semibold text-[#524A44] mt-0.5">Size: {order.selected_size}</p>
+          )}
           <p className="text-sm font-semibold text-[#9A8073] mt-1">₱{Number.parseFloat(order.total_amount).toLocaleString()}</p>
           <div className="mt-2">
             <StatusBadge status={order.status} listingType={order.catalog_item?.listing_type} />
@@ -313,16 +316,24 @@ export default function OrderListItem({
               <input
                 type="number"
                 min="0"
+                max={order.security_deposit_amount ? Number(order.security_deposit_amount) : undefined}
                 step="0.01"
                 value={deductionAmount}
                 onChange={(e) => setDeductionAmount(e.target.value)}
                 className="w-full bg-white border border-orange-200 px-2 py-1.5 rounded-lg text-xs focus:outline-none focus:border-orange-400"
               />
-              {order.security_deposit_amount && (
-                <p className="text-[10px] text-orange-800/80 bg-white/70 p-1.5 rounded-lg border border-orange-100">
-                  Deposit held: ₱{Number(order.security_deposit_amount).toLocaleString()}. Refund the remainder to the customer.
-                </p>
-              )}
+              {order.security_deposit_amount ? (() => {
+                const deposit = Number(order.security_deposit_amount);
+                const deduction = Number.parseFloat(deductionAmount) || 0;
+                const exceedsDeposit = deduction > deposit;
+                return (
+                  <p className={`text-[10px] p-1.5 rounded-lg border ${exceedsDeposit ? 'text-red-700 bg-red-50 border-red-200 font-semibold' : 'text-orange-800/80 bg-white/70 border-orange-100'}`}>
+                    {exceedsDeposit
+                      ? `Deduction cannot exceed the ₱${deposit.toLocaleString()} deposit held.`
+                      : `Deposit held: ₱${deposit.toLocaleString()}. Refund to customer: ₱${(deposit - deduction).toLocaleString()}.`}
+                  </p>
+                );
+              })() : null}
               <div className="flex gap-1 justify-end">
                 <button
                   onClick={() => setShowInspectionForm(false)}
@@ -331,7 +342,7 @@ export default function OrderListItem({
                   Cancel
                 </button>
                 <button
-                  disabled={isUpdating}
+                  disabled={isUpdating || (order.security_deposit_amount != null && (Number.parseFloat(deductionAmount) || 0) > Number(order.security_deposit_amount))}
                   onClick={async () => {
                     await onUpdateStatus(order.id, 'completed', {
                       return_inspection_notes: inspectionNotes,
@@ -339,7 +350,7 @@ export default function OrderListItem({
                     });
                     setShowInspectionForm(false);
                   }}
-                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer"
+                  className="px-2 py-1 text-xs bg-green-600 text-white rounded hover:bg-green-700 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Finalize Return
                 </button>

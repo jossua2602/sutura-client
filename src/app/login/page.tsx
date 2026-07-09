@@ -27,6 +27,7 @@ export default function LoginPage() {
       if (response.data.success) {
         const { user, token, shop, staff_profile } = response.data.data;
         
+        
         let activeShop = shop;
         if (user.roles[0]?.name === 'staff' || user.roles[0]?.name === 'branch_manager') {
           if (staff_profile?.shop) {
@@ -36,10 +37,11 @@ export default function LoginPage() {
 
         const roleName = user.roles[0]?.name;
 
-        if (roleName === 'staff' || roleName === 'branch_manager') {
-          setAuth(user, token, activeShop, staff_profile);
-          router.push('/staff-dashboard');
-        } else if (roleName === 'shop_owner') {
+        if (roleName === 'staff' || roleName === 'branch_manager' || roleName === 'shop_owner') {
+          // Staff and branch managers share the same owner dashboard — there is
+          // no separate staff portal. What each role can see/do there is
+          // enforced by the API (and a handful of role checks in the UI),
+          // not by routing them to a different page.
           setAuth(user, token, activeShop, staff_profile);
           router.push('/dashboard');
         } else {
